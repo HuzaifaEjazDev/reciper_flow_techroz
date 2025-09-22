@@ -31,7 +31,11 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          _currentIndex == 0 ? 'RecipeApp' : active.title,
+          _currentIndex == 0
+              ? 'RecipeApp'
+              : _currentIndex == 1
+                  ? 'Meal Planner'
+                  : active.title,
           style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
         ),
         actions: _currentIndex == 0

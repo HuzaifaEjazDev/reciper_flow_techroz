@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/views/screens/main_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/home_view_model.dart';
+import 'package:recipe_app/viewmodels/meal_planner_view_model.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 
 void main() {
@@ -16,6 +17,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()..loadInitial()),
+        ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()..init()),
       ],
       child: MaterialApp(
       title: 'Recipe App',
@@ -31,6 +33,14 @@ class MyApp extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          elevation: 0,
+          centerTitle: true,
+          foregroundColor: Colors.black,
         ),
         useMaterial3: true,
       ),

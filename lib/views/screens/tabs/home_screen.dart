@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/viewmodels/home_view_model.dart';
 import 'package:recipe_app/models/dish.dart';
 
@@ -253,7 +254,18 @@ class _DishCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RecipeDetailsScreen(
+              title: '${dish.title} with Basmati Rice',
+              imageAssetPath: dish.imageAssetPath,
+            ),
+          ),
+        );
+      },
+      child: Container(
       margin: const EdgeInsets.only(bottom: 16),
       height: 200,
       decoration: BoxDecoration(
@@ -344,6 +356,7 @@ class _DishCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
