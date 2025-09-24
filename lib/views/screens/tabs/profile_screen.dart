@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
+import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -48,10 +49,14 @@ class ProfileScreen extends StatelessWidget {
               onTap: () {},
             ),
             _NavTile(
-              icon: Icons.history_outlined,
-              title: 'Recent recipes',
-              subtitle: 'Your recently viewed',
-              onTap: () {},
+              icon: Icons.book_outlined,
+              title: 'My Recipes',
+              subtitle: 'Your created recipes',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyRecipesScreen()),
+                );
+              },
             ),
             const SizedBox(height: 20),
             CustomElevatedButton(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
-import 'package:recipe_app/viewmodels/home_view_model.dart';
-import 'package:recipe_app/models/dish.dart';
+import 'package:recipe_app/viewmodels/user/home_view_model.dart';
+import 'package:recipe_app/models/user/dish.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -178,7 +178,18 @@ class _SmallDishCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const double cardHeight = 150;
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RecipeDetailsScreen(
+              title: title,
+              imageAssetPath: imageAssetPath,
+            ),
+          ),
+        );
+      },
+      child: Container(
       width: 180,
       height: cardHeight,
       decoration: BoxDecoration(
@@ -243,6 +254,7 @@ class _SmallDishCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

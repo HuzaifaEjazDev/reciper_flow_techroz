@@ -3,6 +3,7 @@ import 'package:recipe_app/views/screens/tabs/home_screen.dart';
 import 'package:recipe_app/views/screens/tabs/meal_planner_screen.dart';
 import 'package:recipe_app/views/screens/tabs/groceries_screen.dart';
 import 'package:recipe_app/views/screens/tabs/profile_screen.dart';
+import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -43,7 +44,8 @@ class _MainScreenState extends State<MainScreen> {
                 IconButton(
                   icon: const Icon(Icons.notifications_none),
                   color: Colors.black87,
-                  onPressed: () {},
+                  onPressed: () {
+                  },
                   tooltip: 'Notifications',
                 ),
                 const Padding(
@@ -61,6 +63,20 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
       body: active.page,
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const CreateNewRecipeScreen(),
+                  ),
+                );
+              },
+              backgroundColor: Colors.deepOrange,
+              child: const Icon(Icons.add, color: Colors.white),
+              tooltip: 'Add Recipe',
+            )
+          : null,
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recipe_app/models/meal_plan.dart';
-import 'package:recipe_app/viewmodels/meal_planner_view_model.dart';
+import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 
 class MealPlannerScreen extends StatefulWidget {
   const MealPlannerScreen({super.key});

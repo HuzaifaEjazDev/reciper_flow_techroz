@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:recipe_app/viewmodels/user/home_view_model.dart';
+import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
+import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/views/screens/main_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:recipe_app/viewmodels/home_view_model.dart';
-import 'package:recipe_app/viewmodels/meal_planner_view_model.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 
 void main() {
@@ -18,6 +19,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()..loadInitial()),
         ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()..init()),
+        ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
       ],
       child: MaterialApp(
       title: 'Recipe App',

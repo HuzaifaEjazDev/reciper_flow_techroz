@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:recipe_app/models/meal_plan.dart';
+import 'package:recipe_app/models/user/meal_plan.dart';
 
 class MealPlannerViewModel extends ChangeNotifier {
   final List<DayPlan> _plans = <DayPlan>[];

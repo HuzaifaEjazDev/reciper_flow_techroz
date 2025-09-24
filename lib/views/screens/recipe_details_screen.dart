@@ -74,7 +74,6 @@ class RecipeDetailsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const _BottomNavShadowSpacer(),
           ],
         ),
       ),
@@ -272,31 +271,6 @@ class _StepCard extends StatelessWidget {
   }
 }
 
-class _BottomNavShadowSpacer extends StatelessWidget {
-  const _BottomNavShadowSpacer();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x11000000),
-            blurRadius: 8,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: const Center(
-        child: Text(
-          'Planner    Groceries    Recipes    Profile',
-          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-}
+//
 
 

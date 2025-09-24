@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
-import 'package:recipe_app/viewmodels/create_new_recipe_view_model.dart';
-import 'package:recipe_app/viewmodels/my_recipes_view_model.dart';
-import 'package:recipe_app/models/user_recipe.dart';
+import 'package:recipe_app/viewmodels/user/create_new_recipe_view_model.dart';
+import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
+import 'package:recipe_app/models/user/user_recipe.dart';
 
 class CreateNewRecipeScreen extends StatelessWidget {
   final bool isEdit;
