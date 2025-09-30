@@ -98,7 +98,9 @@ class _HeroImage extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(imageAssetPath, fit: BoxFit.cover),
+                imageAssetPath.startsWith('http')
+                    ? Image.network(imageAssetPath, fit: BoxFit.cover)
+                    : Image.asset(imageAssetPath, fit: BoxFit.cover),
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: const BoxDecoration(

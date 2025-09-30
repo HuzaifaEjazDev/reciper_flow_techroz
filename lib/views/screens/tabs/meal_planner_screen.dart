@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/models/user/meal_plan.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
+import 'package:recipe_app/views/screens/recipe_by_admin_screen.dart';
 
 class MealPlannerScreen extends StatefulWidget {
   const MealPlannerScreen({super.key});
@@ -201,7 +202,13 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                           backgroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const RecipeByAdminScreen(),
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.add),
                         label: const Text(
                           'Add Breakfast',
@@ -239,7 +246,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                       icon: Icons.local_cafe_outlined,
                     ),
                     const SizedBox(height: 16),
-                    _AddMealButton(text: 'Add Lunch'),
+                    _AddMealButton(text: 'Add Lunch', navigateToAdmin: true),
 
                     const SizedBox(height: 24),
 
@@ -271,7 +278,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                       icon: Icons.local_cafe_outlined,
                     ),
                     const SizedBox(height: 16),
-                    _AddMealButton(text: 'Add Dinner'),
+                    _AddMealButton(text: 'Add Dinner', navigateToAdmin: true),
 
                     const SizedBox(height: 24),
 
@@ -297,7 +304,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                       icon: Icons.local_cafe_outlined,
                     ),
                     const SizedBox(height: 16),
-                    _AddMealButton(text: 'Add Snack'),
+                    _AddMealButton(text: 'Add Snack', navigateToAdmin: true),
                   ],
                 ),
               ),
@@ -422,7 +429,8 @@ class _MealCard extends StatelessWidget {
 
 class _AddMealButton extends StatelessWidget {
   final String text;
-  const _AddMealButton({required this.text});
+  final bool navigateToAdmin;
+  const _AddMealButton({required this.text, this.navigateToAdmin = false});
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +444,15 @@ class _AddMealButton extends StatelessWidget {
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onPressed: () {},
+        onPressed: () {
+          if (navigateToAdmin) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const RecipeByAdminScreen(),
+              ),
+            );
+          }
+        },
         icon: const Icon(Icons.add),
         label: Text(
           text,

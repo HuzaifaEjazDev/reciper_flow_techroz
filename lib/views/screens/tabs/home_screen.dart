@@ -45,25 +45,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.sort, color: Colors.black87),
-                        SizedBox(width: 6),
-                        Text(
-                          'Sort',
-                          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(width: 12),
                 ],
               ),
             ),
@@ -271,7 +253,7 @@ class _DishCard extends StatelessWidget {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => RecipeDetailsScreen(
-              title: '${dish.title} with Basmati Rice',
+              title: dish.title,
               imageAssetPath: dish.imageAssetPath,
             ),
           ),
@@ -303,10 +285,9 @@ class _DishCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              dish.imageAssetPath,
-              fit: BoxFit.cover,
-            ),
+            child: dish.imageAssetPath.startsWith('http')
+                ? Image.network(dish.imageAssetPath, fit: BoxFit.cover)
+                : Image.asset(dish.imageAssetPath, fit: BoxFit.cover),
           ),
           // Dim overlay to reduce image transparency slightly
           Positioned.fill(
