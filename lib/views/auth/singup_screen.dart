@@ -159,14 +159,15 @@ class _SingUpState extends State<SingUp> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: () {},
+                        icon: const Icon(Icons.g_mobiledata, color: Colors.red),
+                        label: const Text('Google'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Google'),
                       ),
                     ),
                     const SizedBox(width: 12),

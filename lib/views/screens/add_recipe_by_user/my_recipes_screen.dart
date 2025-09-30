@@ -10,7 +10,7 @@ class MyRecipesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MyRecipesViewModel>(
-      create: (_) => MyRecipesViewModel(),
+      create: (_) => MyRecipesViewModel()..loadFromFirestore(collection: 'recipes'),
       child: const _MyRecipesView(),
     );
   }
@@ -20,7 +20,8 @@ class _MyRecipesView extends StatelessWidget {
   const _MyRecipesView();
   @override
   Widget build(BuildContext context) {
-    final items = context.watch<MyRecipesViewModel>().items;
+    final vm = context.watch<MyRecipesViewModel>();
+    final items = vm.items;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -50,8 +51,56 @@ class _MyRecipesView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Your Recipes', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.black87, height: 1.2)),
+                Row(
+                  children: [
+                    Expanded(child: _SearchField()),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        // Load sort options first
+                        await context.read<MyRecipesViewModel>().loadSortOptions();
+                        
+                        // Show bottom sheet after loading
+                        if (!context.mounted) return;
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: const Color(0xFFF5F5F5),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                          ),
+                          builder: (context) => ChangeNotifierProvider.value(
+                            value: context.read<MyRecipesViewModel>(),
+                            child: const _SortBottomSheet(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.sort, color: Colors.black87),
+                            SizedBox(width: 6),
+                            Text('Sort', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
+                if (vm.loading) const Center(child: CircularProgressIndicator()),
+                if (vm.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(vm.error!, style: const TextStyle(color: Colors.red)),
+                  ),
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -64,7 +113,21 @@ class _MyRecipesView extends StatelessWidget {
                   ),
                   itemBuilder: (context, index) => _RecipeCard(data: items[index]),
                 ),
-                const SizedBox(height: 100),
+                const SizedBox(height: 16),
+                if (vm.hasMore)
+                  Center(
+                    child: SizedBox(
+                      width: 160,
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: vm.loading ? null : () => context.read<MyRecipesViewModel>().loadMore(),
+                        child: vm.loading
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Load more'),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 80),
               ],
             ),
           ),
@@ -109,7 +172,7 @@ class _RecipeCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(data.imageAssetPath, fit: BoxFit.cover),
+                  _RecipeImage(pathOrUrl: data.imageAssetPath),
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: const BoxDecoration(
@@ -167,6 +230,212 @@ class _RecipeCard extends StatelessWidget {
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _RecipeImage extends StatelessWidget {
+  final String pathOrUrl;
+  const _RecipeImage({required this.pathOrUrl});
+  @override
+  Widget build(BuildContext context) {
+    final bool isNetwork = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://');
+    if (isNetwork) {
+      return Image.network(pathOrUrl, fit: BoxFit.cover);
+    }
+    return Image.asset(pathOrUrl.isEmpty ? 'assets/images/easymakesnack1.jpg' : pathOrUrl, fit: BoxFit.cover);
+  }
+}
+
+class _SortBottomSheet extends StatelessWidget {
+  const _SortBottomSheet();
+  
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<MyRecipesViewModel>(
+      builder: (context, vm, child) {
+        return Container(
+          color: const Color(0xFFF5F5F5),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Categories',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                // Debug info
+                Text(
+                  'Meal Types: ${vm.mealTypes.length}, Diets: ${vm.diets.length}, Cuisines: ${vm.cuisines.length}, Tags: ${vm.tags.length}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+
+                _ChipsExpansionTile(
+                  title: 'Meal Types',
+                  options: vm.mealTypes,
+                  selected: vm.selectedMealType,
+                  onSelected: (v) => vm.setSelectedMealType(v),
+                ),
+                const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
+
+                _ChipsExpansionTile(
+                  title: 'Diets',
+                  options: vm.diets,
+                  selected: vm.selectedDiet,
+                  onSelected: (v) => vm.setSelectedDiet(v),
+                ),
+                const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
+
+                _ChipsExpansionTile(
+                  title: 'Cuisines',
+                  options: vm.cuisines,
+                  selected: vm.selectedCuisine,
+                  onSelected: (v) => vm.setSelectedCuisine(v),
+                ),
+                const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
+
+                _ChipsExpansionTile(
+                  title: 'Special Tags',
+                  options: vm.tags,
+                  selected: vm.selectedTag,
+                  onSelected: (v) => vm.setSelectedTag(v),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChipsExpansionTile extends StatelessWidget {
+  final String title;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+  const _ChipsExpansionTile({
+    required this.title,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+            const SizedBox(height: 2),
+            Text(
+              selected ?? (options.isEmpty ? 'No options available' : 'Select'), 
+              style: TextStyle(
+                color: options.isEmpty ? Colors.red : Colors.black54,
+              ),
+            ),
+          ],
+        ),
+        children: [
+          if (options.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: const Text(
+                'No data found. Check Firestore configuration.',
+                style: TextStyle(color: Colors.orange, fontStyle: FontStyle.italic),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options.map((opt) {
+                final bool isSelected = opt == selected;
+                return ChoiceChip(
+                  label: Text(opt),
+                  selected: isSelected,
+                  onSelected: (_) => onSelected(isSelected ? null : opt),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  backgroundColor: Colors.white,
+                  selectedColor: Colors.white,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.black : Colors.black87,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchField extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.search, color: Colors.black54, size: 20),
+          const SizedBox(width: 4),
+          Expanded(
+            child: TextField(
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Search your recipes...',
+                hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
+              ),
+              onChanged: (v) => context.read<MyRecipesViewModel>().setSearchQuery(v),
+            ),
+          ),
+        ],
       ),
     );
   }

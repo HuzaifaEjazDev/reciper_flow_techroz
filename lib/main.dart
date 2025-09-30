@@ -1,4 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'firebase_options.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
@@ -7,7 +9,11 @@ import 'package:recipe_app/views/screens/main_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 

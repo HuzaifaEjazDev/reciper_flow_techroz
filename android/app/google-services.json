@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1072525701664",
+    "project_id": "recipeflow-dev",
+    "storage_bucket": "recipeflow-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1072525701664:android:cb06f1503f624b4ff34245",
+        "android_client_info": {
+          "package_name": "com.example.admin_recipe_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhBEjv4N2KqCOG81hOisNtLlWaDXX-mkA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1072525701664:android:2c001a233a056f49f34245",
+        "android_client_info": {
+          "package_name": "com.example.recipe_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhBEjv4N2KqCOG81hOisNtLlWaDXX-mkA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
