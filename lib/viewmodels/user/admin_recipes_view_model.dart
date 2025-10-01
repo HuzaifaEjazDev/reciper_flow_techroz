@@ -7,12 +7,16 @@ class AdminRecipeCardData {
   final String imageUrl;
   final int minutes;
   final double rating;
+  final int ingredientsCount;
+  final int stepsCount;
   const AdminRecipeCardData({
     required this.id,
     required this.title,
     required this.imageUrl,
     required this.minutes,
     required this.rating,
+    required this.ingredientsCount,
+    required this.stepsCount,
   });
 }
 
@@ -25,10 +29,16 @@ class AdminRecipesViewModel extends ChangeNotifier {
   final List<AdminRecipeCardData> _allItems = <AdminRecipeCardData>[];
   final List<AdminRecipeCardData> _items = <AdminRecipeCardData>[];
   String _query = '';
+  String _activeServerQuery = '';
   String? _lastId;
   bool _hasMore = true;
   bool _loading = false;
   String? _error;
+  // Paging state
+  final Map<int, String?> _pageToCursor = <int, String?>{1: null}; // page -> startAfterId (page 1 starts at null)
+  int _currentPage = 1;
+  final int _pageSize = 10;
+  int _totalCount = 0;
 
   // Sort/filter options
   List<String> _mealTypes = const [];
@@ -45,6 +55,10 @@ class AdminRecipesViewModel extends ChangeNotifier {
   bool get hasMore => _hasMore;
   bool get loading => _loading;
   String? get error => _error;
+  int get currentPage => _currentPage;
+  int get totalKnownPages => (_totalCount / _pageSize).ceil().clamp(1, 1000000);
+  int get totalCount => _totalCount;
+  int get totalPages => (_totalCount / _pageSize).ceil().clamp(1, 1000000);
   List<String> get mealTypes => _mealTypes;
   List<String> get diets => _diets;
   List<String> get cuisines => _cuisines;
@@ -60,25 +74,58 @@ class AdminRecipesViewModel extends ChangeNotifier {
     _items.clear();
     _lastId = null;
     _hasMore = true;
-    await _loadPage();
+    _pageToCursor
+      ..clear()
+      ..addAll({1: null});
+    _currentPage = 1;
+    await _loadTotalCount();
+    await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
   }
 
+  // Backward compatibility (unused in new UI)
   Future<void> loadMore() async {
     if (_loading || !_hasMore) return;
-    await _loadPage();
+    await goToPage(_currentPage + 1);
   }
 
-  Future<void> _loadPage() async {
+  Future<void> _loadPageAtCursor({required String? startAfterId}) async {
     if (_loading) return;
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      final page = await _service.fetchRecipesPage(collection: 'recipes', limit: 10, startAfterId: _lastId);
-      _lastId = page.lastId;
-      _hasMore = page.lastId != null;
-      _allItems.addAll(page.items.map(_map));
-      _applyFilter();
+      if (_activeServerQuery.isNotEmpty) {
+        final page = await _service.fetchRecipesPageByTitlePrefix(
+          collection: 'recipes',
+          prefix: _activeServerQuery,
+          limit: _pageSize,
+          startAfterTitle: startAfterId, // we store title cursor in this mode
+        );
+        _lastId = null; // not used in title paging
+        _hasMore = page.lastTitle != null;
+        _allItems
+          ..clear()
+          ..addAll(page.items.map(_map));
+        _applyFilter(force: true);
+        if (_currentPage >= 1) {
+          _pageToCursor[_currentPage + 1] = page.lastTitle;
+        }
+      } else {
+        final page = await _service.fetchRecipesPage(
+          collection: 'recipes',
+          limit: _pageSize,
+          startAfterId: startAfterId,
+        );
+        _lastId = page.lastId;
+        _hasMore = page.lastId != null;
+        _allItems
+          ..clear()
+          ..addAll(page.items.map(_map));
+        _applyFilter(force: true);
+        if (_currentPage >= 1) {
+          _pageToCursor[_currentPage + 1] = _lastId;
+        }
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -87,18 +134,74 @@ class AdminRecipesViewModel extends ChangeNotifier {
     }
   }
 
-  void setSearchQuery(String q) {
-    _query = q;
-    _applyFilter();
+  Future<void> goToPage(int pageNumber) async {
+    if (pageNumber < 1) return;
+    // Find nearest known page <= requested
+    int anchorPage = pageNumber;
+    while (anchorPage > 1 && !_pageToCursor.containsKey(anchorPage)) {
+      anchorPage--;
+    }
+    // Step forward to compute cursor for requested page
+    for (int p = anchorPage; p < pageNumber; p++) {
+      final String? startAfterKey = _pageToCursor[p];
+      if (_activeServerQuery.isNotEmpty) {
+        final page = await _service.fetchRecipesPageByTitlePrefix(
+          collection: 'recipes',
+          prefix: _activeServerQuery,
+          limit: _pageSize,
+          startAfterTitle: startAfterKey,
+        );
+        _pageToCursor[p + 1] = page.lastTitle;
+        if (page.lastTitle == null) break;
+      } else {
+        final page = await _service.fetchRecipesPage(
+          collection: 'recipes',
+          limit: _pageSize,
+          startAfterId: startAfterKey,
+        );
+        _pageToCursor[p + 1] = page.lastId;
+        if (page.lastId == null) break;
+      }
+    }
+    _currentPage = pageNumber;
+    await _loadPageAtCursor(startAfterId: _pageToCursor[pageNumber]);
   }
 
-  void _applyFilter() {
-    final String q = _query.trim().toLowerCase();
-    _items
+  Future<void> _loadTotalCount() async {
+    try {
+      _totalCount = _activeServerQuery.isNotEmpty
+          ? await _service.fetchCollectionCountByTitlePrefix('recipes', _activeServerQuery)
+          : await _service.fetchCollectionCount('recipes');
+    } catch (_) {
+      _totalCount = ((_pageToCursor.length - 1) * _pageSize) + _allItems.length;
+    }
+    notifyListeners();
+  }
+
+  Future<void> setSearchQuery(String q) async {
+    _query = q;
+    // Server-side search pagination when user types something meaningful
+    final String trimmed = q.trim();
+    _activeServerQuery = trimmed.isEmpty ? '' : trimmed;
+    _currentPage = 1;
+    _pageToCursor
       ..clear()
-      ..addAll(q.isEmpty
-          ? _allItems
-          : _allItems.where((e) => e.title.toLowerCase().contains(q)));
+      ..addAll({1: null});
+    await _loadTotalCount();
+    await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+  }
+
+  void _applyFilter({bool force = false}) {
+    final String q = _query.trim().toLowerCase();
+    if (_activeServerQuery.isNotEmpty || force) {
+      _items
+        ..clear()
+        ..addAll(_allItems);
+    } else {
+      _items
+        ..clear()
+        ..addAll(q.isEmpty ? _allItems : _allItems.where((e) => e.title.toLowerCase().contains(q)));
+    }
     notifyListeners();
   }
 
@@ -157,12 +260,22 @@ class AdminRecipesViewModel extends ChangeNotifier {
     final String image = (m['imageUrl'] ?? m['image'] ?? '').toString();
     final int minutes = _safeInt(m['minutes']) ?? _safeInt(m['time']) ?? 0;
     final double rating = _safeDouble(m['rating']) ?? 0.0;
+    final int ingredientsCount = _pickFirstInt(
+          m,
+          keys: const ['ingredientsTotal', 'ingredients_total', 'ingredientsCount', 'ingredients_count'],
+        ) ?? _listLength(m, keys: const ['ingredients', 'ingredientsList']);
+    final int stepsCount = _pickFirstInt(
+          m,
+          keys: const ['instructionsTotal', 'instructions_total', 'stepsTotal', 'steps_total', 'stepsCount', 'steps_count'],
+        ) ?? _listLength(m, keys: const ['instructions', 'steps']);
     return AdminRecipeCardData(
       id: id.isEmpty ? title : id,
       title: title,
       imageUrl: image,
       minutes: minutes,
       rating: rating,
+      ingredientsCount: ingredientsCount,
+      stepsCount: stepsCount,
     );
   }
 
@@ -178,6 +291,22 @@ class AdminRecipesViewModel extends ChangeNotifier {
     if (v is double) return v;
     if (v is int) return v.toDouble();
     return double.tryParse(v.toString());
+  }
+
+  int? _pickFirstInt(Map<String, dynamic> m, {required List<String> keys}) {
+    for (final k in keys) {
+      final v = _safeInt(m[k]);
+      if (v != null) return v;
+    }
+    return null;
+  }
+
+  int _listLength(Map<String, dynamic> m, {required List<String> keys}) {
+    for (final k in keys) {
+      final v = m[k];
+      if (v is List) return v.length;
+    }
+    return 0;
   }
 }
 

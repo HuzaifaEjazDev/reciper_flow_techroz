@@ -143,13 +143,13 @@ class _SingUpState extends State<SingUp> {
                       style: TextStyle(color: Colors.black87),
                     ),
                     TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SignInScreen(),
-                          ),
-                        );
-                      },
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SignInScreen(),
+                      ),
+                    );
+                  },
                       child: const Text('Sign In'),
                     ),
                   ],
@@ -180,9 +180,9 @@ class _SingUpState extends State<SingUp> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
                     ),
+                  ),
+                ),
                   ],
                 ),
               ],

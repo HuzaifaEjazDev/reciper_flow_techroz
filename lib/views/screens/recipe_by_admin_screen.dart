@@ -109,6 +109,11 @@ class _RecipeByAdminView extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
                     children: [
+                      if (vm.loading && items.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                       if (vm.error != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -130,17 +135,7 @@ class _RecipeByAdminView extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12),
-                      if (vm.hasMore)
-                        SizedBox(
-                          width: 160,
-                          height: 44,
-                          child: OutlinedButton(
-                            onPressed: vm.loading ? null : () => context.read<AdminRecipesViewModel>().loadMore(),
-                            child: vm.loading
-                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Text('Load more'),
-                          ),
-                        ),
+                      _PageControls(),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -171,7 +166,7 @@ class _AdminRecipeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 150,
+            height: 120,
             child: data.imageUrl.startsWith('http')
                 ? Image.network(data.imageUrl, fit: BoxFit.cover)
                 : Image.asset(data.imageUrl.isEmpty ? 'assets/images/easymakesnack1.jpg' : data.imageUrl, fit: BoxFit.cover),
@@ -188,16 +183,33 @@ class _AdminRecipeCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
-                  const Spacer(),
-                  Row(
+                  const SizedBox(height: 6),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.access_time, size: 16, color: Colors.black54),
-                      const SizedBox(width: 6),
-                      Text('${data.minutes} min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.star_border, size: 16, color: Colors.black54),
-                      const SizedBox(width: 6),
-                      Text('${data.rating}', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 16, color: Colors.black54),
+                          const SizedBox(width: 6),
+                          Text('${data.minutes} min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                      // const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.flatware, size: 16, color: Colors.black54),
+                          const SizedBox(width: 6),
+                          Text('${data.ingredientsCount} ingredients', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                      // const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.local_dining_outlined, size: 16, color: Colors.black54),
+                          const SizedBox(width: 6),
+                          Text('${data.stepsCount} steps', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
                     ],
                   ),
                 ],
@@ -206,6 +218,60 @@ class _AdminRecipeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PageControls extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<AdminRecipesViewModel>();
+    // Hide pager until we know totalCount (prevents showing numbers before data loads)
+    if (vm.totalCount == 0 || vm.loading && vm.items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final int totalPages = vm.totalPages == 0 ? vm.totalKnownPages : vm.totalPages;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          height: 44,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: totalPages,
+            itemBuilder: (context, index) {
+              final int page = index + 1;
+              final bool selected = vm.currentPage == page;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: OutlinedButton(
+                  onPressed: vm.loading ? null : () => context.read<AdminRecipesViewModel>().goToPage(page),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: selected ? Colors.deepOrange : Colors.white,
+                    foregroundColor: selected ? Colors.white : Colors.black87,
+                    side: BorderSide(color: selected ? Colors.deepOrange : const Color(0xFFE5E7EB)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  child: Text(
+                    '$page',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          vm.totalCount > 0
+              ? 'Page ${vm.currentPage} of ${totalPages > 0 ? totalPages : vm.totalKnownPages}  •  ${vm.totalCount} total recipes'
+              : 'Loading pages…',
+          style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

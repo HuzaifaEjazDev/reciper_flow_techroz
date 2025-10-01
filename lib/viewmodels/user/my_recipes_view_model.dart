@@ -98,8 +98,8 @@ class MyRecipesViewModel extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _loading = false;
-      notifyListeners();
-    }
+    notifyListeners();
+  }
   }
 
 
