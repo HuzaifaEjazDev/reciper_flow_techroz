@@ -4,7 +4,8 @@ import 'package:recipe_app/core/constants/app_colors.dart';
 class RecipeDetailsScreen extends StatelessWidget {
   final String title;
   final String imageAssetPath;
-  const RecipeDetailsScreen({super.key, required this.title, required this.imageAssetPath});
+  final int? minutes;
+  const RecipeDetailsScreen({super.key, required this.title, required this.imageAssetPath, this.minutes});
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +33,30 @@ class RecipeDetailsScreen extends StatelessWidget {
                     _HeroImage(title: title, imageAssetPath: imageAssetPath),
                     const SizedBox(height: 16),
                     _ActionRow(),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Color(0xFFE5E7EB)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, color: Colors.black87),
+                            const SizedBox(width: 10),
+                            const Text('Estimate Time:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
+                            const SizedBox(width: 8),
+                            Text(
+                              minutes == null ? 'Not available' : '$minutes min',
+                              style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     const _SectionTitle(text: 'Ingredients'),
                     const SizedBox(height: 10),

@@ -255,6 +255,7 @@ class _DishCard extends StatelessWidget {
             builder: (_) => RecipeDetailsScreen(
               title: dish.title,
               imageAssetPath: dish.imageAssetPath,
+              minutes: dish.minutes,
             ),
           ),
         );
