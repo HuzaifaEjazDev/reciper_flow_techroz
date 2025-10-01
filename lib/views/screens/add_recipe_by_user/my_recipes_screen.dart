@@ -62,6 +62,7 @@ class _MyRecipesView extends StatelessWidget {
                         
                         // Show bottom sheet after loading
                         if (!context.mounted) return;
+                        final viewModel = context.read<MyRecipesViewModel>();
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
@@ -69,8 +70,8 @@ class _MyRecipesView extends StatelessWidget {
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                           ),
-                          builder: (context) => ChangeNotifierProvider.value(
-                            value: context.read<MyRecipesViewModel>(),
+                          builder: (bottomSheetContext) => ChangeNotifierProvider.value(
+                            value: viewModel,
                             child: const _SortBottomSheet(),
                           ),
                         );
@@ -248,6 +249,40 @@ class _RecipeImage extends StatelessWidget {
   }
 }
 
+
+
+class _SearchField extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.search, color: Colors.black54, size: 20),
+          const SizedBox(width: 4),
+          Expanded(
+            child: TextField(
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Search your recipes...',
+                hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
+              ),
+              onChanged: (v) => context.read<MyRecipesViewModel>().setSearchQuery(v),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SortBottomSheet extends StatelessWidget {
   const _SortBottomSheet();
   
@@ -257,78 +292,89 @@ class _SortBottomSheet extends StatelessWidget {
       builder: (context, vm, child) {
         return Container(
           color: const Color(0xFFF5F5F5),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E7EB),
-                      borderRadius: BorderRadius.circular(2),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E7EB),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Categories',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Debug info
+                    Text(
+                      'Meal Types: ${vm.mealTypes.length}, Diets: ${vm.diets.length}, Cuisines: ${vm.cuisines.length}, Tags: ${vm.tags.length}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ChipsExpansionTile(
+                        title: 'Meal Types',
+                        options: vm.mealTypes,
+                        selected: vm.selectedMealType,
+                        onSelected: (v) => vm.setSelectedMealType(v),
+                      ),
+                      const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
+
+                      _ChipsExpansionTile(
+                        title: 'Diets',
+                        options: vm.diets,
+                        selected: vm.selectedDiet,
+                        onSelected: (v) => vm.setSelectedDiet(v),
+                      ),
+                      const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
+
+                      _ChipsExpansionTile(
+                        title: 'Cuisines',
+                        options: vm.cuisines,
+                        selected: vm.selectedCuisine,
+                        onSelected: (v) => vm.setSelectedCuisine(v),
+                      ),
+                      const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
+
+                      _ChipsExpansionTile(
+                        title: 'Special Tags',
+                        options: vm.tags,
+                        selected: vm.selectedTag,
+                        onSelected: (v) => vm.setSelectedTag(v),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Categories',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                // Debug info
-                Text(
-                  'Meal Types: ${vm.mealTypes.length}, Diets: ${vm.diets.length}, Cuisines: ${vm.cuisines.length}, Tags: ${vm.tags.length}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-
-                _ChipsExpansionTile(
-                  title: 'Meal Types',
-                  options: vm.mealTypes,
-                  selected: vm.selectedMealType,
-                  onSelected: (v) => vm.setSelectedMealType(v),
-                ),
-                const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
-
-                _ChipsExpansionTile(
-                  title: 'Diets',
-                  options: vm.diets,
-                  selected: vm.selectedDiet,
-                  onSelected: (v) => vm.setSelectedDiet(v),
-                ),
-                const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
-
-                _ChipsExpansionTile(
-                  title: 'Cuisines',
-                  options: vm.cuisines,
-                  selected: vm.selectedCuisine,
-                  onSelected: (v) => vm.setSelectedCuisine(v),
-                ),
-                const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
-
-                _ChipsExpansionTile(
-                  title: 'Special Tags',
-                  options: vm.tags,
-                  selected: vm.selectedTag,
-                  onSelected: (v) => vm.setSelectedTag(v),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -403,38 +449,6 @@ class _ChipsExpansionTile extends StatelessWidget {
                 );
               }).toList(),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          const Icon(Icons.search, color: Colors.black54, size: 20),
-          const SizedBox(width: 4),
-          Expanded(
-            child: TextField(
-              decoration: const InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                hintText: 'Search your recipes...',
-                hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
-              ),
-              onChanged: (v) => context.read<MyRecipesViewModel>().setSearchQuery(v),
-            ),
-          ),
         ],
       ),
     );

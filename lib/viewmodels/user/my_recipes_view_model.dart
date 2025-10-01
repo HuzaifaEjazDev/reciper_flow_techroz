@@ -40,6 +40,8 @@ class MyRecipesViewModel extends ChangeNotifier {
   String? _selectedDiet;
   String? _selectedCuisine;
   String? _selectedTag;
+  bool _optionsLoading = false;
+
 
   List<MyRecipeCardData> get items => List.unmodifiable(_items);
   bool get loading => _loading;
@@ -53,6 +55,7 @@ class MyRecipesViewModel extends ChangeNotifier {
   String? get selectedDiet => _selectedDiet;
   String? get selectedCuisine => _selectedCuisine;
   String? get selectedTag => _selectedTag;
+  bool get optionsLoading => _optionsLoading;
 
   Future<void> loadFromFirestore({String collection = 'recipes'}) async {
     if (_loading) return;
@@ -99,21 +102,6 @@ class MyRecipesViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> loadSortOptions() async {
-    try {
-      final results = await Future.wait<List<String>>([
-        _service.fetchCollectionStrings('meal_types'),
-        _service.fetchCollectionStrings('diets'),
-        _service.fetchCollectionStrings('cuisines'),
-        _service.fetchCollectionStrings('special_tags'),
-      ]);
-      _mealTypes = results[0];
-      _diets = results[1];
-      _cuisines = results[2];
-      _tags = results[3];
-      notifyListeners();
-    } catch (_) {}
-  }
 
   MyRecipeCardData _mapToCard(Map<String, dynamic> m) {
     final String title = (m['title'] ?? '').toString();
@@ -177,10 +165,55 @@ class MyRecipesViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Load sort options from Firestore
+  Future<void> loadSortOptions() async {
+    if (_optionsLoading) return;
+    _optionsLoading = true;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait([
+        _loadCategory('meal_types'),
+        _loadCategory('diets'),
+        _loadCategory('cuisines'),
+        _loadCategory('special_tags'),
+      ]);
+
+      _mealTypes = results[0];
+      _diets = results[1];
+      _cuisines = results[2];
+      _tags = results[3];
+
+      debugPrint('Loaded sort options:');
+      debugPrint('  Meal Types: ${_mealTypes.length}');
+      debugPrint('  Diets: ${_diets.length}');
+      debugPrint('  Cuisines: ${_cuisines.length}');
+      debugPrint('  Tags: ${_tags.length}');
+    } catch (e) {
+      debugPrint('Error loading sort options: $e');
+    } finally {
+      _optionsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<List<String>> _loadCategory(String name) async {
+    // Strategy 1: Try common container collections with a single document named <name> that holds an array
+    for (final container in const ['filters', 'categories', 'meta', 'app_meta', 'config', 'app']) {
+      final arr = await _service.fetchDocumentArray(container, name);
+      if (arr.isNotEmpty) return arr;
+    }
+    
+    // Strategy 2: Try treating the name as a collection of docs
+    return await _service.fetchCollectionStrings(name);
+  }
+
+  // Setter methods for sort options
   void setSelectedMealType(String? v) { _selectedMealType = v; notifyListeners(); }
   void setSelectedDiet(String? v) { _selectedDiet = v; notifyListeners(); }
   void setSelectedCuisine(String? v) { _selectedCuisine = v; notifyListeners(); }
   void setSelectedTag(String? v) { _selectedTag = v; notifyListeners(); }
+
 }
 
 

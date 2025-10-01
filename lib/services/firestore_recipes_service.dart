@@ -49,6 +49,40 @@ class FirestoreRecipesService {
       return (name == null || name.toString().isEmpty) ? d.id : name.toString();
     }).toList();
   }
+
+  Future<List<String>> fetchDocumentArray(String collection, String docId) async {
+    try {
+      final doc = await _firestore.collection(collection).doc(docId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null) {
+          for (final key in const ['values', 'items', 'labels', 'options', 'list', 'data']) {
+            final v = data[key];
+            if (v is List) {
+              return v.map((e) => e.toString()).toList();
+            }
+          }
+          // Fallback: if any field is a List, use the first
+          for (final entry in data.entries) {
+            final v = entry.value;
+            if (v is List) {
+              return v.map((e) => e.toString()).toList();
+            }
+          }
+          // Fallback: if the doc is a map of flags/labels: true, use keys
+          final keys = <String>[];
+          for (final entry in data.entries) {
+            final val = entry.value;
+            if (val is bool && val == true) keys.add(entry.key.toString());
+          }
+          if (keys.isNotEmpty) return keys;
+        }
+      }
+    } catch (e) {
+      print('Error fetching document array from $collection/$docId: $e');
+    }
+    return <String>[];
+  }
 }
 
 
