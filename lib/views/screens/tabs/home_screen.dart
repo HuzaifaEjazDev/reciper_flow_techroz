@@ -36,7 +36,7 @@ class HomeScreen extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'Search for Recipes...',
-                              style: TextStyle(color: Colors.black54, fontSize: 15, ),
+                              style: TextStyle(color: Colors.black54, fontSize: 15),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -44,7 +44,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   const SizedBox(width: 12),
                 ],
               ),
@@ -167,6 +166,7 @@ class _SmallDishCard extends StatelessWidget {
             builder: (_) => RecipeDetailsScreen(
               title: title,
               imageAssetPath: imageAssetPath,
+              recipeId: title.toLowerCase().replaceAll(' ', '_'), // Generate a simple ID from the title
             ),
           ),
         );
@@ -256,6 +256,7 @@ class _DishCard extends StatelessWidget {
               title: dish.title,
               imageAssetPath: dish.imageAssetPath,
               minutes: dish.minutes,
+              recipeId: dish.id, // Use the dish ID
             ),
           ),
         );

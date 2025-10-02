@@ -123,13 +123,13 @@
                       style: TextStyle(color: Colors.black87),
                     ),
                     TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SingUp(),
-                          ),
-                        );
-                      },
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SingUp(),
+                        ),
+                      );
+                    },
                       child: const Text('Sign Up'),
                     ),
                   ],
@@ -160,9 +160,9 @@
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
                     ),
+                  ),
+                ),
                   ],
                 ),
               ],

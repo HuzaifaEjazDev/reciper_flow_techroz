@@ -21,7 +21,8 @@ class FirestoreRecipesService {
     String collection = 'recipes',
     int limit = 10,
     String? startAfterId,
-  }) async {
+  })
+  async {
     Query<Map<String, dynamic>> q = _firestore
         .collection(collection)
         .orderBy(FieldPath.documentId)
@@ -45,7 +46,8 @@ class FirestoreRecipesService {
     required String prefix,
     int limit = 10,
     String? startAfterTitle,
-  }) async {
+  })
+  async {
     final String start = prefix;
     final String end = '$prefix\uf8ff';
     Query<Map<String, dynamic>> q = _firestore
@@ -68,6 +70,51 @@ class FirestoreRecipesService {
     return (items: items, lastTitle: lastTitle);
   }
 
+  // method to fetch recipes with label filters
+  Future<({List<Map<String, dynamic>> items, String? lastId})> fetchRecipesPageWithFilters({
+    String collection = 'recipes',
+    int limit = 10,
+    String? startAfterId,
+    String? mealType,
+    String? diet,
+    String? cuisine,
+    String? tag,
+  })
+  async {
+    Query<Map<String, dynamic>> q = _firestore.collection(collection).limit(limit);
+    
+    // Apply filters if provided
+    if (mealType != null && mealType.isNotEmpty) {
+      q = q.where('mealType', isEqualTo: mealType);
+    }
+    if (diet != null && diet.isNotEmpty) {
+      q = q.where('diet', isEqualTo: diet);
+    }
+    if (cuisine != null && cuisine.isNotEmpty) {
+      q = q.where('cuisine', isEqualTo: cuisine);
+    }
+    if (tag != null && tag.isNotEmpty) {
+      // Assuming tags are stored in an array field called 'tags'
+      q = q.where('tags', arrayContains: tag);
+    }
+    
+    // Ordering and pagination
+    q = q.orderBy(FieldPath.documentId);
+    if (startAfterId != null && startAfterId.isNotEmpty) {
+      q = q.startAfter([startAfterId]);
+    }
+    
+    final QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    final List<Map<String, dynamic>> items = docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return data;
+    }).toList();
+    final String? lastId = docs.isEmpty ? null : docs.last.id;
+    return (items: items, lastId: lastId);
+  }
+
   Future<int> fetchCollectionCountByTitlePrefix(String collection, String prefix) async {
     try {
       final String start = prefix;
@@ -79,6 +126,39 @@ class FirestoreRecipesService {
           .endAt([end])
           .count()
           .get();
+      return snap.count ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  // method to filter recipe on lables cateogires
+  Future<int> fetchCollectionCountWithFilters({
+    String collection = 'recipes',
+    String? mealType,
+    String? diet,
+    String? cuisine,
+    String? tag,
+  }) async {
+    try {
+      Query<Map<String, dynamic>> q = _firestore.collection(collection);
+      
+      // Apply filters if provided
+      if (mealType != null && mealType.isNotEmpty) {
+        q = q.where('mealType', isEqualTo: mealType);
+      }
+      if (diet != null && diet.isNotEmpty) {
+        q = q.where('diet', isEqualTo: diet);
+      }
+      if (cuisine != null && cuisine.isNotEmpty) {
+        q = q.where('cuisine', isEqualTo: cuisine);
+      }
+      if (tag != null && tag.isNotEmpty) {
+        // Assuming tags are stored in an array field called 'tags'
+        q = q.where('tags', arrayContains: tag);
+      }
+      
+      final AggregateQuerySnapshot snap = await q.count().get();
       return snap.count ?? 0;
     } catch (_) {
       return 0;
@@ -142,5 +222,3 @@ class FirestoreRecipesService {
     return <String>[];
   }
 }
-
-

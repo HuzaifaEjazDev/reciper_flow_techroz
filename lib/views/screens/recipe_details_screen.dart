@@ -1,14 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
+import 'package:recipe_app/models/user/meal_plan.dart';
 
 class RecipeDetailsScreen extends StatelessWidget {
   final String title;
   final String imageAssetPath;
   final int? minutes;
-  const RecipeDetailsScreen({super.key, required this.title, required this.imageAssetPath, this.minutes});
-
+  final List<String>? ingredients;
+  final List<String>? steps;
+  final bool fromAdminScreen;
+  final String? mealType; // Change from MealType? to String?
+  final String recipeId; // Add recipe ID
+  
+  const RecipeDetailsScreen({
+    super.key, 
+    required this.title, 
+    required this.imageAssetPath, 
+    this.minutes, 
+    this.ingredients, 
+    this.steps,
+    this.fromAdminScreen = false,
+    this.mealType, // Change from MealType? to String?
+    required this.recipeId,
+  });
+  
   @override
   Widget build(BuildContext context) {
+    debugPrint('RecipeDetailsScreen building with title: $title, mealType: $mealType, fromAdminScreen: $fromAdminScreen');
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -21,6 +39,47 @@ class RecipeDetailsScreen extends StatelessWidget {
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
         ),
+        actions: fromAdminScreen
+            ? [
+                TextButton(
+                  onPressed: () {
+                    debugPrint('Add button pressed. Meal type: $mealType');
+                    // Create a MealEntry from the recipe data
+                    if (mealType != null) {
+                      final mealEntry = MealEntry(
+                        id: recipeId,
+                        type: mealType!, // Pass the meal type as string
+                        title: title,
+                        minutes: minutes ?? 0,
+                        imageAssetPath: imageAssetPath,
+                      );
+                      
+                      debugPrint('Created MealEntry: ${mealEntry.title}, type: ${mealEntry.type}');
+                      
+                      // Pass the meal entry back to the meal planner screen
+                      Navigator.of(context).pop(mealEntry);
+                    } else {
+                      debugPrint('Meal type is null, not creating MealEntry');
+                    }
+                  },
+                  child: const Row(
+                    children: [
+                      Icon(Icons.arrow_upward, color: Colors.black87, size: 20),
+                      SizedBox(width: 4),
+                      Text(
+                        'Add',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ]
+            : null,
       ),
       body: SafeArea(
         child: Column(
@@ -41,7 +100,7 @@ class RecipeDetailsScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Color(0xFFE5E7EB)),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
                         child: Row(
                           children: [
@@ -63,18 +122,13 @@ class RecipeDetailsScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
-                        children: const [
-                          _IngredientTile(name: 'Coconut Milk', note: '400ml can'),
-                          _IngredientTile(name: 'Mixed Vegetables (Carrot, Bell Pepper, Zucchini)', note: '2 cups, chopped'),
-                          _IngredientTile(name: 'Chickpeas', note: '1 can (400g), drained'),
-                          _IngredientTile(name: 'Curry Paste (Red or Green)', note: '2 tbsp'),
-                          _IngredientTile(name: 'Basmati Rice', note: '1 cup'),
-                          _IngredientTile(name: 'Onion', note: '1 medium, chopped'),
-                          _IngredientTile(name: 'Garlic', note: '2 cloves, minced'),
-                          _IngredientTile(name: 'Ginger', note: '1 inch, grated'),
-                          _IngredientTile(name: 'Fresh Cilantro', note: '1/4 cup, chopped'),
-                          _IngredientTile(name: 'Lime', note: '1/2, juiced'),
-                        ],
+                        children: (ingredients == null || ingredients!.isEmpty)
+                            ? const [
+                                _IngredientTile(name: 'No ingredients available', note: ''),
+                              ]
+                            : ingredients!
+                                .map((e) => _IngredientTile(name: e, note: ''))
+                                .toList(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -83,15 +137,14 @@ class RecipeDetailsScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
-                        children: const [
-                          _StepCard(step: 1, text: 'Rinse basmati rice thoroughly, then combine with 2 cups of water in a saucepan. Bring to a boil, then reduce heat to low, cover, and simmer for 15 minutes. Remove from heat and let stand, covered, for 10 minutes, then fluff with a fork.'),
-                          _StepCard(step: 2, text: 'In a large pot or Dutch oven, heat a tablespoon of oil over medium heat. Add chopped onion and sauté until softened, about 5 minutes.'),
-                          _StepCard(step: 3, text: 'Stir in minced garlic and grated ginger, cooking for another minute until fragrant.'),
-                          _StepCard(step: 4, text: 'Add curry paste and cook for 2-3 minutes, stirring constantly, until aromatic.'),
-                          _StepCard(step: 5, text: 'Pour in coconut milk and bring to a gentle simmer. Add chopped mixed vegetables and drained chickpeas. Cook for 10-15 minutes, or until vegetables are tender-crisp.'),
-                          _StepCard(step: 6, text: 'Stir in fresh lime juice and season with salt and pepper to taste. Garnish with fresh cilantro.'),
-                          _StepCard(step: 7, text: 'Serve the vibrant vegetarian curry hot over the fluffy basmati rice.'),
-                        ],
+                        children: (steps == null || steps!.isEmpty)
+                            ? const [
+                                _StepCard(step: 1, text: 'No steps available'),
+                              ]
+                            : List<Widget>.generate(
+                                steps!.length,
+                                (i) => _StepCard(step: i + 1, text: steps![i]),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 24),

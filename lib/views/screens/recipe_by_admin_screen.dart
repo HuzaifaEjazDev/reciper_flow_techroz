@@ -1,24 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:recipe_app/models/user/meal_plan.dart';
 import 'package:recipe_app/viewmodels/user/admin_recipes_view_model.dart';
+import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 
 class RecipeByAdminScreen extends StatelessWidget {
-  const RecipeByAdminScreen({super.key});
+  final String? filterMealType;
+  final bool autoApplyFilter;
+  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false});
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('RecipeByAdminScreen building with filterMealType: $filterMealType, autoApplyFilter: $autoApplyFilter');
     return ChangeNotifierProvider<AdminRecipesViewModel>(
-      create: (_) => AdminRecipesViewModel()..loadInitial(),
-      child: const _RecipeByAdminView(),
+      create: (_) => AdminRecipesViewModel()..loadInitial()..loadSortOptions()..setFilterMealType(filterMealType, autoApply: autoApplyFilter),
+      child: _RecipeByAdminView(filterMealType: filterMealType),
     );
   }
 }
 
 class _RecipeByAdminView extends StatelessWidget {
-  const _RecipeByAdminView();
+  final String? filterMealType;
+  const _RecipeByAdminView({this.filterMealType});
+  
   @override
   Widget build(BuildContext context) {
+    debugPrint('_RecipeByAdminView building with filterMealType: $filterMealType');
     final vm = context.watch<AdminRecipesViewModel>();
+    debugPrint('_RecipeByAdminView got viewModel with selectedMealType: ${vm.selectedMealType}, filterMealType: ${vm.filterMealType}');
     final items = vm.items;
     return Scaffold(
       backgroundColor: Colors.white,
@@ -54,21 +63,38 @@ class _RecipeByAdminView extends StatelessWidget {
                                 hintText: 'Search recipes...',
                                 hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
                               ),
-                              onChanged: (v) => context.read<AdminRecipesViewModel>().setSearchQuery(v),
+                              /// here save the search query for temperarry to use it to search it later
+                              onChanged: (v) => context.read<AdminRecipesViewModel>().setQueryTemp(v),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () async {
-                      // Load sort options first
-                      await context.read<AdminRecipesViewModel>().loadSortOptions();
-                      
-                      // Show bottom sheet after loading
-                      if (!context.mounted) return;
+                    onTap: () {
+                      /// here when tap the use then the searcch wquery runs
+                      /// dont search anything until the search button is tapped
+                      context.read<AdminRecipesViewModel>().setSearchQuery();
+                    },
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7F00),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Center(
+                        child: Text('Search', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      // Open immediately; options are prefetched on init and can refresh in-sheet if needed
                       final viewModel = context.read<AdminRecipesViewModel>();
                       showModalBottomSheet(
                         context: context,
@@ -85,19 +111,13 @@ class _RecipeByAdminView extends StatelessWidget {
                     },
                     child: Container(
                       height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.sort, color: Colors.black87),
-                          SizedBox(width: 6),
-                          Text('Sort', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                      child: const Icon(Icons.sort, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -131,7 +151,7 @@ class _RecipeByAdminView extends StatelessWidget {
                         ),
                         itemBuilder: (context, index) {
                           final r = items[index];
-                          return _AdminRecipeCard(data: r);
+                          return _AdminRecipeCard(data: r, filterMealType: filterMealType);
                         },
                       ),
                       const SizedBox(height: 12),
@@ -151,11 +171,40 @@ class _RecipeByAdminView extends StatelessWidget {
 
 class _AdminRecipeCard extends StatelessWidget {
   final AdminRecipeCardData data;
-  const _AdminRecipeCard({required this.data});
+  final String? filterMealType;
+  const _AdminRecipeCard({required this.data, this.filterMealType});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+      onTap: () async {
+        // Navigate to recipe details and wait for a result
+        final result = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RecipeDetailsScreen(
+              title: data.title,
+              imageAssetPath: data.imageUrl,
+              minutes: data.minutes,
+              ingredients: data.ingredients,
+              steps: data.steps,
+              fromAdminScreen: true,
+              // Pass the filter meal type (section meal type) as string
+              mealType: filterMealType,
+              recipeId: data.id, // Pass the recipe ID
+            ),
+          ),
+        );
+        
+        debugPrint('Received result from RecipeDetailsScreen: $result');
+        
+        // If we get a MealEntry back, pass it back to the meal planner screen
+        if (result is MealEntry) {
+          debugPrint('Passing MealEntry back to meal planner: ${result.title}');
+          // Pass the result back to the screen that opened this recipe admin screen
+          Navigator.of(context).pop(result);
+        }
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -218,6 +267,7 @@ class _AdminRecipeCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -362,6 +412,45 @@ class _SortBottomSheet extends StatelessWidget {
                         selected: vm.selectedTag,
                         onSelected: (v) => vm.setSelectedTag(v),
                       ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                // clear all selected labels
+                                vm.setSelectedMealType(null);
+                                vm.setSelectedDiet(null);
+                                vm.setSelectedCuisine(null);
+                                vm.setSelectedTag(null);
+                                // Don't call clearFilters here, just close the sheet
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                Navigator.of(context).pop();
+                                // Check if any filters are selected
+                                if (vm.selectedMealType == null && 
+                                    vm.selectedDiet == null && 
+                                    vm.selectedCuisine == null && 
+                                    vm.selectedTag == null) {
+                                  // No filters selected, clear all filters to show all recipes
+                                  vm.clearFilters();
+                                } else {
+                                  // Apply filters
+                                  vm.applyFilters();
+                                }
+                              },
+                              child: const Text('Apply'),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -415,7 +504,7 @@ class _ChipsExpansionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: const Text(
-                'No data found. Check Firestore configuration.',
+                'Wait for options to load.../ Check Firestore configuration.',
                 style: TextStyle(color: Colors.orange, fontStyle: FontStyle.italic),
               ),
             )
@@ -447,4 +536,3 @@ class _ChipsExpansionTile extends StatelessWidget {
     );
   }
 }
-

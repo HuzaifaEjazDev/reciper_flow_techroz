@@ -9,6 +9,9 @@ class AdminRecipeCardData {
   final double rating;
   final int ingredientsCount;
   final int stepsCount;
+  final List<String>? ingredients;
+  final List<String>? steps;
+  final List<String>? labels; // Add labels field to store meal type information
   const AdminRecipeCardData({
     required this.id,
     required this.title,
@@ -17,6 +20,9 @@ class AdminRecipeCardData {
     required this.rating,
     required this.ingredientsCount,
     required this.stepsCount,
+    this.ingredients,
+    this.steps,
+    this.labels, // Add labels parameter
   });
 }
 
@@ -25,10 +31,13 @@ class AdminRecipesViewModel extends ChangeNotifier {
       : _service = service ?? FirestoreRecipesService();
 
   final FirestoreRecipesService _service;
+  bool _disposed = false;
+  String? _filterMealType;
 
   final List<AdminRecipeCardData> _allItems = <AdminRecipeCardData>[];
   final List<AdminRecipeCardData> _items = <AdminRecipeCardData>[];
   String _query = '';
+  String _queryTemp = ''; // Temporary storage for search text
   String _activeServerQuery = '';
   String? _lastId;
   bool _hasMore = true;
@@ -50,6 +59,9 @@ class AdminRecipesViewModel extends ChangeNotifier {
   String? _selectedCuisine;
   String? _selectedTag;
   bool _optionsLoading = false;
+  
+  // Filter state
+  bool _filtersApplied = false;
 
   List<AdminRecipeCardData> get items => List.unmodifiable(_items);
   bool get hasMore => _hasMore;
@@ -68,8 +80,65 @@ class AdminRecipesViewModel extends ChangeNotifier {
   String? get selectedCuisine => _selectedCuisine;
   String? get selectedTag => _selectedTag;
   bool get optionsLoading => _optionsLoading;
+  bool get filtersApplied => _filtersApplied;
+  String get queryTemp => _queryTemp; // Getter for temporary query
+  bool get disposed => _disposed;
+  String? get filterMealType => _filterMealType;
+  String get activeServerQuery => _activeServerQuery; // Add this getter
+
+  // Set filter meal type
+  void setFilterMealType(String? mealType, {bool autoApply = false}) {
+    if (_disposed) return;
+    _filterMealType = mealType;
+    if (mealType != null) {
+      _selectedMealType = mealType; // Also set the selected meal type for the sort bottom sheet
+      // Mark filters as applied so the UI knows to show filtered state
+      _filtersApplied = true;
+    } else {
+      // If mealType is null, clear the filters
+      _selectedMealType = null;
+      // Don't set _filtersApplied to false here, let the user explicitly clear filters
+    }
+    notifyListeners();
+    
+    // If autoApply is true, apply the filters immediately
+    if (autoApply) {
+      applyFilters();
+    }
+  }
+
+  // Set temporary query without triggering search
+  void setQueryTemp(String q) {
+    if (_disposed) return;
+    _queryTemp = q;
+    notifyListeners();
+  }
+
+  // Apply filters
+  void applyFilters() {
+    if (_disposed) return;
+    _filtersApplied = true;
+    notifyListeners();
+    loadInitial();
+  }
+
+  // Clear filters
+  void clearFilters() {
+    if (_disposed) return;
+    _selectedMealType = null;
+    _selectedDiet = null;
+    _selectedCuisine = null;
+    _selectedTag = null;
+    _filterMealType = null; // Also clear the filter meal type
+    _filtersApplied = false;
+    notifyListeners();
+    loadInitial();
+  }
 
   Future<void> loadInitial() async {
+    if (_disposed) return;
+    
+    // Clear existing data
     _allItems.clear();
     _items.clear();
     _lastId = null;
@@ -78,18 +147,32 @@ class AdminRecipesViewModel extends ChangeNotifier {
       ..clear()
       ..addAll({1: null});
     _currentPage = 1;
-    await _loadTotalCount();
-    await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+    
+    // Load data if filters have been applied or if we have a filter meal type set
+    if (_filtersApplied || _filterMealType != null || _selectedMealType != null || _selectedDiet != null || 
+        _selectedCuisine != null || _selectedTag != null) {
+      await _loadTotalCount();
+      await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+    } else {
+      // When no filters are applied, load all recipes
+      await _loadTotalCount();
+      await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+    }
   }
 
   // Backward compatibility (unused in new UI)
   Future<void> loadMore() async {
-    if (_loading || !_hasMore) return;
+    if (_disposed || _loading || !_hasMore) return;
     await goToPage(_currentPage + 1);
   }
 
   Future<void> _loadPageAtCursor({required String? startAfterId}) async {
-    if (_loading) return;
+    if (_disposed || _loading) return;
+    
+    // Check if any filters are actually applied
+    final bool hasFilters = _selectedMealType != null || _selectedDiet != null || 
+                           _selectedCuisine != null || _selectedTag != null;
+    
     _loading = true;
     _error = null;
     notifyListeners();
@@ -101,6 +184,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
           limit: _pageSize,
           startAfterTitle: startAfterId, // we store title cursor in this mode
         );
+        if (_disposed) return;
         _lastId = null; // not used in title paging
         _hasMore = page.lastTitle != null;
         _allItems
@@ -110,31 +194,61 @@ class AdminRecipesViewModel extends ChangeNotifier {
         if (_currentPage >= 1) {
           _pageToCursor[_currentPage + 1] = page.lastTitle;
         }
-      } else {
-        final page = await _service.fetchRecipesPage(
+      } else if (hasFilters) {
+        // Use filtered fetching when filters are applied
+        final page = await _service.fetchRecipesPageWithFilters(
           collection: 'recipes',
           limit: _pageSize,
           startAfterId: startAfterId,
+          mealType: _selectedMealType,
+          diet: _selectedDiet,
+          cuisine: _selectedCuisine,
+          tag: _selectedTag,
         );
+        if (_disposed) return;
         _lastId = page.lastId;
         _hasMore = page.lastId != null;
         _allItems
           ..clear()
           ..addAll(page.items.map(_map));
-        _applyFilter(force: true);
+        _items
+          ..clear()
+          ..addAll(_allItems);
+        if (_currentPage >= 1) {
+          _pageToCursor[_currentPage + 1] = _lastId;
+        }
+      } else {
+        // Load all recipes when no filters are applied
+        final page = await _service.fetchRecipesPage(
+          collection: 'recipes',
+          limit: _pageSize,
+          startAfterId: startAfterId,
+        );
+        if (_disposed) return;
+        _lastId = page.lastId;
+        _hasMore = page.lastId != null;
+        _allItems
+          ..clear()
+          ..addAll(page.items.map(_map));
+        _items
+          ..clear()
+          ..addAll(_allItems);
         if (_currentPage >= 1) {
           _pageToCursor[_currentPage + 1] = _lastId;
         }
       }
     } catch (e) {
+      if (_disposed) return;
       _error = e.toString();
     } finally {
+      if (_disposed) return;
       _loading = false;
       notifyListeners();
     }
   }
 
   Future<void> goToPage(int pageNumber) async {
+    if (_disposed) return;
     if (pageNumber < 1) return;
     // Find nearest known page <= requested
     int anchorPage = pageNumber;
@@ -151,6 +265,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
           limit: _pageSize,
           startAfterTitle: startAfterKey,
         );
+        if (_disposed) return;
         _pageToCursor[p + 1] = page.lastTitle;
         if (page.lastTitle == null) break;
       } else {
@@ -159,6 +274,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
           limit: _pageSize,
           startAfterId: startAfterKey,
         );
+        if (_disposed) return;
         _pageToCursor[p + 1] = page.lastId;
         if (page.lastId == null) break;
       }
@@ -168,20 +284,36 @@ class AdminRecipesViewModel extends ChangeNotifier {
   }
 
   Future<void> _loadTotalCount() async {
+    if (_disposed) return;
     try {
-      _totalCount = _activeServerQuery.isNotEmpty
-          ? await _service.fetchCollectionCountByTitlePrefix('recipes', _activeServerQuery)
-          : await _service.fetchCollectionCount('recipes');
+      if (_activeServerQuery.isNotEmpty) {
+        _totalCount = await _service.fetchCollectionCountByTitlePrefix('recipes', _activeServerQuery);
+      } else if (_filtersApplied) {
+        // Use filtered count when filters are applied
+        _totalCount = await _service.fetchCollectionCountWithFilters(
+          collection: 'recipes',
+          mealType: _selectedMealType,
+          diet: _selectedDiet,
+          cuisine: _selectedCuisine,
+          tag: _selectedTag,
+        );
+      } else {
+        _totalCount = await _service.fetchCollectionCount('recipes');
+      }
     } catch (_) {
+      if (_disposed) return;
       _totalCount = ((_pageToCursor.length - 1) * _pageSize) + _allItems.length;
     }
+    if (_disposed) return;
     notifyListeners();
   }
 
-  Future<void> setSearchQuery(String q) async {
-    _query = q;
+  // Modified setSearchQuery to accept optional parameter
+  Future<void> setSearchQuery([String? q]) async {
+    if (_disposed) return;
+    _query = q ?? _queryTemp; // Use provided query or temp query
     // Server-side search pagination when user types something meaningful
-    final String trimmed = q.trim();
+    final String trimmed = _query.trim();
     _activeServerQuery = trimmed.isEmpty ? '' : trimmed;
     _currentPage = 1;
     _pageToCursor
@@ -192,6 +324,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
   }
 
   void _applyFilter({bool force = false}) {
+    if (_disposed) return;
     final String q = _query.trim().toLowerCase();
     if (_activeServerQuery.isNotEmpty || force) {
       _items
@@ -207,7 +340,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
 
   // Load sort options from Firestore
   Future<void> loadSortOptions() async {
-    if (_optionsLoading) return;
+    if (_disposed || _optionsLoading) return;
     _optionsLoading = true;
     notifyListeners();
 
@@ -218,6 +351,8 @@ class AdminRecipesViewModel extends ChangeNotifier {
         _loadCategory('cuisines'),
         _loadCategory('special_tags'),
       ]);
+      
+      if (_disposed) return;
 
       _mealTypes = results[0];
       _diets = results[1];
@@ -230,17 +365,21 @@ class AdminRecipesViewModel extends ChangeNotifier {
       debugPrint('  Cuisines: ${_cuisines.length}');
       debugPrint('  Tags: ${_tags.length}');
     } catch (e) {
+      if (_disposed) return;
       debugPrint('Error loading sort options: $e');
     } finally {
+      if (_disposed) return;
       _optionsLoading = false;
       notifyListeners();
     }
   }
 
   Future<List<String>> _loadCategory(String name) async {
+    if (_disposed) return const [];
     // Strategy 1: Try common container collections with a single document named <name> that holds an array
     for (final container in const ['filters', 'categories', 'meta', 'app_meta', 'config', 'app']) {
       final arr = await _service.fetchDocumentArray(container, name);
+      if (_disposed) return const [];
       if (arr.isNotEmpty) return arr;
     }
     
@@ -249,16 +388,36 @@ class AdminRecipesViewModel extends ChangeNotifier {
   }
 
   // Setter methods for sort options
-  void setSelectedMealType(String? v) { _selectedMealType = v; notifyListeners(); }
-  void setSelectedDiet(String? v) { _selectedDiet = v; notifyListeners(); }
-  void setSelectedCuisine(String? v) { _selectedCuisine = v; notifyListeners(); }
-  void setSelectedTag(String? v) { _selectedTag = v; notifyListeners(); }
+  void setSelectedMealType(String? v) { 
+    if (_disposed) return;
+    _selectedMealType = v; 
+    notifyListeners(); 
+  }
+  
+  void setSelectedDiet(String? v) { 
+    if (_disposed) return;
+    _selectedDiet = v; 
+    notifyListeners(); 
+  }
+  
+  void setSelectedCuisine(String? v) { 
+    if (_disposed) return;
+    _selectedCuisine = v; 
+    notifyListeners(); 
+  }
+  
+  void setSelectedTag(String? v) { 
+    if (_disposed) return;
+    _selectedTag = v; 
+    notifyListeners(); 
+  }
 
   AdminRecipeCardData _map(Map<String, dynamic> m) {
     final String id = (m['id'] ?? '').toString();
     final String title = (m['title'] ?? 'Untitled').toString();
     final String image = (m['imageUrl'] ?? m['image'] ?? '').toString();
-    final int minutes = _safeInt(m['minutes']) ?? _safeInt(m['time']) ?? 0;
+    final int minutes =
+        _safeInt(m['totalMinutes']) ?? 0;
     final double rating = _safeDouble(m['rating']) ?? 0.0;
     final int ingredientsCount = _pickFirstInt(
           m,
@@ -268,6 +427,13 @@ class AdminRecipesViewModel extends ChangeNotifier {
           m,
           keys: const ['instructionsTotal', 'instructions_total', 'stepsTotal', 'steps_total', 'stepsCount', 'steps_count'],
         ) ?? _listLength(m, keys: const ['instructions', 'steps']);
+
+    final List<String>? ingredients = _extractStringList(m, keys: const ['ingredients', 'ingredientsList']);
+    final List<String>? steps = _extractStringList(m, keys: const ['instructions', 'steps']);
+    final List<String>? labels = _extractStringList(m, keys: const ['labels', 'mealTypes', 'categories']); // Extract labels
+    
+    debugPrint('Mapping recipe data - ID: $id, Title: $title, Labels: $labels');
+    
     return AdminRecipeCardData(
       id: id.isEmpty ? title : id,
       title: title,
@@ -276,6 +442,9 @@ class AdminRecipesViewModel extends ChangeNotifier {
       rating: rating,
       ingredientsCount: ingredientsCount,
       stepsCount: stepsCount,
+      ingredients: ingredients,
+      steps: steps,
+      labels: labels, // Add labels to the AdminRecipeCardData
     );
   }
 
@@ -308,8 +477,37 @@ class AdminRecipesViewModel extends ChangeNotifier {
     }
     return 0;
   }
+
+  List<String>? _extractStringList(Map<String, dynamic> m, {required List<String> keys}) {
+    for (final k in keys) {
+      final v = m[k];
+      if (v is List) {
+        // handle list of strings
+        if (v.isNotEmpty && v.first is String) {
+          return v.cast<String>();
+        }
+        // handle list of maps {text: ..., name/quantity: ...}
+        if (v.isNotEmpty && v.first is Map) {
+          final List<String> out = <String>[];
+          for (final e in v) {
+            if (e is Map) {
+              final text = e['text'] ?? e['name'] ?? e['title'];
+              final qty = e['quantity'];
+              if (text != null) {
+                out.add(qty != null ? '$qty $text' : text.toString());
+              }
+            }
+          }
+          return out.isEmpty ? null : out;
+        }
+      }
+    }
+    return null;
+  }
+  
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 }
-
-
-
-
