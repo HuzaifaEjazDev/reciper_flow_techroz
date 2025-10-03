@@ -4,10 +4,10 @@ import 'firebase_options.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
-import 'package:recipe_app/views/auth/sign_in_screen.dart';
-import 'package:recipe_app/views/screens/main_screen.dart';
-import 'package:provider/provider.dart';
+import 'package:recipe_app/viewmodels/auth_view_model.dart';
+import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
+import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider<AuthViewModel>(create: (_) => AuthViewModel()),
         ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()..loadInitial()),
         ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()),
         ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
@@ -53,9 +54,8 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const SignInScreen(),
+      home: const AuthWrapper(),
     ),
     );
   }
 }
-

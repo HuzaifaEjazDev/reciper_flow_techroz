@@ -17,6 +17,20 @@ class FirestoreRecipesService {
     }).toList();
   }
 
+  Future<Map<String, dynamic>?> fetchRecipeById(String id, {String collection = 'recipes'}) async {
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> doc =
+          await _firestore.collection(collection).doc(id).get();
+      if (!doc.exists) return null;
+      final Map<String, dynamic>? data = doc.data();
+      if (data == null) return null;
+      data['id'] = doc.id;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<({List<Map<String, dynamic>> items, String? lastId})> fetchRecipesPage({
     String collection = 'recipes',
     int limit = 10,

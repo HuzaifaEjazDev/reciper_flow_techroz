@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/auth/sign_in_screen.dart';
 import 'package:recipe_app/views/screens/main_screen.dart';
@@ -23,6 +25,8 @@ class _SingUpState extends State<SingUp> {
 
   @override
   Widget build(BuildContext context) {
+    final authViewModel = context.watch<AuthViewModel>();
+    
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
@@ -113,15 +117,45 @@ class _SingUpState extends State<SingUp> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   ),
                 ),
+                if (authViewModel.errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    authViewModel.errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 CustomElevatedButton(
-                  text: 'Sign Up',
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                      (route) => false,
-                    );
-                  },
+                  text: authViewModel.isLoading ? 'Signing Up...' : 'Sign Up',
+                  onPressed: authViewModel.isLoading
+                      ? null
+                      : () async {
+                          final email = _emailController.text.trim();
+                          final password = _passwordController.text.trim();
+                          
+                          if (email.isEmpty || password.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter email and password')),
+                            );
+                            return;
+                          }
+                          
+                          // Check password length
+                          if (password.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Password must be at least 6 characters')),
+                            );
+                            return;
+                          }
+                          
+                          final success = await context.read<AuthViewModel>().signUp(email, password);
+                          if (success) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const MainScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -143,13 +177,13 @@ class _SingUpState extends State<SingUp> {
                       style: TextStyle(color: Colors.black87),
                     ),
                     TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const SignInScreen(),
-                      ),
-                    );
-                  },
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SignInScreen(),
+                          ),
+                        );
+                      },
                       child: const Text('Sign In'),
                     ),
                   ],
@@ -180,9 +214,9 @@ class _SingUpState extends State<SingUp> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
                   ],
                 ),
               ],
@@ -193,5 +227,3 @@ class _SingUpState extends State<SingUp> {
     );
   }
 }
-
-

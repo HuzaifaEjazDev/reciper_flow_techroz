@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
+import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
+import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class GroceriesScreen extends StatefulWidget {
   const GroceriesScreen({super.key});
@@ -22,46 +26,13 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
 
           _buildRecipesHeader(context),
           const SizedBox(height: 10),
-          _buildRecipeCardsRow(),
+          _buildRecipeCardsRow(context),
 
           const SizedBox(height: 20),
           _buildSortRow(),
 
           const SizedBox(height: 20),
-          _SectionTitle(icon: Icons.eco_outlined, text: 'Fresh Produce'),
-          const SizedBox(height: 8),
-          ..._buildGroceryTiles([
-            const _GroceryItem('Tomato', '50 g', 'https://images.unsplash.com/photo-1546470427-2ab16772f2bb?w=200'),
-            const _GroceryItem('Boiled Potato', '100 g', 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=200'),
-            const _GroceryItem('Onion', '75 g', 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=200'),
-            const _GroceryItem('Cucumber', '1 pc', 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200'),
-          ]),
-
-          const SizedBox(height: 20),
-          _SectionTitle(icon: Icons.egg_alt_outlined, text: 'Dairy, Eggs & Fridge'),
-          const SizedBox(height: 8),
-          ..._buildGroceryTiles([
-            const _GroceryItem('Milk', '1 L', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=200'),
-            const _GroceryItem('Eggs', '12 pcs', 'https://images.unsplash.com/photo-1517959105821-eaf2591984dd?w=200'),
-            const _GroceryItem('Yogurt', '250 g', 'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=200'),
-          ]),
-
-          const SizedBox(height: 20),
-          _SectionTitle(icon: Icons.set_meal_outlined, text: 'Meat & Seafood'),
-          const SizedBox(height: 8),
-          ..._buildGroceryTiles([
-            const _GroceryItem('Chicken Breast', '500 g', 'https://images.unsplash.com/photo-1560785496-3c9d27877182?w=200'),
-            const _GroceryItem('Salmon Fillet', '300 g', 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=200'),
-          ]),
-
-          const SizedBox(height: 20),
-          _SectionTitle(icon: Icons.inventory_2_outlined, text: 'Pantry Staples'),
-          const SizedBox(height: 8),
-          ..._buildGroceryTiles([
-            const _GroceryItem('Olive Oil', '500 ml', 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=200'),
-            const _GroceryItem('Pasta', '250 g', 'https://images.unsplash.com/photo-1523986371872-9d3ba2e2f642?w=200'),
-            const _GroceryItem('Rice', '1 kg', 'https://images.unsplash.com/photo-1603184122478-4a3e5e7f44a8?w=200'),
-          ]),
+          _buildGroceryItemsFromPlannedMeals(context),
         ],
       ),
     );
@@ -110,14 +81,55 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     );
   }
 
-  Widget _buildRecipeCardsRow() {
-    return Row(
-      children: [
-        Expanded(child: _RecipeCard(title: 'Caprese Salad', imagePath: 'assets/images/quickweeknightmeals2.jpg')),
-        const SizedBox(width: 12),
-        Expanded(child: _RecipeCard(title: 'Berry Smoothie', imagePath: 'assets/images/easymakesnack1.jpg')),
-      ],
-    );
+  Widget _buildRecipeCardsRow(BuildContext context) {
+    final mealPlannerVM = context.watch<MealPlannerViewModel>();
+    final DayPlan? selectedDay = mealPlannerVM.selectedDay;
+    
+    if (selectedDay == null || selectedDay.meals.isEmpty) {
+      return const Row(
+        children: [
+          Expanded(
+            child: Text(
+              'No planned meals for selected day',
+              style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // Show up to 2 recipe cards
+    final List<MealEntry> mealsToShow = selectedDay.meals.length > 2 
+        ? selectedDay.meals.take(2).toList() 
+        : selectedDay.meals;
+    
+    List<Widget> recipeCards = [];
+    for (int i = 0; i < mealsToShow.length && i < 2; i++) { // Limit to 2 cards
+      if (i > 0) {
+        recipeCards.add(const SizedBox(width: 12));
+      }
+      recipeCards.add(
+        Expanded(
+          child: _RecipeCard(
+            title: mealsToShow[i].title,
+            imagePath: mealsToShow[i].imageAssetPath,
+            mealEntry: mealsToShow[i],
+          ),
+        ),
+      );
+    }
+    
+    // If we have less than 2 meals, add empty expanded widgets to fill space
+    if (mealsToShow.length < 2) {
+      for (int i = mealsToShow.length; i < 2; i++) {
+        if (i > 0) {
+          recipeCards.add(const SizedBox(width: 12));
+        }
+        recipeCards.add(const Expanded(child: SizedBox()));
+      }
+    }
+    
+    return Row(children: recipeCards);
   }
 
   Widget _buildSortRow() {
@@ -146,7 +158,148 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     );
   }
 
-  List<Widget> _buildGroceryTiles(List<_GroceryItem> items) {
+  Widget _buildGroceryItemsFromPlannedMeals(BuildContext context) {
+    final mealPlannerVM = context.watch<MealPlannerViewModel>();
+    final DayPlan? selectedDay = mealPlannerVM.selectedDay;
+    
+    if (selectedDay == null || selectedDay.meals.isEmpty) {
+      return const Center(
+        child: Text(
+          'No planned meals for selected day.\nAdd meals to see grocery list.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+        ),
+      );
+    }
+    
+    // Collect all ingredients from all planned meals
+    final Map<String, _GroceryItemWithQuantity> groceryItems = {};
+    
+    return FutureBuilder<List<_GroceryItemWithQuantity>>(
+      future: _fetchGroceryItems(selectedDay.meals),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading grocery items: ${snapshot.error}'),
+          );
+        }
+        
+        final List<_GroceryItemWithQuantity> items = snapshot.data ?? [];
+        
+        if (items.isEmpty) {
+          return const Center(
+            child: Text(
+              'No ingredients found for planned meals.',
+              style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+            ),
+          );
+        }
+        
+        // Group items by category (this is a simplified version)
+        // In a real app, you would have proper categorization
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle(icon: Icons.shopping_cart_outlined, text: 'Grocery List'),
+            const SizedBox(height: 8),
+            ..._buildGroceryTiles(items),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<List<_GroceryItemWithQuantity>> _fetchGroceryItems(List<MealEntry> meals) async {
+    final List<_GroceryItemWithQuantity> items = [];
+    final Map<String, double> ingredientQuantities = {}; // ingredient name -> total quantity
+    final Map<String, String> ingredientUnits = {}; // ingredient name -> unit
+    
+    for (final meal in meals) {
+      // First, try to get ingredients from the meal entry if they were saved
+      List<String>? ingredients = meal.ingredients;
+      
+      // If not available in the meal entry, we would fetch from Firestore
+      // But since we've fixed the saving, we should have them in the meal entry
+      if (ingredients == null || ingredients.isEmpty) {
+        // Fallback to fetching from Firestore if needed (shouldn't be necessary now)
+        final service = FirestoreRecipesService();
+        final recipeData = await service.fetchRecipeById(meal.id);
+        
+        if (recipeData != null && recipeData['ingredients'] is List) {
+          ingredients = List<String>.from(recipeData['ingredients']);
+        }
+      }
+      
+      if (ingredients != null && ingredients.isNotEmpty) {
+        final int persons = meal.people ?? 1; // Default to 1 person
+        
+        for (final ingredient in ingredients) {
+          // Parse ingredient string (simplified parsing)
+          // In a real app, you would have structured ingredient data
+          final String ingredientName = _parseIngredientName(ingredient);
+          final double baseQuantity = _parseIngredientQuantity(ingredient);
+          final String unit = _parseIngredientUnit(ingredient);
+          
+          // Scale quantity based on number of persons
+          final double scaledQuantity = baseQuantity * persons;
+          
+          // Add to totals
+          if (ingredientQuantities.containsKey(ingredientName)) {
+            ingredientQuantities[ingredientName] = ingredientQuantities[ingredientName]! + scaledQuantity;
+          } else {
+            ingredientQuantities[ingredientName] = scaledQuantity;
+            ingredientUnits[ingredientName] = unit;
+          }
+        }
+      }
+    }
+    
+    // Convert to grocery items
+    ingredientQuantities.forEach((name, quantity) {
+      final String unit = ingredientUnits[name] ?? 'g';
+      final String formattedQuantity = _formatQuantity(quantity, unit);
+      items.add(_GroceryItemWithQuantity(name, formattedQuantity, 'assets/images/easymakesnack1.jpg'));
+    });
+    
+    return items;
+  }
+  
+  String _parseIngredientName(String ingredient) {
+    // Simplified parsing - in a real app, you would have structured data
+    // This is just a basic example
+    final RegExp nameRegex = RegExp(r'^[^0-9]*');
+    final Match? match = nameRegex.firstMatch(ingredient);
+    return match?.group(0)?.trim() ?? ingredient;
+  }
+  
+  double _parseIngredientQuantity(String ingredient) {
+    // Simplified parsing - extract quantity from ingredient string
+    final RegExp quantityRegex = RegExp(r'([0-9]+(?:\.[0-9]+)?)');
+    final Match? match = quantityRegex.firstMatch(ingredient);
+    return double.tryParse(match?.group(1) ?? '1') ?? 1.0;
+  }
+  
+  String _parseIngredientUnit(String ingredient) {
+    // Simplified parsing - extract unit from ingredient string
+    final RegExp unitRegex = RegExp(r'[0-9]+(?:\.[0-9]+)?\s*([a-zA-Z]+)');
+    final Match? match = unitRegex.firstMatch(ingredient);
+    return match?.group(1)?.toLowerCase() ?? 'g';
+  }
+  
+  String _formatQuantity(double quantity, String unit) {
+    // Format quantity nicely
+    if (quantity == quantity.toInt()) {
+      return '${quantity.toInt()} $unit';
+    } else {
+      return '${quantity.toStringAsFixed(1)} $unit';
+    }
+  }
+
+  List<Widget> _buildGroceryTiles(List<_GroceryItemWithQuantity> items) {
     return items
         .map(
           (it) => Container(
@@ -209,7 +362,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
 class _RecipeCard extends StatelessWidget {
   final String title;
   final String imagePath;
-  const _RecipeCard({required this.title, required this.imagePath});
+  final MealEntry mealEntry;
+  const _RecipeCard({required this.title, required this.imagePath, required this.mealEntry});
 
   @override
   Widget build(BuildContext context) {
@@ -233,11 +387,17 @@ class _RecipeCard extends StatelessWidget {
             right: 0,
             top: 0,
             height: cardHeight * 0.65,
-            child: Image.asset(
-              imagePath,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const ColoredBox(color: Color(0xFFE5E7EB)),
-            ),
+            child: imagePath.startsWith('http')
+                ? Image.network(
+                    imagePath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const ColoredBox(color: Color(0xFFE5E7EB)),
+                  )
+                : Image.asset(
+                    imagePath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const ColoredBox(color: Color(0xFFE5E7EB)),
+                  ),
           ),
           // Close chip on image
           Positioned(
@@ -272,6 +432,14 @@ class _RecipeCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (mealEntry.people != null)
+                    Text(
+                      '${mealEntry.people} ${mealEntry.people == 1 ? 'person' : 'persons'}',
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
                   TextButton.icon(
                     style: TextButton.styleFrom(foregroundColor: Colors.deepOrange, padding: EdgeInsets.zero),
                     onPressed: () {},
@@ -302,12 +470,9 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _GroceryItem {
+class _GroceryItemWithQuantity {
   final String name;
   final String quantity;
   final String imagePath;
-  const _GroceryItem(this.name, this.quantity, this.imagePath);
+  const _GroceryItemWithQuantity(this.name, this.quantity, this.imagePath);
 }
-
-
-

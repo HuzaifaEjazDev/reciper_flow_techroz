@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/models/user/meal_plan.dart';
 
-class RecipeDetailsScreen extends StatelessWidget {
+class RecipeDetailsScreen extends StatefulWidget {
   final String title;
   final String imageAssetPath;
   final int? minutes;
@@ -25,8 +25,16 @@ class RecipeDetailsScreen extends StatelessWidget {
   });
   
   @override
+  State<RecipeDetailsScreen> createState() => _RecipeDetailsScreenState();
+}
+
+class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
+  String? _selectedTime;
+  int? _selectedPeople;
+
+  @override
   Widget build(BuildContext context) {
-    debugPrint('RecipeDetailsScreen building with title: $title, mealType: $mealType, fromAdminScreen: $fromAdminScreen');
+    debugPrint('RecipeDetailsScreen building with title: ${widget.title}, mealType: ${widget.mealType}, fromAdminScreen: ${widget.fromAdminScreen}');
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -39,19 +47,23 @@ class RecipeDetailsScreen extends StatelessWidget {
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
         ),
-        actions: fromAdminScreen
+        actions: widget.fromAdminScreen
             ? [
                 TextButton(
                   onPressed: () {
-                    debugPrint('Add button pressed. Meal type: $mealType');
+                    debugPrint('Add button pressed. Meal type: ${widget.mealType}');
                     // Create a MealEntry from the recipe data
-                    if (mealType != null) {
+                    if (widget.mealType != null) {
                       final mealEntry = MealEntry(
-                        id: recipeId,
-                        type: mealType!, // Pass the meal type as string
-                        title: title,
-                        minutes: minutes ?? 0,
-                        imageAssetPath: imageAssetPath,
+                        id: widget.recipeId,
+                        type: widget.mealType!, // Pass the meal type as string
+                        title: widget.title,
+                        minutes: widget.minutes ?? 0,
+                        imageAssetPath: widget.imageAssetPath,
+                        time: _selectedTime, // Pass selected time
+                        people: _selectedPeople, // Pass selected people count
+                        ingredients: widget.ingredients, // Pass ingredients
+                        instructions: widget.steps, // Pass instructions (steps)
                       );
                       
                       debugPrint('Created MealEntry: ${mealEntry.title}, type: ${mealEntry.type}');
@@ -89,9 +101,9 @@ class RecipeDetailsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _HeroImage(title: title, imageAssetPath: imageAssetPath),
+                    _HeroImage(title: widget.title, imageAssetPath: widget.imageAssetPath),
                     const SizedBox(height: 16),
-                    _ActionRow(),
+                    _ActionRow(onMealPlanTap: () => _showMealPlanDialog(context)),
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -109,7 +121,7 @@ class RecipeDetailsScreen extends StatelessWidget {
                             const Text('Estimate Time:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
                             const SizedBox(width: 8),
                             Text(
-                              minutes == null ? 'Not available' : '$minutes min',
+                              widget.minutes == null ? 'Not available' : '${widget.minutes} min',
                               style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54),
                             ),
                           ],
@@ -122,11 +134,11 @@ class RecipeDetailsScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
-                        children: (ingredients == null || ingredients!.isEmpty)
+                        children: (widget.ingredients == null || widget.ingredients!.isEmpty)
                             ? const [
                                 _IngredientTile(name: 'No ingredients available', note: ''),
                               ]
-                            : ingredients!
+                            : widget.ingredients!
                                 .map((e) => _IngredientTile(name: e, note: ''))
                                 .toList(),
                       ),
@@ -137,13 +149,13 @@ class RecipeDetailsScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
-                        children: (steps == null || steps!.isEmpty)
+                        children: (widget.steps == null || widget.steps!.isEmpty)
                             ? const [
                                 _StepCard(step: 1, text: 'No steps available'),
                               ]
                             : List<Widget>.generate(
-                                steps!.length,
-                                (i) => _StepCard(step: i + 1, text: steps![i]),
+                                widget.steps!.length,
+                                (i) => _StepCard(step: i + 1, text: widget.steps![i]),
                               ),
                       ),
                     ),
@@ -155,6 +167,86 @@ class RecipeDetailsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showMealPlanDialog(BuildContext context) async {
+    final TextEditingController peopleController = TextEditingController();
+    final TimeOfDay initialTime = TimeOfDay.now();
+    TimeOfDay selectedTime = initialTime;
+    String? selectedTimeText; // To store the formatted time
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Meal Plan'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: peopleController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Number of People',
+                      hintText: 'Enter number of people',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    title: const Text('Set Time'),
+                    subtitle: Text(selectedTime.format(context)),
+                    trailing: const Icon(Icons.access_time),
+                    onTap: () async {
+                      final TimeOfDay? picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          selectedTime = picked;
+                          selectedTimeText = picked.format(context);
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Handle the meal plan creation
+                    final String people = peopleController.text;
+                    final int peopleCount = int.tryParse(people) ?? 1;
+                    
+                    // Update the state with selected values
+                    setState(() {
+                      _selectedPeople = peopleCount;
+                      _selectedTime = selectedTimeText ?? selectedTime.format(context);
+                    });
+                    
+                    Navigator.of(context).pop();
+                    
+                    // Show confirmation
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Meal planned for $people people at ${selectedTimeText ?? selectedTime.format(context)}'),
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -218,18 +310,21 @@ class _HeroImage extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
+  final VoidCallback onMealPlanTap;
+  const _ActionRow({required this.onMealPlanTap});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: const [
-          _ActionItem(icon: Icons.bookmark_border, label: 'Bookmark'),
-          _ActionItem(icon: Icons.calendar_today_outlined, label: 'Meal Plan'),
-          _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries'),
-          _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
-          _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
+        children: [
+          const _ActionItem(icon: Icons.bookmark_border, label: 'Bookmark'),
+          _ActionItem(icon: Icons.calendar_today_outlined, label: 'Meal Plan', onTap: onMealPlanTap),
+          const _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries'),
+          const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
+          const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
         ],
       ),
     );
@@ -239,19 +334,23 @@ class _ActionRow extends StatelessWidget {
 class _ActionItem extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _ActionItem({required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _ActionItem({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.black87),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
-        ),
-      ],
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.black87),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -350,6 +449,3 @@ class _StepCard extends StatelessWidget {
     );
   }
 }
-
-
-

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
+import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -61,7 +64,14 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
             CustomElevatedButton(
               text: 'Log out',
-              onPressed: () {},
+              onPressed: () async {
+                await context.read<AuthViewModel>().signOut();
+                // Navigate to auth wrapper to check auth state
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                  (route) => false,
+                );
+              },
             ),
           ],
         ),
@@ -251,5 +261,3 @@ class _NavTile extends StatelessWidget {
     );
   }
 }
-
-

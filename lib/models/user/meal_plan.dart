@@ -10,6 +10,11 @@ class MealEntry {
   final String title;
   final int minutes;
   final String imageAssetPath;
+  final String? time; // Add time field
+  final int? people; // Add people field
+  final String? plannedId; // Firestore PlannedMeals doc id
+  final List<String>? ingredients; // Add ingredients
+  final List<String>? instructions; // Add instructions
 
   const MealEntry({
     required this.id,
@@ -17,6 +22,11 @@ class MealEntry {
     required this.title,
     required this.minutes,
     required this.imageAssetPath,
+    this.time, // Add time parameter
+    this.people, // Add people parameter
+    this.plannedId,
+    this.ingredients, // Add ingredients parameter
+    this.instructions, // Add instructions parameter
   });
 }
 
@@ -27,28 +37,20 @@ class DayPlan {
 
   const DayPlan({required this.date, required this.meals});
 
-  MealEntry? mealOfType(String type) { // Change parameter from MealType to String
-    try {
-      return meals.firstWhere((m) => m.type == type);
-    } catch (_) {
-      return null;
-    }
+  List<MealEntry> mealsOfType(String type) {
+    return meals.where((m) => m.type == type).toList(growable: false);
   }
   
   // Method to add a meal to the day plan
   DayPlan copyWithMeal(MealEntry meal) {
-    final List<MealEntry> updatedMeals = List.from(meals);
-    
-    // Remove existing meal of the same type if it exists
-    updatedMeals.removeWhere((m) => m.type == meal.type);
-    
-    // Add the new meal
-    updatedMeals.add(meal);
-    
-    return DayPlan(
-      date: date,
-      meals: updatedMeals,
-    );
+    final List<MealEntry> updatedMeals = List.from(meals)..add(meal);
+    return DayPlan(date: date, meals: updatedMeals);
+  }
+
+  // Explicit method to append a meal without removing existing ones
+  DayPlan addMeal(MealEntry meal) {
+    final List<MealEntry> updatedMeals = List<MealEntry>.from(meals)..add(meal);
+    return DayPlan(date: date, meals: updatedMeals);
   }
 }
 

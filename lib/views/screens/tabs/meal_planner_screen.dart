@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/models/user/meal_plan.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/views/screens/recipe_by_admin_screen.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
+import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 
 class MealPlannerScreen extends StatefulWidget {
   const MealPlannerScreen({super.key});
@@ -140,10 +142,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                             children: [
                               // Dynamically generate sections for all meal types
                               ...vm.mealTypes.map((mealType) {
-                                // Get the meal entry for this meal type on the selected day
-                                // Use the mealType string directly instead of mapping to enum
-                                final mealEntry = vm.selectedDay?.mealOfType(mealType);
-                                
+                                // Get all meal entries for this meal type on the selected day
+                                final List<MealEntry> entries = vm.selectedDay?.mealsOfType(mealType) ?? const <MealEntry>[];
+
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -162,13 +163,26 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    // Display the meal entry if it exists
-                                    if (mealEntry != null)
-                                      _MealCard(
-                                        title: mealEntry.title,
-                                        timeText: _getDefaultTime(mealType),
-                                        imageAssetPath: mealEntry.imageAssetPath,
-                                        icon: Icons.restaurant,
+                                    if (entries.isNotEmpty)
+                                      Column(
+                                        children: entries.map((mealEntry) => Padding(
+                                          padding: const EdgeInsets.only(bottom: 12),
+                                          child: _MealCard(
+                                            title: mealEntry.title,
+                                            timeText: _getDefaultTime(mealType),
+                                            imageAssetPath: mealEntry.imageAssetPath,
+                                            icon: Icons.restaurant,
+                                            people: mealEntry.people,
+                                            time: mealEntry.time,
+                                            recipeId: mealEntry.id, // Use id instead of recipeId
+                                            onRemove: () {
+                                              context.read<MealPlannerViewModel>().removeMealFromDay(vm.selectedIndex, mealEntry);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Removed ${mealEntry.title} from $mealType')),
+                                              );
+                                            },
+                                          ),
+                                        )).toList(),
                                       )
                                     else
                                       const SizedBox(height: 16),
@@ -207,19 +221,6 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  String _getDefaultTitle(String mealType) {
-    switch (mealType.toLowerCase()) {
-      case 'breakfast':
-        return 'Avocado Toast with Eggs';
-      case 'lunch':
-        return 'Grilled Chicken Salad';
-      case 'dinner':
-        return 'Pasta Arrabbiata';
-      default:
-        return 'Yogurt Parfait';
-    }
-  }
-
   String _getDefaultTime(String mealType) {
     switch (mealType.toLowerCase()) {
       case 'breakfast':
@@ -230,19 +231,6 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
         return '7:00 PM';
       default:
         return '4:00 PM';
-    }
-  }
-
-  String _getDefaultImage(String mealType) {
-    switch (mealType.toLowerCase()) {
-      case 'breakfast':
-        return 'assets/images/easymakesnack1.jpg';
-      case 'lunch':
-        return 'assets/images/quickweeknightmeals2.jpg';
-      case 'dinner':
-        return 'assets/images/quickweeknightmeals1.jpg';
-      default:
-        return 'assets/images/easymakesnack2.jpg';
     }
   }
 
@@ -273,106 +261,175 @@ class _MealCard extends StatelessWidget {
   final String timeText;
   final String imageAssetPath;
   final IconData icon;
+  final int? people;
+  final String? time;
+  final String recipeId;
+  final VoidCallback? onRemove;
   const _MealCard({
     required this.title,
     required this.timeText,
     required this.imageAssetPath,
     required this.icon,
+    this.people,
+    this.time,
+    required this.recipeId,
+    this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              bottomLeft: Radius.circular(12),
-            ),
-            child: Container(
-              width: 110,
-              height: 100,
-              color: Colors.grey[200],
-              child: imageAssetPath.startsWith('http')
-                  ? Image.network(
-                      imageAssetPath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Fallback to default image if network image fails
-                        return Image.asset(
-                          'assets/images/easymakesnack1.jpg',
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+                child: Container(
+                  width: 110,
+                  height: 100,
+                  color: Colors.grey[200],
+                  child: imageAssetPath.startsWith('http')
+                      ? Image.network(
+                          imageAssetPath,
                           fit: BoxFit.cover,
-                        );
-                      },
-                    )
-                  : Image.asset(
-                      imageAssetPath.isEmpty ? 'assets/images/easymakesnack1.jpg' : imageAssetPath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Fallback to default image if asset image fails
-                        return Image.asset(
-                          'assets/images/easymakesnack1.jpg',
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to default image if network image fails
+                            return Image.asset(
+                              'assets/images/easymakesnack1.jpg',
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          imageAssetPath.isEmpty ? 'assets/images/easymakesnack1.jpg' : imageAssetPath,
                           fit: BoxFit.cover,
-                        );
-                      },
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to default image if asset image fails
+                            return Image.asset(
+                              'assets/images/easymakesnack1.jpg',
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
                     ),
+                    const SizedBox(height: 6),
+                    // Display time if available, otherwise use default
+                    Text(
+                      time ?? timeText,
+                      style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    // Display people count if available
+                    if (people != null)
+                      Text(
+                        'Persons: $people',
+                        style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700),
+                      ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: Row(
+                        children: [
+                          const Spacer(),
+                          TextButton(
+                            style: TextButton.styleFrom(foregroundColor: Colors.deepOrange),
+                            onPressed: () async {
+                              // Navigate to recipe details screen
+                              final service = FirestoreRecipesService();
+                              final recipeData = await service.fetchRecipeById(recipeId);
+                              
+                              if (recipeData != null) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => RecipeDetailsScreen(
+                                      title: recipeData['title'] as String,
+                                      imageAssetPath: recipeData['image'] as String? ?? recipeData['imageUrl'] as String? ?? imageAssetPath,
+                                      minutes: recipeData['minutes'] as int? ?? recipeData['cookTime'] as int?,
+                                      ingredients: List<String>.from(recipeData['ingredients'] as List? ?? []),
+                                      steps: List<String>.from(recipeData['steps'] as List? ?? []),
+                                      recipeId: recipeId,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Failed to load recipe details')),
+                                );
+                              }
+                            },
+                            child: const Text('View Recipe'),
+                          ),
+                          const SizedBox(width: 8),
+                          Image.asset(
+                            'assets/images/soup.png',
+                            width: 22,
+                            height: 22,
+                            color: Colors.deepOrange,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.ramen_dining, color: Colors.deepOrange, size: 22),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 6,
+          right: 6,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: onRemove,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: const Icon(Icons.close, size: 16, color: Colors.black87),
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(timeText, style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: Row(
-                    children: [
-                      const Spacer(),
-                      TextButton(
-                        style: TextButton.styleFrom(foregroundColor: Colors.deepOrange),
-                        onPressed: () {},
-                        child: const Text('View Recipe'),
-                      ),
-                      const SizedBox(width: 8),
-                      Image.asset(
-                        'assets/images/soup.png',
-                        width: 22,
-                        height: 22,
-                        color: Colors.deepOrange,
-                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.ramen_dining, color: Colors.deepOrange, size: 22),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
