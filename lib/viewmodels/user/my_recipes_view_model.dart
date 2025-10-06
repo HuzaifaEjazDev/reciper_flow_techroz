@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:recipe_app/models/user/user_recipe.dart';
+import 'package:recipe_app/models/user_recipe.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class MyRecipeCardData {

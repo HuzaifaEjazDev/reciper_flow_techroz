@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
-import 'package:recipe_app/models/user/dish.dart';
+import 'package:recipe_app/models/dish.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

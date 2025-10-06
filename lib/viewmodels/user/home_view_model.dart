@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:recipe_app/models/user/dish.dart';
+import 'package:recipe_app/models/dish.dart';
 
 class HomeViewModel extends ChangeNotifier {
   List<Dish> _recommended = const <Dish>[];

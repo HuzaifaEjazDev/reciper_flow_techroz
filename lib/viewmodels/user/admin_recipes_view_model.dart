@@ -428,11 +428,21 @@ class AdminRecipesViewModel extends ChangeNotifier {
           keys: const ['instructionsTotal', 'instructions_total', 'stepsTotal', 'steps_total', 'stepsCount', 'steps_count'],
         ) ?? _listLength(m, keys: const ['instructions', 'steps']);
 
+    // Debug: Print raw data
+    debugPrint('=== RAW RECIPE DATA ===');
+    debugPrint('ID: $id, Title: $title');
+    debugPrint('Raw ingredients field: ${m['ingredients']}');
+    debugPrint('Raw steps field: ${m['steps']}');
+    debugPrint('Raw instructions field: ${m['instructions']}');
+    debugPrint('All keys in recipe data: ${m.keys.toList()}');
+
     final List<String>? ingredients = _extractStringList(m, keys: const ['ingredients', 'ingredientsList']);
     final List<String>? steps = _extractStringList(m, keys: const ['instructions', 'steps']);
     final List<String>? labels = _extractStringList(m, keys: const ['labels', 'mealTypes', 'categories']); // Extract labels
     
     debugPrint('Mapping recipe data - ID: $id, Title: $title, Labels: $labels');
+    debugPrint('Extracted ingredients: $ingredients');
+    debugPrint('Extracted steps: $steps');
     
     return AdminRecipeCardData(
       id: id.isEmpty ? title : id,
@@ -479,15 +489,20 @@ class AdminRecipesViewModel extends ChangeNotifier {
   }
 
   List<String>? _extractStringList(Map<String, dynamic> m, {required List<String> keys}) {
+    debugPrint('_extractStringList called with keys: $keys');
     for (final k in keys) {
       final v = m[k];
+      debugPrint('Checking key "$k": $v (type: ${v.runtimeType})');
       if (v is List) {
+        debugPrint('Found list for key "$k" with ${v.length} items');
         // handle list of strings
         if (v.isNotEmpty && v.first is String) {
+          debugPrint('Extracting string list from key "$k": ${v.cast<String>()}');
           return v.cast<String>();
         }
         // handle list of maps {text: ..., name/quantity: ...}
         if (v.isNotEmpty && v.first is Map) {
+          debugPrint('Extracting from map list for key "$k"');
           final List<String> out = <String>[];
           for (final e in v) {
             if (e is Map) {
@@ -498,10 +513,12 @@ class AdminRecipesViewModel extends ChangeNotifier {
               }
             }
           }
+          debugPrint('Extracted map list from key "$k": $out');
           return out.isEmpty ? null : out;
         }
       }
     }
+    debugPrint('No valid list found for keys: $keys');
     return null;
   }
   

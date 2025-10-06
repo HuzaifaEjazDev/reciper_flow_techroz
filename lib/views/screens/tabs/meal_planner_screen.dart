@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/views/screens/recipe_by_admin_screen.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
+// test imports removed
 
 class MealPlannerScreen extends StatefulWidget {
   const MealPlannerScreen({super.key});
@@ -125,7 +126,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                             Icon(Icons.error_outline, size: 48, color: Colors.red),
                             SizedBox(height: 16),
                             Text(
-                              'Error in loading meal types,Please try again',
+                              'Error in loading,Please try again',
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             SizedBox(height: 16),
@@ -140,6 +141,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // test button removed
+                              
                               // Dynamically generate sections for all meal types
                               ...vm.mealTypes.map((mealType) {
                                 // Get all meal entries for this meal type on the selected day

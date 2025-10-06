@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:recipe_app/models/meal_plan.dart';
 
 class FirestoreRecipesService {
   FirestoreRecipesService({FirebaseFirestore? firestore})
@@ -234,5 +236,133 @@ class FirestoreRecipesService {
       print('Error fetching document array from $collection/$docId: $e');
     }
     return <String>[];
+  }
+
+  // New methods for PlannedMeals schema
+  // Save a planned meal directly in the PlannedMeals collection
+  Future<String> savePlannedMeal(PlannedMeal plannedMeal) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+      
+      // First create a new doc ref to get an auto id
+      final DocumentReference<Map<String, dynamic>> mealDoc = plannedMealsRef.doc();
+
+      // Persist uniqueId inside document as a field
+      final Map<String, dynamic> data = {
+        ...plannedMeal.toFirestore(),
+        'uniqueId': mealDoc.id,
+      };
+
+      await mealDoc.set(data);
+      return mealDoc.id;
+    } catch (e) {
+      throw Exception('Error saving planned meal: $e');
+    }
+  }
+
+  // Get all planned meals for a specific date
+  Future<List<PlannedMeal>> getPlannedMealsForDate(String dateForRecipe) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+      
+      // Query all meals where dateForRecipe field matches
+      final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
+          .where('dateForRecipe', isEqualTo: dateForRecipe)
+          .get();
+      
+      return mealsSnapshot.docs.map((doc) {
+        return PlannedMeal.fromFirestore(doc.data(), doc.id);
+      }).toList();
+    } catch (e) {
+      throw Exception('Error fetching planned meals for date: $e');
+    }
+  }
+
+  // Get all planned meals for a week (multiple dates)
+  Future<Map<String, List<PlannedMeal>>> getPlannedMealsForWeek(List<String> dateKeys) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+      
+      // Query all meals where dateForRecipe is in the list of dateKeys
+      final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
+          .where('dateForRecipe', whereIn: dateKeys)
+          .get();
+      
+      // Group meals by datedateForRecipeKey
+      final Map<String, List<PlannedMeal>> weekMeals = {};
+      for (final dateForRecipe in dateKeys) {
+        weekMeals[dateForRecipe] = [];
+      }
+      
+      for (final doc in mealsSnapshot.docs) {
+        final PlannedMeal meal = PlannedMeal.fromFirestore(doc.data(), doc.id);
+        weekMeals[meal.dateForRecipe]?.add(meal);
+      }
+      
+      return weekMeals;
+    } catch (e) {
+      throw Exception('Error fetching planned meals for week: $e');
+    }
+  }
+
+  // Delete a planned meal
+  Future<void> deletePlannedMeal(String mealId) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+      
+      await plannedMealsRef.doc(mealId).delete();
+    } catch (e) {
+      throw Exception('Error deleting planned meal: $e');
+    }
+  }
+
+  // Update a planned meal
+  Future<void> updatePlannedMeal(String mealId, PlannedMeal updatedMeal) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+      
+      await plannedMealsRef.doc(mealId).update(updatedMeal.toFirestore());
+    } catch (e) {
+      throw Exception('Error updating planned meal: $e');
+    }
+  }
+
+  // Helper method to format date as "D MMM" (e.g., "2 Oct", "7 Oct")
+  String formatDateKey(DateTime date) {
+    const List<String> months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]}';
   }
 }

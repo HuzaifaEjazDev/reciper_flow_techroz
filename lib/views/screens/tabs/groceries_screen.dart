@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
-import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class GroceriesScreen extends StatefulWidget {

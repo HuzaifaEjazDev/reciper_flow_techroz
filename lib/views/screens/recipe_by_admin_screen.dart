@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/viewmodels/user/admin_recipes_view_model.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 
@@ -178,6 +178,10 @@ class _AdminRecipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () async {
+        debugPrint('AdminRecipeCard tapped - Title: ${data.title}');
+        debugPrint('AdminRecipeCard ingredients: ${data.ingredients}');
+        debugPrint('AdminRecipeCard steps: ${data.steps}');
+        
         // Navigate to recipe details and wait for a result
         final result = await Navigator.of(context).push(
           MaterialPageRoute(

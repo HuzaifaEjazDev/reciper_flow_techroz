@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/models/meal_plan.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -58,10 +58,10 @@ class AuthService {
           _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // Format date as "D MMM" (e.g., "4 Aug", "6 Aug")
-      final String dateKey = '${dayPlan.date.day} ${_getMonthName(dayPlan.date.month)}';
+      final String dateForRecipe = '${dayPlan.date.day} ${_getMonthName(dayPlan.date.month)}';
       
       // Create or update the document for this date
-      final DocumentReference dateDoc = plannedMealsRef.doc(dateKey);
+      final DocumentReference dateDoc = plannedMealsRef.doc(dateForRecipe);
       
       // Save each meal entry under the date document with meal type as document ID
       for (final meal in dayPlan.meals) {

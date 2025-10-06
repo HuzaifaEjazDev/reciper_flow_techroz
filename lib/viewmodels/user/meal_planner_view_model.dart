@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:recipe_app/models/user/meal_plan.dart';
+import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,7 +12,7 @@ class MealPlannerViewModel extends ChangeNotifier {
   List<String> _mealTypes = const [];
   bool _loading = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _mealTypesListener;
-  bool _initialized = false; // Add this flag
+  bool _initialized = false;
 
   MealPlannerViewModel({FirestoreRecipesService? service})
       : _service = service ?? FirestoreRecipesService();
@@ -62,64 +62,39 @@ class MealPlannerViewModel extends ChangeNotifier {
     if (user == null) return;
 
     try {
-      // Load meals for each day in the week
-      for (int dayIndex = 0; dayIndex < _plans.length; dayIndex++) {
-        final DayPlan day = _plans[dayIndex];
-        
-        // Format date as "D MMM" (e.g., "4 Aug", "6 Aug") to match our Firestore structure
-        final String dateKey = '${day.date.day} ${_getMonthName(day.date.month)}';
-        
-        // Get the document for this date
-        final DocumentSnapshot<Map<String, dynamic>> dateDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('PlannedMeals')
-            .doc(dateKey)
-            .get();
-
-        if (!dateDoc.exists) {
-          // No meals planned for this date
-          continue;
-        }
-
-        // For each meal type, get the meals
-        final List<MealEntry> loadedMeals = <MealEntry>[];
-        
-        // Get all subcollections (meal types) for this date
-        final DocumentReference dateDocRef = dateDoc.reference;
-        
-        // We need to query each meal type collection separately
-        for (final String mealType in _mealTypes) {
-          try {
-            final QuerySnapshot<Map<String, dynamic>> mealTypeSnapshot = await dateDocRef
-                .collection(mealType)
-                .get();
-                
-            for (final QueryDocumentSnapshot<Map<String, dynamic>> mealDoc in mealTypeSnapshot.docs) {
-              final Map<String, dynamic> data = mealDoc.data();
-              
-              loadedMeals.add(
-                MealEntry(
-                  id: data['idOfRecipe']?.toString() ?? mealDoc.id,
-                  type: mealType,
-                  title: data['recipeTitle']?.toString() ?? 'Recipe',
-                  minutes: data['recipeMinutes'] as int? ?? 0,
-                  imageAssetPath: data['recipeImage']?.toString() ?? '',
-                  time: data['time']?.toString(),
-                  people: data['Persons'] as int?,
-                  plannedId: mealDoc.id,
-                  ingredients: data['recipeIngredients'] is List ? List<String>.from(data['recipeIngredients']) : null,
-                  instructions: data['recipeInstructions'] is List ? List<String>.from(data['recipeInstructions']) : null,
-                ),
-              );
-            }
-          } catch (e) {
-            debugPrint('Error loading meals for type $mealType: $e');
-          }
-        }
-
-        _plans[dayIndex] = DayPlan(date: day.date, meals: loadedMeals);
+      // Generate date keys for the week
+      final List<String> dateKeys = [];
+      for (int i = 0; i < _plans.length; i++) {
+        final String dateForRecipe = _service.formatDateKey(_plans[i].date);
+        dateKeys.add(dateForRecipe);
       }
+
+      // Get all planned meals for the week
+      final Map<String, List<PlannedMeal>> weekMeals = await _service.getPlannedMealsForWeek(dateKeys);
+
+      // Convert PlannedMeal objects to MealEntry objects for each day
+      for (int dayIndex = 0; dayIndex < _plans.length; dayIndex++) {
+        final String dateForRecipe = dateKeys[dayIndex];
+        final List<PlannedMeal> plannedMeals = weekMeals[dateForRecipe] ?? [];
+        
+        final List<MealEntry> mealEntries = plannedMeals.map((plannedMeal) {
+          return MealEntry(
+            id: plannedMeal.uniqueId,
+            type: plannedMeal.mealType,
+            title: plannedMeal.recipeTitle,
+            minutes: 0, // Not stored in new schema, using default
+            imageAssetPath: plannedMeal.recipeImage,
+            time: plannedMeal.timeForRecipe,
+            people: plannedMeal.persons,
+            plannedId: plannedMeal.uniqueId,
+            ingredients: plannedMeal.ingredients,
+            instructions: plannedMeal.instructions,
+          );
+        }).toList();
+
+        _plans[dayIndex] = DayPlan(date: _plans[dayIndex].date, meals: mealEntries);
+      }
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading planned meals for week: $e');
@@ -174,17 +149,59 @@ class MealPlannerViewModel extends ChangeNotifier {
   }
   
   // Method to add a meal entry to a specific day and save to Firestore
-  void addMealToDay(int dayIndex, MealEntry meal) {
+  Future<void> addMealToDay(int dayIndex, MealEntry meal, {String? time, int? persons}) async {
     if (dayIndex < 0 || dayIndex >= _plans.length) return;
     
     final DayPlan currentDay = _plans[dayIndex];
-    final DayPlan updatedDay = currentDay.addMeal(meal);
+    final String dateForRecipe = _service.formatDateKey(currentDay.date);
     
-    _plans[dayIndex] = updatedDay;
-    notifyListeners();
+    // Debug logging
+    debugPrint('Adding meal to day: ${meal.title}');
+    debugPrint('Meal ingredients: ${meal.ingredients}');
+    debugPrint('Meal instructions: ${meal.instructions}');
     
-    // Save the updated day plan to Firestore under PlannedMeals collection
-    _saveMealToFirestore(meal, updatedDay.date, dayIndex);
+    try {
+      // Create a PlannedMeal object
+      final PlannedMeal plannedMeal = PlannedMeal(
+        uniqueId: '', // Will be set by Firestore5
+        recipeTitle: meal.title,
+        dateForRecipe: dateForRecipe,
+        timeForRecipe: time ?? meal.time ?? '12:00',
+        persons: persons ?? meal.people ?? 1,
+        ingredients: meal.ingredients ?? [],
+        instructions: meal.instructions ?? [],
+        recipeImage: meal.imageAssetPath,
+        mealType: meal.type,
+        createdAt: DateTime.now(),
+      );
+      
+      debugPrint('Created PlannedMeal with ingredients: ${plannedMeal.ingredients}');
+      debugPrint('Created PlannedMeal with instructions: ${plannedMeal.instructions}');
+
+      // Save to Firestore using the new schema
+      final String mealId = await _service.savePlannedMeal(plannedMeal);
+      
+      // Create updated MealEntry with the new ID
+      final MealEntry updatedMeal = MealEntry(
+        id: mealId,
+        type: meal.type,
+        title: meal.title,
+        minutes: meal.minutes,
+        imageAssetPath: meal.imageAssetPath,
+        time: time ?? meal.time,
+        people: persons ?? meal.people,
+        plannedId: mealId,
+        ingredients: meal.ingredients,
+        instructions: meal.instructions,
+      );
+
+      // Update local state
+      final DayPlan updatedDay = currentDay.addMeal(updatedMeal);
+      _plans[dayIndex] = updatedDay;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error adding meal to day: $e');
+    }
   }
   
   // Remove a meal entry from a specific day and delete from Firestore
@@ -192,98 +209,24 @@ class MealPlannerViewModel extends ChangeNotifier {
     if (dayIndex < 0 || dayIndex >= _plans.length) return;
 
     final DayPlan currentDay = _plans[dayIndex];
-    final List<MealEntry> updatedMeals = List<MealEntry>.from(currentDay.meals)
-      ..removeWhere((m) => m.type == meal.type && m.id == meal.id);
-
-    _plans[dayIndex] = DayPlan(date: currentDay.date, meals: updatedMeals);
-    notifyListeners();
-
-    await _deleteMealFromFirestore(meal, currentDay.date);
-  }
-
-  // Delete the meal document(s) from Firestore by recipe id under the date/type path
-  Future<void> _deleteMealFromFirestore(MealEntry meal, DateTime date) async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      // Format date as "D MMM" (e.g., "4 Aug", "6 Aug") to match our Firestore structure
-      final String dateKey = '${date.day} ${_getMonthName(date.month)}';
-      
-      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid).collection('PlannedMeals');
-
-      // Delete all documents in the meal type collection for this date
-      final QuerySnapshot<Map<String, dynamic>> snap = await plannedMealsRef
-          .doc(dateKey)
-          .collection(meal.type)
-          .where('idOfRecipe', isEqualTo: meal.id)
-          .get();
-
-      for (final QueryDocumentSnapshot<Map<String, dynamic>> doc in snap.docs) {
-        await doc.reference.delete();
-      }
-    } catch (e) {
-      debugPrint('Error deleting meal from Firestore: $e');
-    }
-  }
-
-  // Method to save a meal to Firestore under PlannedMeals collection
-  Future<void> _saveMealToFirestore(MealEntry meal, DateTime date, int dayIndex) async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
     
     try {
-      // Format date as "D MMM" (e.g., "4 Aug", "6 Aug") to match our Firestore structure
-      final String dateKey = '${date.day} ${_getMonthName(date.month)}';
-      
-      // Create a reference to the user's PlannedMeals subcollection
-      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid).collection('PlannedMeals');
-      
-      // Fetch full recipe details to save with the meal
-      final FirestoreRecipesService service = FirestoreRecipesService();
-      final Map<String, dynamic>? recipeData = await service.fetchRecipeById(meal.id);
-      
-      // Prepare the data to save
-      final Map<String, dynamic> mealData = {
-        'uid': user.uid,
-        'idOfRecipe': meal.id,
-        'time': meal.time,
-        'date': date.toIso8601String().split('T')[0], // Store only the date part (YYYY-MM-DD)
-        'Persons': meal.people,
-        'createdAt': FieldValue.serverTimestamp(),
-        // Embedded recipe snapshot for faster hydration
-        'recipeTitle': meal.title,
-        'recipeImage': meal.imageAssetPath,
-        'recipeMinutes': meal.minutes,
-      };
-      
-      // Add full recipe details if available
-      if (recipeData != null) {
-        mealData['recipeIngredients'] = recipeData['ingredients'] is List ? recipeData['ingredients'] : [];
-        mealData['recipeInstructions'] = recipeData['steps'] is List ? recipeData['steps'] : [];
-        mealData['recipeDescription'] = recipeData['description']?.toString();
+      // Delete from Firestore using the new schema
+      if (meal.plannedId != null) {
+        await _service.deletePlannedMeal(meal.plannedId!);
       }
-      
-      // Create or update the document for this date
-      final DocumentReference<Map<String, dynamic>> dateDoc = plannedMealsRef.doc(dateKey);
-      
-      // Save the meal under the date document with meal type as collection name
-      await dateDoc.collection(meal.type).add(mealData);
+
+      // Update local state
+      final List<MealEntry> updatedMeals = List<MealEntry>.from(currentDay.meals)
+        ..removeWhere((m) => m.plannedId == meal.plannedId);
+
+      _plans[dayIndex] = DayPlan(date: currentDay.date, meals: updatedMeals);
+      notifyListeners();
     } catch (e) {
-      debugPrint('Error saving meal to Firestore: $e');
+      debugPrint('Error removing meal from day: $e');
     }
   }
-  
-  // Helper method to get month name abbreviation
-  String _getMonthName(int month) {
-    const List<String> months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return months[month - 1];
-  }
+
 
   @override
   void dispose() {
