@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
+import 'package:recipe_app/views/auth/sign_in_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -83,6 +84,12 @@ class ProfileScreen extends StatelessWidget {
 class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final authVm = context.watch<AuthViewModel>();
+    final user = authVm.currentUser;
+    final displayName = (user?.displayName != null && user!.displayName!.trim().isNotEmpty)
+        ? user.displayName!
+        : 'Recipeflow User';
+    final emailText = user?.email ?? 'user@example.com';
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -113,15 +120,19 @@ class _HeaderCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('Recipeflow User', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87)),
-                SizedBox(height: 4),
-                Text('user@example.com', style: TextStyle(color: Colors.black54)),
+              children: [
+                Text(displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87)),
+                const SizedBox(height: 4),
+                Text(emailText, style: const TextStyle(color: Colors.black54)),
               ],
             ),
           ),
           OutlinedButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
+              );
+            },
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.deepOrange,
               side: const BorderSide(color: Colors.deepOrange),
@@ -131,6 +142,198 @@ class _HeaderCard extends StatelessWidget {
             child: const Text('Edit'),
           )
         ],
+      ),
+    );
+  }
+}
+
+class AccountSettingsScreen extends StatefulWidget {
+  const AccountSettingsScreen({super.key});
+
+  @override
+  State<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
+}
+
+class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthViewModel>().currentUser;
+    _nameController.text = user?.displayName ?? '';
+    _emailController.text = user?.email ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authVm = context.watch<AuthViewModel>();
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Account Settings'),
+        centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: authVm.isLoading
+                ? null
+                : () async {
+                    final name = _nameController.text.trim();
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter your name')),
+                      );
+                      return;
+                    }
+                    await context.read<AuthViewModel>().updateDisplayName(name);
+                    if (mounted && authVm.errorMessage == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Profile updated')),
+                      );
+                      Navigator.of(context).pop();
+                    }
+                  },
+            child: Text(
+              authVm.isLoading ? 'Saving...' : 'Save',
+              style: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Name', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: 'Your Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF9CA3AF)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Email', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _emailController,
+                enabled: false,
+                decoration: InputDecoration(
+                  hintText: 'your.email@example.com',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF9CA3AF)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                ),
+              ),
+              if (authVm.errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(authVm.errorMessage!, style: const TextStyle(color: Colors.red)),
+              ],
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomElevatedButton(
+                text: 'Send Password Reset Email',
+                onPressed: authVm.isLoading
+                    ? null
+                    : () async {
+                        final email = _emailController.text.trim();
+                        await context.read<AuthViewModel>().sendPasswordResetEmail(email);
+                        if (mounted && authVm.errorMessage == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Reset email sent to $email')),
+                          );
+                        }
+                      },
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                onPressed: authVm.isLoading
+                    ? null
+                      : () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: Colors.white,
+                              title: const Text('Delete Account'),
+                              content: const Text('This action cannot be undone. Delete your account and all data?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            final ok = await context.read<AuthViewModel>().deleteAccount();
+                            if (!mounted) return;
+                            if (ok) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const SignInScreen()),
+                                (route) => false,
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Failed to delete account. Try re-signing in.')),
+                              );
+                            }
+                          }
+                        },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Delete Account'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
@@ -12,7 +11,15 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
     final user = authViewModel.currentUser;
+    final isLoading = authViewModel.isLoading;
     
+    // Show loading while auth state is changing to avoid flicker to SignIn
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     // Show main screen if user is authenticated, otherwise show sign in screen
     if (user != null) {
       return const MainScreen();

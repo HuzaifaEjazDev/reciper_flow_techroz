@@ -103,13 +103,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 ),
               ),
-              if (authViewModel.errorMessage != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  authViewModel.errorMessage!,
-                  style: const TextStyle(color: Colors.red, fontSize: 14),
-                ),
-              ],
+              // Inline error removed; show SnackBar on error instead
               const SizedBox(height: 24),
               CustomElevatedButton(
                 text: authViewModel.isLoading ? 'Signing In...' : 'Sign In',
@@ -121,7 +115,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         
                         if (email.isEmpty || password.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter email and password')),
+                            const SnackBar(duration: Duration(seconds: 3), content: Text('Please enter email and password')),
                           );
                           return;
                         }
@@ -131,6 +125,11 @@ class _SignInScreenState extends State<SignInScreen> {
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(builder: (_) => const MainScreen()),
                             (route) => false,
+                          );
+                        } else {
+                          final msg = context.read<AuthViewModel>().errorMessage ?? 'Sign in failed';
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(duration: const Duration(seconds: 3), content: Text(msg)),
                           );
                         }
                       },

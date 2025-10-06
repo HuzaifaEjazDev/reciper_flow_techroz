@@ -23,7 +23,7 @@ class AuthService {
   }
 
   // Register with email and password and store user data in Firestore
-  Future<User?> createUserWithEmailAndPassword(String email, String password) async {
+  Future<User?> createUserWithEmailAndPassword(String email, String password, {String? name}) async {
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -32,9 +32,14 @@ class AuthService {
       
       // Store user data in Firestore
       if (result.user != null) {
+        // Update Firebase Auth display name if provided
+        if (name != null && name.isNotEmpty) {
+          await result.user!.updateDisplayName(name);
+        }
         await _firestore.collection('users').doc(result.user!.uid).set({
           'uid': result.user!.uid,
           'email': email,
+          if (name != null && name.isNotEmpty) 'name': name,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
@@ -119,5 +124,37 @@ class AuthService {
   // Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  // Update display name for current user and Firestore
+  Future<void> updateDisplayName(String name) async {
+    final User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    await user.updateDisplayName(name);
+    await _firestore.collection('users').doc(user.uid).set({
+      'name': name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  // Delete current user account and Firestore user doc
+  Future<void> deleteAccount() async {
+    final User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    try {
+      // Best effort: delete Firestore user doc first
+      await _firestore.collection('users').doc(user.uid).delete().catchError((_) {});
+      // Delete auth user (may require recent login)
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      // Propagate to caller for UX handling (e.g., re-auth required)
+      rethrow;
+    } catch (e) {
+      rethrow;
+    }
   }
 }

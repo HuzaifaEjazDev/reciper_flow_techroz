@@ -33,13 +33,13 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   // Register with email and password
-  Future<bool> signUp(String email, String password) async {
+  Future<bool> signUp(String email, String password, {String? name}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final user = await _authService.createUserWithEmailAndPassword(email, password);
+      final user = await _authService.createUserWithEmailAndPassword(email, password, name: name);
       _isLoading = false;
       notifyListeners();
       return user != null;
@@ -93,5 +93,52 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> signOut() async {
     await _authService.signOut();
     notifyListeners();
+  }
+
+  Future<void> updateDisplayName(String name) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.updateDisplayName(name);
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.deleteAccount();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 }
