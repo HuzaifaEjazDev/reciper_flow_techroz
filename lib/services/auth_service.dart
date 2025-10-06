@@ -126,6 +126,23 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
+  // Change password by reauthenticating then updating password
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    final User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    final String? email = user.email;
+    if (email == null) {
+      throw Exception('User email not available');
+    }
+    // Reauthenticate
+    final credential = EmailAuthProvider.credential(email: email, password: currentPassword);
+    await user.reauthenticateWithCredential(credential);
+    // Update password
+    await user.updatePassword(newPassword);
+  }
+
   // Update display name for current user and Firestore
   Future<void> updateDisplayName(String name) async {
     final User? user = _auth.currentUser;

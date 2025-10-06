@@ -154,6 +154,133 @@ class AccountSettingsScreen extends StatefulWidget {
   State<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
 }
 
+class _ChangePasswordSection extends StatefulWidget {
+  @override
+  State<_ChangePasswordSection> createState() => _ChangePasswordSectionState();
+}
+
+class _ChangePasswordSectionState extends State<_ChangePasswordSection> {
+  final TextEditingController _currentController = TextEditingController();
+  final TextEditingController _newController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void dispose() {
+    _currentController.dispose();
+    _newController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authVm = context.watch<AuthViewModel>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('Change Password', style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _currentController,
+          obscureText: _obscureCurrent,
+          decoration: InputDecoration(
+            labelText: 'Current Password',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(_obscureCurrent ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _newController,
+          obscureText: _obscureNew,
+          decoration: InputDecoration(
+            labelText: 'New Password',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _obscureNew = !_obscureNew),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _confirmController,
+          obscureText: _obscureConfirm,
+          decoration: InputDecoration(
+            labelText: 'Confirm New Password',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        CustomElevatedButton(
+          text: authVm.isLoading ? 'Changing...' : 'Change Password',
+          onPressed: authVm.isLoading
+              ? null
+              : () async {
+                  final current = _currentController.text;
+                  final np = _newController.text;
+                  final cp = _confirmController.text;
+                  if (current.isEmpty || np.isEmpty || cp.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(duration: Duration(seconds: 3), content: Text('Please fill all password fields')),
+                    );
+                    return;
+                  }
+                  if (np.length < 6) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(duration: Duration(seconds: 3), content: Text('New password must be at least 6 characters')),
+                    );
+                    return;
+                  }
+                  if (np != cp) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(duration: Duration(seconds: 3), content: Text('New passwords do not match')),
+                    );
+                    return;
+                  }
+                  final ok = await context.read<AuthViewModel>().changePassword(currentPassword: current, newPassword: np);
+                  if (!mounted) return;
+                  if (ok) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(duration: Duration(seconds: 3), content: Text('Password changed successfully')),
+                    );
+                    _currentController.clear();
+                    _newController.clear();
+                    _confirmController.clear();
+                  } else {
+                    final msg = context.read<AuthViewModel>().errorMessage ?? 'Failed to change password';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(duration: const Duration(seconds: 3), content: Text(msg)),
+                    );
+                  }
+                },
+        ),
+      ],
+    );
+  }
+}
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -273,19 +400,137 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CustomElevatedButton(
-                text: 'Send Password Reset Email',
-                onPressed: authVm.isLoading
-                    ? null
-                    : () async {
-                        final email = _emailController.text.trim();
-                        await context.read<AuthViewModel>().sendPasswordResetEmail(email);
-                        if (mounted && authVm.errorMessage == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Reset email sent to $email')),
+              SizedBox(
+                width: double.infinity,
+                child: CustomElevatedButton(
+                  text: 'Change Password',
+                  onPressed: authVm.isLoading
+                      ? null
+                      : () async {
+                          final currentController = TextEditingController();
+                          final newController = TextEditingController();
+                          final confirmController = TextEditingController();
+                          bool obscureCurrent = true;
+                          bool obscureNew = true;
+                          bool obscureConfirm = true;
+
+                          await showDialog<void>(
+                            context: context,
+                            builder: (ctx) {
+                              return StatefulBuilder(
+                                builder: (ctx, setState) => AlertDialog(
+                                  backgroundColor: Colors.white,
+                                  title: const Text('Change Password'),
+                                  content: SingleChildScrollView(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        TextField(
+                                          controller: currentController,
+                                          obscureText: obscureCurrent,
+                                          decoration: InputDecoration(
+                                            labelText: 'Current Password',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                                            ),
+                                            suffixIcon: IconButton(
+                                              icon: Icon(obscureCurrent ? Icons.visibility_off : Icons.visibility),
+                                              onPressed: () => setState(() => obscureCurrent = !obscureCurrent),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextField(
+                                          controller: newController,
+                                          obscureText: obscureNew,
+                                          decoration: InputDecoration(
+                                            labelText: 'New Password',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                                            ),
+                                            suffixIcon: IconButton(
+                                              icon: Icon(obscureNew ? Icons.visibility_off : Icons.visibility),
+                                              onPressed: () => setState(() => obscureNew = !obscureNew),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextField(
+                                          controller: confirmController,
+                                          obscureText: obscureConfirm,
+                                          decoration: InputDecoration(
+                                            labelText: 'Confirm New Password',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                                            ),
+                                            suffixIcon: IconButton(
+                                              icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility),
+                                              onPressed: () => setState(() => obscureConfirm = !obscureConfirm),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: authVm.isLoading
+                                          ? null
+                                          : () async {
+                                              final current = currentController.text;
+                                              final np = newController.text;
+                                              final cp = confirmController.text;
+                                              if (current.isEmpty || np.isEmpty || cp.isEmpty) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(duration: Duration(seconds: 3), content: Text('Please fill all password fields')),
+                                                );
+                                                return;
+                                              }
+                                              if (np.length < 6) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(duration: Duration(seconds: 3), content: Text('New password must be at least 6 characters')),
+                                                );
+                                                return;
+                                              }
+                                              if (np != cp) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(duration: Duration(seconds: 3), content: Text('New passwords do not match')),
+                                                );
+                                                return;
+                                              }
+                                              final ok = await context.read<AuthViewModel>().changePassword(currentPassword: current, newPassword: np);
+                                              if (!mounted) return;
+                                              if (ok) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(duration: Duration(seconds: 3), content: Text('Password changed successfully')),
+                                                );
+                                                Navigator.of(ctx).pop();
+                                              } else {
+                                                final msg = context.read<AuthViewModel>().errorMessage ?? 'Failed to change password';
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(duration: const Duration(seconds: 3), content: Text(msg)),
+                                                );
+                                              }
+                                            },
+                                      child: Text(
+                                        authVm.isLoading ? 'Changing...' : 'Change',
+                                        style: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           );
-                        }
-                      },
+                        },
+                ),
               ),
               const SizedBox(height: 12),
               SizedBox(

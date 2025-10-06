@@ -125,6 +125,23 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> changePassword({required String currentPassword, required String newPassword}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.changePassword(currentPassword: currentPassword, newPassword: newPassword);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteAccount() async {
     _isLoading = true;
     _errorMessage = null;
