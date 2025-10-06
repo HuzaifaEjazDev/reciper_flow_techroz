@@ -191,9 +191,9 @@ class _AdminRecipeCard extends StatelessWidget {
               minutes: data.minutes,
               ingredients: data.ingredients,
               steps: data.steps,
-              fromAdminScreen: true,
-              // Pass the filter meal type (section meal type) as string
-              mealType: filterMealType,
+              // Open with the same UI as main screen (no add in app bar,
+              // and show regular Meal Plan action)
+              fromAdminScreen: false,
               recipeId: data.id, // Pass the recipe ID
             ),
           ),
