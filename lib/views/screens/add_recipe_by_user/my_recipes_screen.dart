@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
+import 'package:recipe_app/views/screens/add_recipe_by_user/user_recipe_details_screen.dart';
 
 class MyRecipesScreen extends StatelessWidget {
   const MyRecipesScreen({super.key});
@@ -10,7 +11,7 @@ class MyRecipesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MyRecipesViewModel>(
-      create: (_) => MyRecipesViewModel()..loadFromFirestore(collection: 'recipes'),
+      create: (_) => MyRecipesViewModel()..loadFromFirestore(collection: 'RecipesCreatedByUser'),
       child: const _MyRecipesView(),
     );
   }
@@ -28,7 +29,7 @@ class _MyRecipesView extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text('My Recipes', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
+        title: const Text('User Created Recipes', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.black87),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
@@ -38,6 +39,7 @@ class _MyRecipesView extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary500,
         onPressed: () {
+          // Navigate to create new recipe screen
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const CreateNewRecipeScreen()),
           );
@@ -62,7 +64,7 @@ class _MyRecipesView extends StatelessWidget {
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
-                          backgroundColor: Color(0xFFF5F5F5),
+                          backgroundColor: Color(0xFFF5F7F9),
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                           ),
@@ -95,18 +97,33 @@ class _MyRecipesView extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(vm.error!, style: const TextStyle(color: Colors.red)),
                   ),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.68,
+                if (!vm.loading && items.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 40),
+                    child: Center(
+                      child: Text(
+                        'No recipes found.\nCreate your first recipe!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.68,
+                    ),
+                    itemBuilder: (context, index) => _RecipeCard(data: items[index]),
                   ),
-                  itemBuilder: (context, index) => _RecipeCard(data: items[index]),
-                ),
                 const SizedBox(height: 100),
               ],
             ),
@@ -127,12 +144,10 @@ class _RecipeCard extends StatelessWidget {
       height: 250,
       child: InkWell(
         onTap: () {
+          // Navigate to UserRecipeDetailsScreen instead of CreateNewRecipeScreen for viewing
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => CreateNewRecipeScreen(
-                isEdit: data.recipe != null,
-                initial: data.recipe,
-              ),
+              builder: (_) => UserRecipeDetailsScreen(recipeId: data.id),
             ),
           );
         },
@@ -220,9 +235,18 @@ class _RecipeImage extends StatelessWidget {
   const _RecipeImage({required this.pathOrUrl});
   @override
   Widget build(BuildContext context) {
-    const String fallbackUrl =
-        'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1000&q=60';
-    return Image.network(fallbackUrl, fit: BoxFit.cover);
+    // Use the asset image since all user recipes use the same static image
+    return Image.asset(
+      'assets/images/vegitables.jpg',
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to a default image if the asset fails to load
+        return Image.asset(
+          'assets/images/easymakesnack1.jpg',
+          fit: BoxFit.cover,
+        );
+      },
+    );
   }
 }
 
@@ -232,7 +256,7 @@ class _SortBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<MyRecipesViewModel>();
     return Container(
-      color: const Color(0xFFF5F5F5),
+      color: const Color(0xFFF5F7F9),
       child: Padding(
       padding: EdgeInsets.only(
         left: 16,
@@ -386,5 +410,3 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
-
-

@@ -6,22 +6,98 @@ import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/viewmodels/user/create_new_recipe_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/models/user_recipe.dart';
+import 'package:recipe_app/models/user_created_recipe.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateNewRecipeScreen extends StatelessWidget {
   final bool isEdit;
+  final String? recipeId;
   final UserRecipe? initial;
-  const CreateNewRecipeScreen({super.key, this.isEdit = false, this.initial});
+  const CreateNewRecipeScreen({super.key, this.isEdit = false, this.recipeId, this.initial});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<CreateNewRecipeViewModel>(
       create: (_) {
         final vm = CreateNewRecipeViewModel();
-        vm.prefillFrom(initial);
+        // Set recipe ID for editing if provided
+        if (recipeId != null) {
+          vm.setRecipeId(recipeId!);
+        }
+        if (initial != null) {
+          vm.prefillFrom(initial);
+        } else if (isEdit && recipeId != null) {
+          // Load recipe data for editing
+          _loadRecipeForEditing(recipeId!, vm);
+        }
         return vm;
       },
       child: _CreateRecipeView(isEdit: isEdit),
     );
+  }
+
+  // Load recipe data for editing
+  Future<void> _loadRecipeForEditing(String recipeId, CreateNewRecipeViewModel vm) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .doc(recipeId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        vm.titleController.text = data['title'] ?? '';
+        // Load minutes
+        vm.minutesController.text = (data['minutes'] is int ? data['minutes'] : 0).toString();
+        
+        // Clear existing controllers
+        for (final controller in vm.qtyControllers) controller.dispose();
+        for (final controller in vm.nameControllers) controller.dispose();
+        for (final controller in vm.stepControllers) controller.dispose();
+        vm.qtyControllers.clear();
+        vm.nameControllers.clear();
+        vm.stepControllers.clear();
+        
+        // Load ingredients
+        if (data['ingredients'] is List) {
+          final List<dynamic> ingredients = data['ingredients'];
+          for (final ingredient in ingredients) {
+            if (ingredient is Map<String, dynamic>) {
+              vm.addIngredient(
+                quantity: ingredient['quantity']?.toString() ?? '',
+                name: ingredient['name']?.toString() ?? '',
+              );
+            }
+          }
+        }
+        
+        // Ensure at least one ingredient row
+        if (vm.qtyControllers.isEmpty) {
+          vm.addIngredient();
+        }
+        
+        // Load steps
+        if (data['steps'] is List) {
+          final List<String> steps = List<String>.from(data['steps']);
+          for (final step in steps) {
+            vm.addStep(text: step);
+          }
+        }
+        
+        // Ensure at least one step
+        if (vm.stepControllers.isEmpty) {
+          vm.addStep();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading recipe for editing: $e');
+    }
   }
 }
 
@@ -72,6 +148,24 @@ class _CreateRecipeView extends StatelessWidget {
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary500)),
                 ),
               ),
+              const SizedBox(height: 16),
+              // Add Time input field
+              const Text('Cooking Time (minutes)', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: vm.minutesController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: "Enter cooking time in minutes",
+                  hintStyle: const TextStyle(color: Colors.black45),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary500)),
+                ),
+              ),
               const SizedBox(height: 20),
               const Text('Ingredients', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Colors.black87)),
               const SizedBox(height: 12),
@@ -113,24 +207,22 @@ class _CreateRecipeView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    final recipe = vm.buildRecipe();
-                    final String title = recipe.title.isEmpty ? 'Untitled Recipe' : recipe.title;
-                    // Save to MyRecipesViewModel if available up the tree
-                    try {
-                      final myVm = context.read<MyRecipesViewModel>();
-                      myVm.add(MyRecipeCardData(
-                        title: title,
-                        imageAssetPath: recipe.imagePath ?? 'assets/images/easymakesnack1.jpg',
-                        ingredientsCount: recipe.ingredients.length,
-                        stepsCount: recipe.steps.length,
-                        recipe: recipe,
-                      ));
-                    } catch (_) {}
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Saved: '+title)),
-                    );
-                    Navigator.of(context).maybePop();
+                  onPressed: () async {
+                    // Save to Firestore
+                    final bool success = await vm.saveRecipeToFirestore();
+                    if (success) {
+                      // Show success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Recipe saved successfully!')),
+                      );
+                      // Navigate back
+                      Navigator.of(context).maybePop();
+                    } else {
+                      // Show error message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to save recipe. Please try again.')),
+                      );
+                    }
                   },
                   child: const Text('Save Recipe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 ),
@@ -185,8 +277,9 @@ class _ImagePickerCard extends StatelessWidget {
                 : Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.file(
-                        File(vm.imagePath!),
+                      // Even if user selects an image, we'll use the static image for all recipes
+                      Image.asset(
+                        'assets/images/vegitables.jpg',
                         fit: BoxFit.cover,
                       ),
                       Positioned(
@@ -217,6 +310,15 @@ class _IngredientRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Display index number for the ingredient (starting from 1 instead of 0)
+        SizedBox(
+          width: 30,
+          child: Text(
+            '${index + 1}.',
+            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+          ),
+        ),
+        const SizedBox(width: 8),
         Expanded(
           child: Container(
             margin: const EdgeInsets.only(bottom: 12, right: 8),
@@ -228,7 +330,11 @@ class _IngredientRow extends StatelessWidget {
             ),
             child: TextField(
               controller: vm.qtyControllers[index],
-              decoration: const InputDecoration(border: InputBorder.none, hintText: '1 cup', hintStyle: TextStyle(color: Colors.black45)),
+              decoration: const InputDecoration(
+                border: InputBorder.none, 
+                hintText: 'Quantity', 
+                hintStyle: TextStyle(color: Colors.black45)
+              ),
             ),
           ),
         ),
@@ -244,7 +350,11 @@ class _IngredientRow extends StatelessWidget {
             ),
             child: TextField(
               controller: vm.nameControllers[index],
-              decoration: const InputDecoration(border: InputBorder.none, hintText: 'Flour', hintStyle: TextStyle(color: Colors.black45)),
+              decoration: const InputDecoration(
+                border: InputBorder.none, 
+                hintText: 'Ingredient name', 
+                hintStyle: TextStyle(color: Colors.black45)
+              ),
             ),
           ),
         ),
@@ -279,7 +389,13 @@ class _StepTile extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 24, child: Text((index + 1).toString()+'.', style: const TextStyle(color: Colors.black87))),
+        SizedBox(
+          width: 24, 
+          child: Text(
+            '${index + 1}.',
+            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500)
+          )
+        ),
         Expanded(
           child: Container(
             margin: const EdgeInsets.only(bottom: 12, right: 8),
@@ -292,7 +408,11 @@ class _StepTile extends StatelessWidget {
             child: TextField(
               controller: vm.stepControllers[index],
               maxLines: null,
-              decoration: const InputDecoration(border: InputBorder.none, hintText: 'Write step here...', hintStyle: TextStyle(color: Colors.black45)),
+              decoration: const InputDecoration(
+                border: InputBorder.none, 
+                hintText: 'Write step here...', 
+                hintStyle: TextStyle(color: Colors.black45)
+              ),
             ),
           ),
         ),
@@ -393,5 +513,3 @@ class _DashedRRectPainter extends CustomPainter {
         oldDelegate.gapLength != gapLength;
   }
 }
-
-

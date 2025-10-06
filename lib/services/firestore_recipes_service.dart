@@ -387,4 +387,39 @@ class FirestoreRecipesService {
     ];
     return '${date.day} ${months[date.month - 1]}';
   }
+
+  // Save a user-created recipe to the RecipesCreatedByUser sub-collection
+  Future<String> saveUserCreatedRecipe({
+    required String title,
+    required List<Map<String, dynamic>> ingredients,
+    required List<String> steps,
+    int minutes = 0, // Add minutes parameter
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> userRecipesRef =
+          _firestore.collection('users').doc(user.uid).collection('RecipesCreatedByUser');
+      
+      // Create the recipe data
+      final Map<String, dynamic> recipeData = {
+        'title': title,
+        'imageUrl': 'assets/images/vegitables.jpg',
+        'ingredients': ingredients,
+        'steps': steps,
+        'minutes': minutes, // Add minutes to recipe data
+        'createdAt': Timestamp.fromDate(DateTime.now()),
+        'userId': user.uid,
+      };
+
+      // Add the document and get the ID
+      final DocumentReference<Map<String, dynamic>> docRef = await userRecipesRef.add(recipeData);
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Error saving user-created recipe: $e');
+    }
+  }
 }

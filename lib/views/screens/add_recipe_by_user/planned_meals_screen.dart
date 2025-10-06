@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
+import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart'; // Import MyRecipesScreen
 
 class PlannedMealsScreen extends StatefulWidget {
   const PlannedMealsScreen({super.key});
@@ -98,6 +99,18 @@ class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
         centerTitle: true,
         title: const Text('Planned Meals', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.black87),
+        actions: [
+          // Add a button to navigate to My Recipes screen
+          IconButton(
+            icon: const Icon(Icons.book_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MyRecipesScreen()), // Fixed: Removed const
+              );
+            },
+            tooltip: 'My Recipes',
+          ),
+        ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
@@ -120,10 +133,29 @@ class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
             final Map<String, List<PlannedMeal>> groupedMeals = snapshot.data ?? {};
             
             if (groupedMeals.isEmpty) {
-              return const Center(
-                child: Text(
-                  'No planned meals found',
-                  style: TextStyle(color: Colors.black54, fontSize: 16),
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'No planned meals found',
+                      style: TextStyle(color: Colors.black54, fontSize: 16),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Create your own recipes and plan meals!',
+                      style: TextStyle(color: Colors.black54, fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const MyRecipesScreen()), // Fixed: Removed const
+                        );
+                      },
+                      child: const Text('View My Recipes'),
+                    ),
+                  ],
                 ),
               );
             }
