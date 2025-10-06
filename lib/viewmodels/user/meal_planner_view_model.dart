@@ -82,7 +82,7 @@ class MealPlannerViewModel extends ChangeNotifier {
             id: plannedMeal.uniqueId,
             type: plannedMeal.mealType,
             title: plannedMeal.recipeTitle,
-            minutes: 0, // Not stored in new schema, using default
+            minutes: plannedMeal.minutes, // Use minutes from PlannedMeal
             imageAssetPath: plannedMeal.recipeImage,
             time: plannedMeal.timeForRecipe,
             people: plannedMeal.persons,
@@ -173,6 +173,7 @@ class MealPlannerViewModel extends ChangeNotifier {
         recipeImage: meal.imageAssetPath,
         mealType: meal.type,
         createdAt: DateTime.now(),
+        minutes: meal.minutes ?? 0, // Add minutes
       );
       
       debugPrint('Created PlannedMeal with ingredients: ${plannedMeal.ingredients}');

@@ -323,6 +323,28 @@ class FirestoreRecipesService {
     }
   }
 
+  // Get all planned meals (for "Show All" functionality)
+  Future<List<PlannedMeal>> getAllPlannedMeals() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final CollectionReference<Map<String, dynamic>> plannedMealsRef =
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+      
+      // Query all meals
+      final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef.get();
+      
+      return mealsSnapshot.docs.map((doc) {
+        return PlannedMeal.fromFirestore(doc.data(), doc.id);
+      }).toList();
+    } catch (e) {
+      throw Exception('Error fetching all planned meals: $e');
+    }
+  }
+
   // Delete a planned meal
   Future<void> deletePlannedMeal(String mealId) async {
     final User? user = FirebaseAuth.instance.currentUser;

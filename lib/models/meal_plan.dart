@@ -83,6 +83,7 @@ class PlannedMeal {
   final String recipeImage; // Static image for all recipe data
   final String mealType; // breakfast, lunch, dinner, etc. - stored as field
   final DateTime createdAt;
+  final int minutes; // Add minutes field
 
   const PlannedMeal({
     required this.uniqueId,
@@ -95,6 +96,7 @@ class PlannedMeal {
     required this.recipeImage,
     required this.mealType,
     required this.createdAt,
+    required this.minutes, // Add minutes parameter
   });
 
   factory PlannedMeal.fromFirestore(Map<String, dynamic> data, String documentId) {
@@ -109,6 +111,7 @@ class PlannedMeal {
       recipeImage: data['recipeImage']?.toString() ?? 'assets/images/dish/dish1.jpg',
       mealType: data['mealType']?.toString() ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
+      minutes: data['minutes'] as int? ?? 0, // Add minutes from Firestore
     );
   }
 
@@ -123,6 +126,7 @@ class PlannedMeal {
       'recipeImage': recipeImage,
       'mealType': mealType,
       'createdAt': Timestamp.fromDate(createdAt),
+      'minutes': minutes, // Add minutes to Firestore
     };
   }
 
@@ -137,6 +141,7 @@ class PlannedMeal {
     String? recipeImage,
     String? mealType,
     DateTime? createdAt,
+    int? minutes, // Add minutes parameter
   }) {
     return PlannedMeal(
       uniqueId: uniqueId ?? this.uniqueId,
@@ -149,6 +154,7 @@ class PlannedMeal {
       recipeImage: recipeImage ?? this.recipeImage,
       mealType: mealType ?? this.mealType,
       createdAt: createdAt ?? this.createdAt,
+      minutes: minutes ?? this.minutes, // Add minutes parameter
     );
   }
 }

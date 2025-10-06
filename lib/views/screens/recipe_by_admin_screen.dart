@@ -7,21 +7,23 @@ import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 class RecipeByAdminScreen extends StatelessWidget {
   final String? filterMealType;
   final bool autoApplyFilter;
-  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false});
+  final bool allowMealPlanSelection; // true when launched from Meal Planner
+  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false, this.allowMealPlanSelection = false});
 
   @override
   Widget build(BuildContext context) {
     debugPrint('RecipeByAdminScreen building with filterMealType: $filterMealType, autoApplyFilter: $autoApplyFilter');
     return ChangeNotifierProvider<AdminRecipesViewModel>(
       create: (_) => AdminRecipesViewModel()..loadInitial()..loadSortOptions()..setFilterMealType(filterMealType, autoApply: autoApplyFilter),
-      child: _RecipeByAdminView(filterMealType: filterMealType),
+      child: _RecipeByAdminView(filterMealType: filterMealType, allowMealPlanSelection: allowMealPlanSelection),
     );
   }
 }
 
 class _RecipeByAdminView extends StatelessWidget {
   final String? filterMealType;
-  const _RecipeByAdminView({this.filterMealType});
+  final bool allowMealPlanSelection;
+  const _RecipeByAdminView({this.filterMealType, this.allowMealPlanSelection = false});
   
   @override
   Widget build(BuildContext context) {
@@ -151,7 +153,7 @@ class _RecipeByAdminView extends StatelessWidget {
                         ),
                         itemBuilder: (context, index) {
                           final r = items[index];
-                          return _AdminRecipeCard(data: r, filterMealType: filterMealType);
+                          return _AdminRecipeCard(data: r, filterMealType: filterMealType, allowMealPlanSelection: allowMealPlanSelection);
                         },
                       ),
                       const SizedBox(height: 12),
@@ -172,7 +174,8 @@ class _RecipeByAdminView extends StatelessWidget {
 class _AdminRecipeCard extends StatelessWidget {
   final AdminRecipeCardData data;
   final String? filterMealType;
-  const _AdminRecipeCard({required this.data, this.filterMealType});
+  final bool allowMealPlanSelection;
+  const _AdminRecipeCard({required this.data, this.filterMealType, this.allowMealPlanSelection = false});
 
   @override
   Widget build(BuildContext context) {
@@ -191,9 +194,9 @@ class _AdminRecipeCard extends StatelessWidget {
               minutes: data.minutes,
               ingredients: data.ingredients,
               steps: data.steps,
-              // Open with the same UI as main screen (no add in app bar,
-              // and show regular Meal Plan action)
-              fromAdminScreen: false,
+              // Show meal plan selection UI only when launched from Meal Planner
+              fromAdminScreen: allowMealPlanSelection,
+              mealType: allowMealPlanSelection ? filterMealType : null,
               recipeId: data.id, // Pass the recipe ID
             ),
           ),

@@ -460,7 +460,7 @@ class _AddMealButton extends StatelessWidget {
           if (navigateToAdmin) {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => RecipeByAdminScreen(filterMealType: filterMealType, autoApplyFilter: true), // Set autoApplyFilter to true
+                builder: (_) => RecipeByAdminScreen(filterMealType: filterMealType, autoApplyFilter: true, allowMealPlanSelection: true), // Set flags for admin-from-meal-planner flow
               ),
             ).then((result) {
               debugPrint('Received result from RecipeByAdminScreen: $result');
