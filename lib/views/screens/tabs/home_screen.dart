@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:recipe_app/views/screens/recipe_by_admin_screen.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/models/dish.dart';
@@ -62,14 +63,66 @@ class HomeScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 scrollDirection: Axis.horizontal,
-                children: const [
-                  _CategoryBox(icon: Icons.free_breakfast_outlined, label: 'Breakfast'),
-                  SizedBox(width: 12),
-                  _CategoryBox(icon: Icons.lunch_dining_outlined, label: 'Lunch'),
-                  SizedBox(width: 12),
-                  _CategoryBox(icon: Icons.home_outlined, label: 'Dinner'),
-                  SizedBox(width: 12),
-                  _CategoryBox(icon: Icons.star_border_outlined, label: 'Desserts'),
+                children: [
+                  _CategoryBox(
+                    icon: Icons.free_breakfast_outlined,
+                    label: 'Breakfast',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RecipeByAdminScreen(
+                            filterMealType: 'Breakfast',
+                            autoApplyFilter: true,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  _CategoryBox(
+                    icon: Icons.lunch_dining_outlined,
+                    label: 'Lunch',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RecipeByAdminScreen(
+                            filterMealType: 'Lunch',
+                            autoApplyFilter: true,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  _CategoryBox(
+                    icon: Icons.home_outlined,
+                    label: 'Dinner',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RecipeByAdminScreen(
+                            filterMealType: 'Dinner',
+                            autoApplyFilter: true,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  _CategoryBox(
+                    icon: Icons.star_border_outlined,
+                    label: 'Desserts',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RecipeByAdminScreen(
+                            filterMealType: 'Desserts',
+                            autoApplyFilter: true,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -166,7 +219,7 @@ class _SmallDishCard extends StatelessWidget {
             builder: (_) => RecipeDetailsScreen(
               title: title,
               imageAssetPath: imageAssetPath,
-              recipeId: title.toLowerCase().replaceAll(' ', '_'), // Generate a simple ID from the title
+              recipeId: title.toLowerCase().replaceAll(' ', '_'),
             ),
           ),
         );
@@ -256,7 +309,7 @@ class _DishCard extends StatelessWidget {
               title: dish.title,
               imageAssetPath: dish.imageAssetPath,
               minutes: dish.minutes,
-              recipeId: dish.id, // Use the dish ID
+              recipeId: dish.id,
             ),
           ),
         );
@@ -360,30 +413,34 @@ class _DishCard extends StatelessWidget {
 class _CategoryBox extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _CategoryBox({required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _CategoryBox({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 90,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 2),
-          Icon(icon, color: Colors.deepOrange),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black87),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 90,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 2),
+            Icon(icon, color: Colors.deepOrange),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black87),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
