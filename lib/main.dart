@@ -5,6 +5,7 @@ import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
+import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()..loadInitial()),
         ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()),
         ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
+        ChangeNotifierProvider<GroceriesViewModel>(create: (_) => GroceriesViewModel()),
       ],
       child: MaterialApp(
       title: 'Recipe App',

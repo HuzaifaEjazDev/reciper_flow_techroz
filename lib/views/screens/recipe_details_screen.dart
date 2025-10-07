@@ -65,6 +65,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       title: widget.title,
                       imageUrl: widget.imageAssetPath,
                       minutes: widget.minutes ?? 0,
+                      onGroceriesTap: () => _showGroceryDialog(context),
                     ),
                     const SizedBox(height: 16),
                     Padding(
@@ -227,6 +228,90 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       },
     );
   }
+
+  Future<void> _showGroceryDialog(BuildContext context) async {
+    int servings = 1;
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text('Add to Groceries'),
+          content: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Servings'),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => setDialogState(() { if (servings > 1) servings--; }),
+                      ),
+                      Text('$servings', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => setDialogState(() { servings++; }),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final service = FirestoreRecipesService();
+                final String dateKey = service.formatDateKey(DateTime.now());
+                final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
+                if (widget.ingredients != null) {
+                  for (final s in widget.ingredients!) {
+                    final map = _parseIngredientToMap(s);
+                    ingMaps.add({...map, 'isChecked': false});
+                  }
+                }
+                await service.saveGroceryRecipe(
+                  title: widget.title,
+                  imageUrl: widget.imageAssetPath,
+                  minutes: widget.minutes ?? 0,
+                  dateKey: dateKey,
+                  servings: servings,
+                  ingredients: ingMaps,
+                );
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, dynamic> _parseIngredientToMap(String s) {
+    final String trimmed = s.trim();
+    if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
+    final int firstSpace = trimmed.indexOf(' ');
+    if (firstSpace == -1) return {'name': trimmed, 'quantity': ''};
+    final String firstToken = trimmed.substring(0, firstSpace);
+    final String rest = trimmed.substring(firstSpace + 1);
+    final double? qty = double.tryParse(firstToken);
+    if (qty == null) {
+      return {'name': trimmed, 'quantity': ''};
+    }
+    return {'name': rest, 'quantity': firstToken};
+  }
 }
 
 class _HeroImage extends StatelessWidget {
@@ -294,7 +379,8 @@ class _ActionRow extends StatelessWidget {
   final String title;
   final String imageUrl;
   final int minutes;
-  const _ActionRow({required this.onMealPlanTap, this.fromAdminScreen = false, required this.recipeId, required this.title, required this.imageUrl, required this.minutes});
+  final VoidCallback? onGroceriesTap;
+  const _ActionRow({required this.onMealPlanTap, this.fromAdminScreen = false, required this.recipeId, required this.title, required this.imageUrl, required this.minutes, this.onGroceriesTap});
 
   @override
   Widget build(BuildContext context) {
@@ -309,11 +395,72 @@ class _ActionRow extends StatelessWidget {
                 label: 'Meal Plan',
                 onTap: onMealPlanTap,
               ),
-              const _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries'),
+              _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries', onTap: onGroceriesTap),
               const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
               const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
             ],
           ),
+    );
+  }
+
+  static Future<void> _showGroceryDialogStatic(BuildContext context, String title, String imageUrl, int minutes) async {
+    int servings = 1;
+    final service = FirestoreRecipesService();
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text('Add to Groceries'),
+          content: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Servings'),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => setDialogState(() { if (servings > 1) servings--; }),
+                      ),
+                      Text('$servings', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => setDialogState(() { servings++; }),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final String dateKey = service.formatDateKey(DateTime.now());
+                // No direct access to ingredients here; rely on outer widget via InheritedWidget if needed.
+                await service.saveGroceryRecipe(
+                  title: title,
+                  imageUrl: imageUrl,
+                  minutes: minutes,
+                  dateKey: dateKey,
+                  servings: servings,
+                  ingredients: const <Map<String, dynamic>>[],
+                );
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

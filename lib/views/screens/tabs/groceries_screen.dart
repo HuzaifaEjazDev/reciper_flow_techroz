@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:recipe_app/services/firestore_recipes_service.dart';
+import 'package:provider/provider.dart';
+import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
-
-// Helper class to hold parsed ingredient information
-// Removed ingredient parsing and meal planner coupling
 
 class GroceriesScreen extends StatefulWidget {
   const GroceriesScreen({super.key});
@@ -15,15 +13,6 @@ class GroceriesScreen extends StatefulWidget {
 }
 
 class _GroceriesScreenState extends State<GroceriesScreen> {
-  bool _showAll = false; // Track if "Show All" is selected
-  final Set<String> _hiddenRecipes = <String>{}; // Track recipes hidden from grocery list
-
-  @override
-  void initState() {
-    super.initState();
-    // No coupling with Meal Planner
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -37,17 +26,25 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
 
             _buildRecipesHeader(context),
             const SizedBox(height: 10),
-            _showAll 
-              ? _buildAllRecipeCardsRow(context) 
-              : _buildRecipeCardsRow(context),
+            Consumer<GroceriesViewModel>(
+              builder: (context, viewModel, child) {
+                return viewModel.showAll 
+                  ? _buildAllRecipeCardsRow(context) 
+                  : _buildRecipeCardsRow(context);
+              }
+            ),
 
             const SizedBox(height: 20),
             _buildSortRow(),
 
             const SizedBox(height: 10),
-            _showAll 
-              ? _buildAllGroceryItems(context) 
-              : _buildGroceryItemsFromPlannedMeals(context),
+            Consumer<GroceriesViewModel>(
+              builder: (context, viewModel, child) {
+                return viewModel.showAll 
+                  ? _buildAllGroceryItems(context) 
+                  : _buildGroceryItemsFromPlannedMeals(context);
+              }
+            ),
             const SizedBox(height: 10),
           ],
         ),
@@ -88,54 +85,93 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
           ),
         ),
-        const SizedBox.shrink(),
+        TextButton.icon(
+          onPressed: () {
+            final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+            viewModel.toggleShowAll(true);
+          },
+          style: TextButton.styleFrom(foregroundColor: Colors.black87),
+          icon: const Text('All Groceries', style: TextStyle(fontWeight: FontWeight.w600)),
+          label: const Icon(CupertinoIcons.chevron_right, color: Colors.black87),
+        )
       ],
     );
   }
 
   Widget _buildRecipeCardsRow(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Groceries are managed separately from Meal Planner.',
-            style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
+        }
+        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+        if (recipes.isEmpty) {
+          return const Row(
+            children: [
+              Expanded(child: Text('No groceries for selected date', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
+            ],
+          );
+        }
+        return SizedBox(
+          height: 180,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: recipes.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              final r = recipes[i];
+              final String title = (r['title'] ?? '').toString();
+              final String image = (r['imageUrl'] ?? '').toString();
+              final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
+              return SizedBox(
+                width: 160,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 108,
+                        child: image.startsWith('http')
+                            ? Image.network(image, fit: BoxFit.cover)
+                            : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 6),
+                              Row(children: [
+                                const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                const SizedBox(width: 6),
+                                Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        ),
-      ],
+        );
+      },
     );
   }
-
-  // Method to hide a recipe from the grocery list display
-  void _hideRecipe(String recipeId) {
-    setState(() {
-      _hiddenRecipes.add(recipeId);
-    });
-    
-    // Also remove the recipe from Firestore
-    _removeRecipeFromFirestore(recipeId);
-  }
-  
-  // Method to remove a recipe from Firestore
-  Future<void> _removeRecipeFromFirestore(String recipeId) async {
-    try {
-      final service = FirestoreRecipesService();
-      await service.deletePlannedMeal(recipeId);
-      debugPrint('Successfully removed recipe $recipeId from Firestore');
-    } catch (e) {
-      debugPrint('Error removing recipe $recipeId from Firestore: $e');
-      // If there's an error, remove it from the hidden recipes set so it shows again
-      setState(() {
-        _hiddenRecipes.remove(recipeId);
-      });
-      // Show an error message to the user
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error removing recipe. Please try again.')),
-      );
-    }
-  }
-
-  // Old subcollection-based fetch removed in favor of new schema methods
 
   Widget _buildSortRow() {
     final List<DateTime> nextSeven = List<DateTime>.generate(7, (i) {
@@ -146,23 +182,30 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        // Clear All button at start position
+        TextButton(
+          onPressed: () {
+            _showClearAllDialog(context);
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.red,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: const Text('Clear All', style: TextStyle(fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(width: 8),
         const Text('Sort by: ', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         const SizedBox(width: 8),
         PopupMenuButton<Object>(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           color: Colors.white,
           onSelected: (value) {
+            final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
             if (value is DateTime) {
-              setState(() {
-                _showAll = false; // Disable "Show All" mode
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(duration: Duration(seconds: 2), content: Text('No groceries filtering by date')),
-              );
+              viewModel.toggleShowAll(false); // Disable "Show All" mode
+              viewModel.setSelectedDateKey(viewModel.service.formatDateKey(value));
             } else if (value is String && value == 'show_all') {
-              setState(() {
-                _showAll = true; // Enable "Show All" mode
-              });
+              viewModel.toggleShowAll(true); // Enable "Show All" mode
             }
           },
           itemBuilder: (ctx) => [
@@ -189,24 +232,28 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
               );
             }),
           ],
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  _showAll ? 'Show All' : 'Dates', 
-                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)
+          child: Consumer<GroceriesViewModel>(
+            builder: (context, viewModel, child) {
+              return Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
                 ),
-                const SizedBox(width: 6),
-                const Icon(Icons.keyboard_arrow_down, color: Colors.black87),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    Text(
+                      viewModel.showAll ? 'Show All' : viewModel.selectedDateKey, 
+                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.keyboard_arrow_down, color: Colors.black87),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -233,181 +280,380 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     }
   }
 
-  bool _isSameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+  /// Scales ingredient quantity based on servings
+  /// If quantity is a number, multiply it by servings
+  /// If quantity contains fractions or mixed numbers, parse and scale accordingly
+  String _scaleIngredientQuantity(String quantity, int servings) {
+    if (quantity.isEmpty || servings <= 1) return quantity;
+    
+    // Try to parse the quantity as a number
+    final double? qty = _parseQuantity(quantity);
+    if (qty == null) return quantity;
+    
+    // Scale the quantity
+    final double scaled = qty * servings;
+    
+    // Format the result nicely
+    if (scaled == scaled.toInt()) {
+      return scaled.toInt().toString();
+    } else {
+      // Round to 1 decimal place
+      final String result = scaled.toStringAsFixed(1);
+      // Remove trailing zero if it's .0
+      if (result.endsWith('.0')) {
+        return result.substring(0, result.length - 2);
+      }
+      return result;
+    }
+  }
+  
+  /// Parses quantity string to extract numeric value
+  /// Handles simple numbers, fractions, and mixed numbers
+  double? _parseQuantity(String quantity) {
+    final String trimmed = quantity.trim();
+    if (trimmed.isEmpty) return null;
+    
+    // Handle simple decimal or integer
+    final double? simple = double.tryParse(trimmed);
+    if (simple != null) return simple;
+    
+    // Handle fractions (e.g., "1/2")
+    if (trimmed.contains('/')) {
+      final List<String> parts = trimmed.split('/');
+      if (parts.length == 2) {
+        final double? numerator = double.tryParse(parts[0]);
+        final double? denominator = double.tryParse(parts[1]);
+        if (numerator != null && denominator != null && denominator != 0) {
+          return numerator / denominator;
+        }
+      }
+    }
+    
+    // Handle mixed numbers (e.g., "1 1/2")
+    if (trimmed.contains(' ')) {
+      final List<String> parts = trimmed.split(' ');
+      if (parts.length == 2) {
+        final double? whole = double.tryParse(parts[0]);
+        if (whole != null) {
+          final double? fraction = _parseQuantity(parts[1]);
+          if (fraction != null) {
+            return whole + fraction;
+          }
+        }
+      }
+    }
+    
+    return null;
   }
 
   Widget _buildGroceryItemsFromPlannedMeals(BuildContext context) {
-    return const Center(
-      child: Text(
-        'No groceries yet. Use the Groceries feature (separate from Meal Planner).',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
-      ),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+        if (recipes.isEmpty) {
+          return const Center(
+            child: Text('No groceries for selected date', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: recipes.map((r) {
+            final String recipeId = (r['id'] ?? '').toString();
+            final String title = (r['title'] ?? '').toString();
+            final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
+            final int servings = r['servings'] is int ? r['servings'] as int : 1;
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: ExpansionTile(
+                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                children: [
+                  ...List<Widget>.generate(ingredients.length, (i) {
+                    final dynamic item = ingredients[i];
+                    final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
+                    final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
+                    final String scaledQty = _scaleIngredientQuantity(qty, servings);
+                    // Use ViewModel to get checkbox state
+                    final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                    final bool checked = viewModel.getCheckboxState(recipeId, i) ?? false;
+                    return InkWell(
+                      onTap: () async {
+                        final newValue = !checked;
+                        // Update local state immediately for instant UI feedback
+                        viewModel.updateCheckboxState(recipeId, i, newValue);
+                        // Update database in background
+                        await viewModel.toggleGroceryIngredientChecked(
+                          groceryId: recipeId, 
+                          ingredientIndex: i, 
+                          isChecked: newValue
+                        );
+                      },
+                      child: Container(
+                        color: checked ? Colors.grey.shade100 : Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: checked,
+                              onChanged: (v) async {
+                                final newValue = v ?? false;
+                                // Update local state immediately for instant UI feedback
+                                viewModel.updateCheckboxState(recipeId, i, newValue);
+                                // Update database in background
+                                await viewModel.toggleGroceryIngredientChecked(
+                                  groceryId: recipeId, 
+                                  ingredientIndex: i, 
+                                  isChecked: newValue
+                                );
+                              },
+                            ),
+                            Expanded(
+                              child: Text(
+                                scaledQty.isEmpty ? name : '$scaledQty $name',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
   Widget _buildAllRecipeCardsRow(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Groceries are managed separately from Meal Planner.',
-            style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
+        }
+        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+        if (recipes.isEmpty) {
+          return const Row(
+            children: [
+              Expanded(child: Text('No groceries yet', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
+            ],
+          );
+        }
+        return SizedBox(
+          height: 180,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: recipes.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              final r = recipes[i];
+              final String title = (r['title'] ?? '').toString();
+              final String image = (r['imageUrl'] ?? '').toString();
+              final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
+              return SizedBox(
+                width: 160,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 108,
+                        child: image.startsWith('http')
+                            ? Image.network(image, fit: BoxFit.cover)
+                            : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 6),
+                              Row(children: [
+                                const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                const SizedBox(width: 6),
+                                Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildAllGroceryItems(BuildContext context) {
-    return const Center(
-      child: Text(
-        'No groceries yet. Use the Groceries feature (separate from Meal Planner).',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
-      ),
-    );
-  }
-
-  // Removed fetchAllGroceryItems
-}
-
-// Removed grocery item aggregation model
-
-class _SectionTitle extends StatelessWidget {
-  final IconData icon; // ignored (kept for call sites)
-  final String text;
-  const _SectionTitle({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-    );
-  }
-}
-
-class _RecipeCard extends StatelessWidget {
-  final String title;
-  final String imagePath;
-  final MealEntry mealEntry;
-  final VoidCallback? onRemove; // Add onRemove callback
-  
-  const _RecipeCard({
-    required this.title, 
-    required this.imagePath, 
-    required this.mealEntry,
-    this.onRemove, // Add onRemove parameter
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const double cardHeight = 240;
-    return Container(
-      height: cardHeight,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // Image takes top 65%
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: cardHeight * 0.65,
-            child: imagePath.startsWith('http')
-                ? Image.network(
-                    imagePath,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const ColoredBox(color: Color(0xFFE5E7EB)),
-                  )
-                : Image.asset(
-                    imagePath,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const ColoredBox(color: Color(0xFFE5E7EB)),
-                  ),
-          ),
-          // Close chip on image
-          Positioned(
-            right: 8,
-            top: 8,
-            child: GestureDetector(
-              onTap: onRemove, // Add onTap handler
-              child: Container(
-                width: 26,
-                height: 26,
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: const Icon(Icons.close, size: 16, color: Colors.black87),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+        if (recipes.isEmpty) {
+          return const Center(
+            child: Text('No groceries yet. Use the Groceries feature (separate from Meal Planner).', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: recipes.map((r) {
+            final String recipeId = (r['id'] ?? '').toString();
+            final String title = (r['title'] ?? '').toString();
+            final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
+            final int servings = r['servings'] is int ? r['servings'] as int : 1;
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
-            ),
-          ),
-          // Bottom white section (35%) with title above and View Recipe below
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: -10,
-            height: cardHeight * 0.43,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: ExpansionTile(
+                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
                 children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (mealEntry.people != null)
-                    Text(
-                      '${mealEntry.people} ${mealEntry.people == 1 ? 'person' : 'persons'}',
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
-                    ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: Colors.deepOrange, padding: EdgeInsets.zero),
-                    onPressed: () {
-                      // Navigate to recipe details screen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RecipeDetailsScreen(
-                            title: mealEntry.title,
-                            imageAssetPath: mealEntry.imageAssetPath,
-                            minutes: mealEntry.minutes,
-                            ingredients: mealEntry.ingredients,
-                            steps: mealEntry.instructions, // Using instructions as steps
-                            fromAdminScreen: false,
-                            recipeId: mealEntry.id,
-                          ),
+                  ...List<Widget>.generate(ingredients.length, (i) {
+                    final dynamic item = ingredients[i];
+                    final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
+                    final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
+                    final String scaledQty = _scaleIngredientQuantity(qty, servings);
+                    // Use ViewModel to get checkbox state
+                    final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                    final bool checked = viewModel.getCheckboxState(recipeId, i) ?? false;
+                    return InkWell(
+                      onTap: () async {
+                        final newValue = !checked;
+                        // Update local state immediately for instant UI feedback
+                        viewModel.updateCheckboxState(recipeId, i, newValue);
+                        // Update database in background
+                        await viewModel.toggleGroceryIngredientChecked(
+                          groceryId: recipeId, 
+                          ingredientIndex: i, 
+                          isChecked: newValue
+                        );
+                      },
+                      child: Container(
+                        color: checked ? Colors.grey.shade100 : Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: checked,
+                              onChanged: (v) async {
+                                final newValue = v ?? false;
+                                // Update local state immediately for instant UI feedback
+                                viewModel.updateCheckboxState(recipeId, i, newValue);
+                                // Update database in background
+                                await viewModel.toggleGroceryIngredientChecked(
+                                  groceryId: recipeId, 
+                                  ingredientIndex: i, 
+                                  isChecked: newValue
+                                );
+                              },
+                            ),
+                            Expanded(
+                              child: Text(
+                                scaledQty.isEmpty ? name : '$scaledQty $name',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                    icon: const Text('View Recipe', style: TextStyle(fontWeight: FontWeight.w700)),
-                    label: const Icon(CupertinoIcons.chevron_right),
-                  ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 4),
                 ],
               ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  // Show confirmation dialog for Clear All
+  void _showClearAllDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear All Ingredients'),
+          content: const Text('Are you sure you want to clear all checked ingredients? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text('Cancel'),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                try {
+                  await viewModel.clearAllCheckedIngredients();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('All checked ingredients have been removed')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Error removing ingredients')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Clear All', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

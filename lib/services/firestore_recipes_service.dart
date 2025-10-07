@@ -424,6 +424,102 @@ class FirestoreRecipesService {
   }
 
   // ===================
+  // GroceryRecipes (per user)
+  // ===================
+
+  Future<String> saveGroceryRecipe({
+    required String title,
+    required String imageUrl,
+    int minutes = 0,
+    required String dateKey, // e.g., formatDateKey(DateTime.now())
+    required int servings,
+    required List<Map<String, dynamic>> ingredients, // [{name, quantity, isChecked:false}]
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    final CollectionReference<Map<String, dynamic>> col = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('GroceryRecipes');
+    final DocumentReference<Map<String, dynamic>> docRef = col.doc();
+    await docRef.set({
+      'title': title,
+      'imageUrl': imageUrl,
+      'minutes': minutes,
+      'dateKey': dateKey,
+      'servings': servings,
+      'ingredients': ingredients,
+      'createdAt': Timestamp.fromDate(DateTime.now()),
+    });
+    return docRef.id;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGroceryRecipesByDate(String dateKey) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return <Map<String, dynamic>>[];
+    final QuerySnapshot<Map<String, dynamic>> q = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('GroceryRecipes')
+        .where('dateKey', isEqualTo: dateKey)
+        .get();
+    return q.docs.map((d) => {...d.data(), 'id': d.id}).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAllGroceryRecipes() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return <Map<String, dynamic>>[];
+    final QuerySnapshot<Map<String, dynamic>> q = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('GroceryRecipes')
+        .get();
+    return q.docs.map((d) => {...d.data(), 'id': d.id}).toList();
+  }
+
+  Future<void> toggleGroceryIngredientChecked({
+    required String groceryId,
+    required int ingredientIndex,
+    required bool isChecked,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final DocumentReference<Map<String, dynamic>> docRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('GroceryRecipes')
+        .doc(groceryId);
+    final DocumentSnapshot<Map<String, dynamic>> snap = await docRef.get();
+    if (!snap.exists) return;
+    final data = snap.data();
+    if (data == null) return;
+    final List<dynamic> ingredients = (data['ingredients'] as List<dynamic>? ?? <dynamic>[]);
+    if (ingredientIndex < 0 || ingredientIndex >= ingredients.length) return;
+    final dynamic item = ingredients[ingredientIndex];
+    if (item is Map<String, dynamic>) {
+      ingredients[ingredientIndex] = {
+        ...item,
+        'isChecked': isChecked,
+      };
+      await docRef.update({'ingredients': ingredients});
+    }
+  }
+
+  /// Update the entire ingredients list for a grocery recipe
+  Future<void> updateGroceryRecipeIngredients(String groceryId, List<Map<String, dynamic>> updatedIngredients) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final DocumentReference<Map<String, dynamic>> docRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('GroceryRecipes')
+        .doc(groceryId);
+    await docRef.update({'ingredients': updatedIngredients});
+  }
+
+  // ===================
   // Bookmarks (per user, server-only)
   // ===================
 
