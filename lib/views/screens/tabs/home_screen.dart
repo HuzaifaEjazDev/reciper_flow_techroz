@@ -5,8 +5,36 @@ import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/models/dish.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _performSearch() {
+    final String query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      // Navigate to RecipeByAdminScreen with the search query
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RecipeByAdminScreen(initialSearchQuery: query),
+        ),
+      ).then((_) {
+        // After returning from the search screen, we could optionally clear the search field
+        // _searchController.clear();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +59,18 @@ class HomeScreen extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
-                        children: const [
-                          Icon(Icons.search, color: Colors.black54, size: 20),
-                          SizedBox(width: 4),
+                        children: [
+                          // Removed the search icon from inside the field
+                          const SizedBox(width: 4),
                           Expanded(
-                            child: Text(
-                              'Search for Recipes...',
-                              style: TextStyle(color: Colors.black54, fontSize: 15),
-                              overflow: TextOverflow.ellipsis,
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                hintText: 'Search for Recipes...',
+                                hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
+                              ),
                             ),
                           ),
                         ],
@@ -46,6 +78,20 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Added search button next to the search bar
+                  GestureDetector(
+                    onTap: _performSearch,
+                    child: Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7F00),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Icon(Icons.search, color: Colors.white),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -8,13 +8,19 @@ class RecipeByAdminScreen extends StatelessWidget {
   final String? filterMealType;
   final bool autoApplyFilter;
   final bool allowMealPlanSelection; // true when launched from Meal Planner
-  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false, this.allowMealPlanSelection = false});
+  final String? initialSearchQuery; // optional initial search from Home
+  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false, this.allowMealPlanSelection = false, this.initialSearchQuery});
 
   @override
   Widget build(BuildContext context) {
     debugPrint('RecipeByAdminScreen building with filterMealType: $filterMealType, autoApplyFilter: $autoApplyFilter');
     return ChangeNotifierProvider<AdminRecipesViewModel>(
-      create: (_) => AdminRecipesViewModel()..loadInitial()..loadSortOptions()..setFilterMealType(filterMealType, autoApply: autoApplyFilter),
+      create: (_) => AdminRecipesViewModel()
+        ..loadInitial()
+        ..loadSortOptions()
+        ..setFilterMealType(filterMealType, autoApply: autoApplyFilter)
+        ..setQueryTemp(initialSearchQuery ?? '')
+        ..setSearchQuery(initialSearchQuery),
       child: _RecipeByAdminView(filterMealType: filterMealType, allowMealPlanSelection: allowMealPlanSelection),
     );
   }
