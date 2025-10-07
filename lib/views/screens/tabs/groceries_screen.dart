@@ -114,7 +114,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             );
           },
           style: TextButton.styleFrom(foregroundColor: Colors.black87),
-          icon: const Text('All Recipes', style: TextStyle(fontWeight: FontWeight.w600)),
+          icon: const Text('All Groceries', style: TextStyle(fontWeight: FontWeight.w600)),
           label: const Icon(CupertinoIcons.chevron_right, color: Colors.black87),
         )
       ],

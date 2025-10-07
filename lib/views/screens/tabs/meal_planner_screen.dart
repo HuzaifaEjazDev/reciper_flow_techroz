@@ -283,7 +283,34 @@ class _MealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Container(
+        InkWell(
+          onTap: () async {
+            // Navigate to recipe details screen on card tap with robust fallback
+            final service = FirestoreRecipesService();
+            final recipeData = await service.fetchRecipeById(recipeId);
+            if (!context.mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => RecipeDetailsScreen(
+                  title: (recipeData?['title'] as String?) ?? title,
+                  imageAssetPath: (recipeData?['image'] as String?) ?? (recipeData?['imageUrl'] as String?) ?? imageAssetPath,
+                  minutes: (recipeData?['minutes'] as int?) ?? (recipeData?['cookTime'] as int?),
+                  ingredients: recipeData == null
+                      ? null
+                      : (recipeData['ingredients'] is List<String>
+                          ? (recipeData['ingredients'] as List<String>)
+                          : List<String>.from(recipeData['ingredients'] as List? ?? const [])),
+                  steps: recipeData == null
+                      ? null
+                      : (recipeData['steps'] is List<String>
+                          ? (recipeData['steps'] as List<String>)
+                          : List<String>.from(recipeData['steps'] as List? ?? const [])),
+                  recipeId: recipeId,
+                ),
+              ),
+            );
+          },
+          child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -366,28 +393,30 @@ class _MealCard extends StatelessWidget {
                           TextButton(
                             style: TextButton.styleFrom(foregroundColor: Colors.deepOrange),
                             onPressed: () async {
-                              // Navigate to recipe details screen
+                              // Navigate to recipe details screen with robust fallback
                               final service = FirestoreRecipesService();
                               final recipeData = await service.fetchRecipeById(recipeId);
-                              
-                              if (recipeData != null) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => RecipeDetailsScreen(
-                                      title: recipeData['title'] as String,
-                                      imageAssetPath: recipeData['image'] as String? ?? recipeData['imageUrl'] as String? ?? imageAssetPath,
-                                      minutes: recipeData['minutes'] as int? ?? recipeData['cookTime'] as int?,
-                                      ingredients: List<String>.from(recipeData['ingredients'] as List? ?? []),
-                                      steps: List<String>.from(recipeData['steps'] as List? ?? []),
-                                      recipeId: recipeId,
-                                    ),
+                              if (!context.mounted) return;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => RecipeDetailsScreen(
+                                    title: (recipeData?['title'] as String?) ?? title,
+                                    imageAssetPath: (recipeData?['image'] as String?) ?? (recipeData?['imageUrl'] as String?) ?? imageAssetPath,
+                                    minutes: (recipeData?['minutes'] as int?) ?? (recipeData?['cookTime'] as int?),
+                                    ingredients: recipeData == null
+                                        ? null
+                                        : (recipeData['ingredients'] is List<String>
+                                            ? (recipeData['ingredients'] as List<String>)
+                                            : List<String>.from(recipeData['ingredients'] as List? ?? const [])),
+                                    steps: recipeData == null
+                                        ? null
+                                        : (recipeData['steps'] is List<String>
+                                            ? (recipeData['steps'] as List<String>)
+                                            : List<String>.from(recipeData['steps'] as List? ?? const [])),
+                                    recipeId: recipeId,
                                   ),
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Failed to load recipe details')),
-                                );
-                              }
+                                ),
+                              );
                             },
                             child: const Text('View Recipe'),
                           ),
@@ -408,6 +437,7 @@ class _MealCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
         Positioned(
           top: 6,

@@ -97,7 +97,7 @@ class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text('Planned Meals', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
+        title: const Text('Groceries', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.black87),
         actions: [],
         bottom: const PreferredSize(
@@ -127,12 +127,12 @@ class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      'No planned meals found',
+                      'No groceries found',
                       style: TextStyle(color: Colors.black54, fontSize: 16),
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      'Create your own recipes and plan meals!',
+                      'Create your own recipes and add to groceries!',
                       style: TextStyle(color: Colors.black54, fontSize: 14),
                     ),
                     const SizedBox(height: 20),
