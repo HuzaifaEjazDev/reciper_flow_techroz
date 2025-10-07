@@ -31,7 +31,6 @@ class RecipeDetailsScreen extends StatefulWidget {
 
 class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   String? _selectedTime;
-  int? _selectedPeople;
 
   @override
   Widget build(BuildContext context) {
@@ -47,76 +46,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
         ),
-        actions: widget.fromAdminScreen
-            ? [
-                TextButton(
-                  onPressed: () async {
-                    debugPrint('Add button pressed. Meal type: ${widget.mealType}');
-                    if (widget.mealType == null) {
-                      debugPrint('Meal type is null, not creating MealEntry');
-                      return;
-                    }
-                    // Ensure time and persons are set
-                    if (_selectedTime == null || _selectedPeople == null) {
-                      await _showMealPlanDialog(context);
-                    }
-                    if (_selectedTime == null || _selectedPeople == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please set time and number of persons first')),
-                      );
-                      return;
-                    }
-                    // Create a MealEntry from the recipe data
-                    debugPrint('Creating MealEntry with ingredients: ${widget.ingredients}');
-                    debugPrint('Creating MealEntry with steps: ${widget.steps}');
-                    final mealEntry = MealEntry(
-                      id: widget.recipeId,
-                      type: widget.mealType!,
-                      title: widget.title,
-                      minutes: widget.minutes ?? 0,
-                      imageAssetPath: widget.imageAssetPath,
-                      time: _selectedTime,
-                      people: _selectedPeople,
-                      ingredients: widget.ingredients,
-                      instructions: widget.steps,
-                    );
-                    debugPrint('Created MealEntry: ${mealEntry.title}, type: ${mealEntry.type}');
-                    debugPrint('MealEntry ingredients: ${mealEntry.ingredients}');
-                    debugPrint('MealEntry instructions: ${mealEntry.instructions}');
-                    Navigator.of(context).pop(mealEntry);
-                  },
-                  child: const Row(
-                    children: [
-                      Icon(Icons.add_task, color: Colors.black87, size: 20),
-                      SizedBox(width: 4),
-                      Column(
-                        children: [
-                          Text(
-                        'Add to',
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-
-                      Text(
-                        'Meal Plan',
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                        ],
-                      ),
-                      
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ]
-            : null,
+        actions: null,
       ),
       body: SafeArea(
         child: Column(
@@ -203,10 +133,6 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Future<void> _showMealPlanDialog(BuildContext context) async {
-    final TextEditingController peopleController = TextEditingController(
-      text: _selectedPeople == null ? '' : _selectedPeople.toString(),
-    );
-
     TimeOfDay _parseTimeOfDay(String s) {
       final RegExp re = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false);
       final Match? m = re.firstMatch(s.trim());
@@ -233,15 +159,6 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: peopleController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Number of People',
-                      hintText: 'Enter number of people',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                   ListTile(
                     title: const Text('Set Time'),
                     subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
@@ -268,14 +185,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // Handle the meal plan creation
-                    final String people = peopleController.text;
-                    final int peopleCount = int.tryParse(people) ?? 1;
-                    
                     // Update the parent state with selected values
                     if (mounted) {
                       setState(() {
-                        _selectedPeople = peopleCount;
                         _selectedTime = selectedTimeText ?? selectedTime.format(context);
                       });
                     }
@@ -285,9 +197,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     // Show confirmation
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Meal planned for $people people at ${selectedTimeText ?? selectedTime.format(context)}'),
+                        content: Text('Meal planned at ${selectedTimeText ?? selectedTime.format(context)}'),
                       ),
                     );
+
+                    // If we came from Admin screen, save and return MealEntry (same as old AppBar button)
+                    if (widget.fromAdminScreen && widget.mealType != null) {
+                      final mealEntry = MealEntry(
+                        id: widget.recipeId,
+                        type: widget.mealType!,
+                        title: widget.title,
+                        minutes: widget.minutes ?? 0,
+                        imageAssetPath: widget.imageAssetPath,
+                        time: _selectedTime,
+                        people: null,
+                        ingredients: widget.ingredients,
+                        instructions: widget.steps,
+                      );
+                      Navigator.of(context).pop(mealEntry);
+                    }
                   },
                   child: const Text('Save'),
                 ),
@@ -371,26 +299,20 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes),
-          fromAdminScreen
-              ? _ActionItem(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Set Persons',
-                  secondLine: 'and Time',
-                  onTap: onMealPlanTap,
-                )
-              : const _ActionItem(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Meal Plan',
-                ),
-          const _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries'),
-          const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
-          const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes),
+              _ActionItem(
+                icon: Icons.calendar_today_outlined,
+                label: 'Meal Plan',
+                onTap: onMealPlanTap,
+              ),
+              const _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries'),
+              const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
+              const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
+            ],
+          ),
     );
   }
 }
