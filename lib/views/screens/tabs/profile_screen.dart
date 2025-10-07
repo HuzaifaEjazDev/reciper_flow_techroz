@@ -5,6 +5,7 @@ import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'package:recipe_app/views/auth/sign_in_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
+import 'package:recipe_app/views/screens/user/bookmarked_recipes_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -59,6 +60,16 @@ class ProfileScreen extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MyRecipesScreen()),
+                );
+              },
+            ),
+            _NavTile(
+              icon: Icons.bookmark_outline,
+              title: 'Bookmarked Recipes',
+              subtitle: 'View your saved recipes',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BookmarkedRecipesScreen()),
                 );
               },
             ),

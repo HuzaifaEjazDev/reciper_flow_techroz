@@ -422,4 +422,148 @@ class FirestoreRecipesService {
       throw Exception('Error saving user-created recipe: $e');
     }
   }
+
+  // ===================
+  // Bookmarks (per user, server-only)
+  // ===================
+
+  Future<void> toggleBookmark({
+    required String recipeId,
+    required String title,
+    required String imageUrl,
+    int minutes = 0,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    final DocumentReference<Map<String, dynamic>> docRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('BookMarkedRecipes')
+        .doc(recipeId);
+    final DocumentSnapshot<Map<String, dynamic>> snap = await docRef.get();
+    if (snap.exists) {
+      await docRef.delete();
+    } else {
+      await docRef.set({
+        'recipeId': recipeId,
+        'title': title,
+        'imageUrl': imageUrl,
+        'minutes': minutes,
+        'createdAt': Timestamp.fromDate(DateTime.now()),
+      });
+    }
+  }
+
+  Stream<bool> isBookmarkedStream(String recipeId) {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Stream<bool>.empty();
+    }
+    final DocumentReference<Map<String, dynamic>> docRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('BookMarkedRecipes')
+        .doc(recipeId);
+    return docRef.snapshots().map((s) => s.exists);
+  }
+
+  Future<({List<Map<String, dynamic>> items, String? lastId})> fetchBookmarksPage({
+    int limit = 10,
+    String? startAfterId,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return (items: <Map<String, dynamic>>[], lastId: null);
+    }
+    Query<Map<String, dynamic>> q = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('BookMarkedRecipes')
+        .orderBy(FieldPath.documentId)
+        .limit(limit);
+    if (startAfterId != null && startAfterId.isNotEmpty) {
+      q = q.startAfter([startAfterId]);
+    }
+    final QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    final List<Map<String, dynamic>> items = docs.map((d) {
+      final data = d.data();
+      data['id'] = d.id; // same as recipeId
+      return data;
+    }).toList();
+    final String? lastId = docs.isEmpty ? null : docs.last.id;
+    return (items: items, lastId: lastId);
+  }
+
+  Future<int> fetchBookmarksCount() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    try {
+      final AggregateQuerySnapshot snap = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('BookMarkedRecipes')
+          .count()
+          .get();
+      return snap.count ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<({List<Map<String, dynamic>> items, String? lastTitle})> fetchBookmarksPageByTitlePrefix({
+    int limit = 10,
+    String? startAfterTitle,
+    required String prefix,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return (items: <Map<String, dynamic>>[], lastTitle: null);
+    }
+    final String start = prefix;
+    final String end = '$prefix\uf8ff';
+    Query<Map<String, dynamic>> q = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('BookMarkedRecipes')
+        .orderBy('title')
+        .startAt([start])
+        .endAt([end])
+        .limit(limit);
+    if (startAfterTitle != null && startAfterTitle.isNotEmpty) {
+      q = q.startAfter([startAfterTitle]);
+    }
+    final QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    final List<Map<String, dynamic>> items = docs.map((d) {
+      final data = d.data();
+      data['id'] = d.id;
+      return data;
+    }).toList();
+    final String? lastTitle = docs.isEmpty ? null : (docs.last.data()['title']?.toString());
+    return (items: items, lastTitle: lastTitle);
+  }
+
+  Future<int> fetchBookmarksCountByTitlePrefix(String prefix) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    try {
+      final String start = prefix;
+      final String end = '$prefix\uf8ff';
+      final AggregateQuerySnapshot snap = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('BookMarkedRecipes')
+          .orderBy('title')
+          .startAt([start])
+          .endAt([end])
+          .count()
+          .get();
+      return snap.count ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }

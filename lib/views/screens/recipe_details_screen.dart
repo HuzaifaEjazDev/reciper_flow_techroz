@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/models/meal_plan.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final String title;
@@ -130,6 +131,10 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     _ActionRow(
                       onMealPlanTap: () => _showMealPlanDialog(context),
                       fromAdminScreen: widget.fromAdminScreen,
+                      recipeId: widget.recipeId,
+                      title: widget.title,
+                      imageUrl: widget.imageAssetPath,
+                      minutes: widget.minutes ?? 0,
                     ),
                     const SizedBox(height: 16),
                     Padding(
@@ -356,7 +361,11 @@ class _HeroImage extends StatelessWidget {
 class _ActionRow extends StatelessWidget {
   final VoidCallback onMealPlanTap;
   final bool fromAdminScreen;
-  const _ActionRow({required this.onMealPlanTap, this.fromAdminScreen = false});
+  final String recipeId;
+  final String title;
+  final String imageUrl;
+  final int minutes;
+  const _ActionRow({required this.onMealPlanTap, this.fromAdminScreen = false, required this.recipeId, required this.title, required this.imageUrl, required this.minutes});
 
   @override
   Widget build(BuildContext context) {
@@ -365,7 +374,7 @@ class _ActionRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          const _ActionItem(icon: Icons.bookmark_border, label: 'Bookmark'),
+          _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes),
           fromAdminScreen
               ? _ActionItem(
                   icon: Icons.calendar_today_outlined,
@@ -421,6 +430,40 @@ class _ActionItem extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatelessWidget {
+  final String recipeId;
+  final String title;
+  final String imageUrl;
+  final int minutes;
+  const _BookmarkButton({required this.recipeId, required this.title, required this.imageUrl, required this.minutes});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = FirestoreRecipesService();
+    return StreamBuilder<bool>(
+      stream: service.isBookmarkedStream(recipeId),
+      builder: (context, snapshot) {
+        final bool isBookmarked = snapshot.data == true;
+        return InkWell(
+          onTap: () async {
+            await service.toggleBookmark(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes);
+          },
+          child: Column(
+            children: [
+              Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: isBookmarked ? Colors.black : Colors.black87),
+              const SizedBox(height: 4),
+              const Text(
+                'Bookmark',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
