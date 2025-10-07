@@ -15,7 +15,6 @@ class HomeViewModel extends ChangeNotifier {
             'A refreshing and nutritious blend of mixed berries, banana, and almond milk, garnished with chia seeds and coconut flakes.',
         imageAssetPath: 'assets/images/dish/dish1.jpg',
         minutes: 10,
-        rating: 4.5,
       ),
       Dish(
         id: '2',
@@ -24,7 +23,6 @@ class HomeViewModel extends ChangeNotifier {
             'Healthy and satisfying quinoa salad packed with fresh vegetables, tangy feta, and a zesty vinaigrette.',
         imageAssetPath: 'assets/images/dish/dish2.jpg',
         minutes: 25,
-        rating: 4.9,
       ),
       Dish(
         id: '3',
@@ -33,11 +31,8 @@ class HomeViewModel extends ChangeNotifier {
             'Oven-baked chicken wings tossed in a sweet and savory honey-garlic sauce, perfect for appetizers.',
         imageAssetPath: 'assets/images/dish/dish3.jpg',
         minutes: 30,
-        rating: 4.7,
       ),
     ];
     notifyListeners();
   }
 }
-
-

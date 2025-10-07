@@ -11,7 +11,12 @@ class MyRecipesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MyRecipesViewModel>(
-      create: (_) => MyRecipesViewModel()..loadFromFirestore(collection: 'RecipesCreatedByUser'),
+      create: (_) {
+        final vm = MyRecipesViewModel();
+        // Set up real-time listener for user recipes
+        vm.setupRecipesListener();
+        return vm;
+      },
       child: const _MyRecipesView(),
     );
   }

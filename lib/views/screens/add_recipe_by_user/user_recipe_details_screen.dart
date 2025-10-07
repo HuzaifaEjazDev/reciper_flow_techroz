@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/models/user_created_recipe.dart';
+import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart'; // Add this import
+import 'dart:async';
 
 class UserRecipeDetailsScreen extends StatefulWidget {
   final String recipeId;
@@ -16,11 +19,38 @@ class UserRecipeDetailsScreen extends StatefulWidget {
 
 class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
   late Future<UserCreatedRecipe> _recipeFuture;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _recipeListener;
 
   @override
   void initState() {
     super.initState();
-    _recipeFuture = _fetchRecipeDetails();
+    // Set up real-time listener for the recipe
+    _setupRecipeListener();
+  }
+
+  void _setupRecipeListener() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final DocumentReference<Map<String, dynamic>> recipeRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('RecipesCreatedByUser')
+        .doc(widget.recipeId);
+
+    _recipeListener = recipeRef.snapshots().listen(
+      (snapshot) {
+        if (snapshot.exists) {
+          setState(() {
+            // Update the UI with the new data
+          });
+        }
+      },
+      onError: (error) {
+        // Handle error
+        debugPrint('Error listening to recipe updates: $error');
+      },
+    );
   }
 
   Future<UserCreatedRecipe> _fetchRecipeDetails() async {
@@ -45,6 +75,12 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
     } catch (e) {
       throw Exception('Error fetching recipe details: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _recipeListener?.cancel();
+    super.dispose();
   }
 
   @override
@@ -79,7 +115,7 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
       ),
       body: SafeArea(
         child: FutureBuilder<UserCreatedRecipe>(
-          future: _recipeFuture,
+          future: _fetchRecipeDetails(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

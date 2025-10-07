@@ -3,6 +3,7 @@ import 'package:recipe_app/models/user_recipe.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
 class MyRecipeCardData {
   final String title;
@@ -27,6 +28,7 @@ class MyRecipesViewModel extends ChangeNotifier {
       : _service = service ?? FirestoreRecipesService();
 
   final FirestoreRecipesService _service;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recipesListener;
 
   final List<MyRecipeCardData> _allItems = <MyRecipeCardData>[];
   final List<MyRecipeCardData> _items = <MyRecipeCardData>[];
@@ -62,7 +64,66 @@ class MyRecipesViewModel extends ChangeNotifier {
   String? get selectedTag => _selectedTag;
   bool get optionsLoading => _optionsLoading;
 
-  // Load user-created recipes from Firestore
+  // Set up real-time listener for user-created recipes
+  void setupRecipesListener() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _error = 'User not authenticated';
+      notifyListeners();
+      return;
+    }
+
+    // Cancel any existing listener
+    _recipesListener?.cancel();
+    
+    try {
+      final CollectionReference<Map<String, dynamic>> userRecipesRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid).collection('RecipesCreatedByUser');
+      
+      _loading = true;
+      _error = null;
+      notifyListeners();
+      
+      // Set up real-time listener
+      _recipesListener = userRecipesRef.snapshots().listen(
+        (snapshot) {
+          _allItems.clear();
+          
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final String title = (data['title'] ?? 'Untitled Recipe').toString();
+            final String imageUrl = (data['imageUrl'] ?? 'assets/images/vegitables.jpg').toString();
+            final List<dynamic> ingredients = data['ingredients'] is List ? data['ingredients'] : [];
+            final List<String> steps = data['steps'] is List ? List<String>.from(data['steps']) : [];
+            
+            _allItems.add(MyRecipeCardData(
+              id: doc.id,
+              title: title,
+              imageAssetPath: imageUrl,
+              ingredientsCount: ingredients.length,
+              stepsCount: steps.length,
+              recipe: null,
+            ));
+          }
+          
+          _applyFilter();
+          _loading = false;
+          notifyListeners();
+        },
+        onError: (error) {
+          _loading = false;
+          _error = error.toString();
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      _loading = false;
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  // Load user-created recipes from Firestore (for initial load)
   Future<void> loadFromFirestore({String collection = 'RecipesCreatedByUser'}) async {
     if (_loading) return;
     _loading = true;
@@ -237,5 +298,11 @@ class MyRecipesViewModel extends ChangeNotifier {
   void setSelectedDiet(String? v) { _selectedDiet = v; notifyListeners(); }
   void setSelectedCuisine(String? v) { _selectedCuisine = v; notifyListeners(); }
   void setSelectedTag(String? v) { _selectedTag = v; notifyListeners(); }
-
+  
+  // Dispose method to cancel the listener
+  @override
+  void dispose() {
+    _recipesListener?.cancel();
+    super.dispose();
+  }
 }

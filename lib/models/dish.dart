@@ -4,7 +4,6 @@ class Dish {
   final String subtitle;
   final String imageAssetPath;
   final int minutes;
-  final double rating;
 
   const Dish({
     required this.id,
@@ -12,8 +11,5 @@ class Dish {
     required this.subtitle,
     required this.imageAssetPath,
     required this.minutes,
-    required this.rating,
   });
 }
-
-

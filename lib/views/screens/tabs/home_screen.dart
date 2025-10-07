@@ -395,10 +395,7 @@ class _DishCard extends StatelessWidget {
                   const Icon(Icons.access_time, size: 18, color: Colors.black87),
                   const SizedBox(width: 6),
                   Text('${dish.minutes} min', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black45)),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.star_border, size: 18, color: Colors.black87),
-                  const SizedBox(width: 6),
-                  Text('${dish.rating}', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black45)),
+                  // Removed rating display
                 ],
               ),
             ),
@@ -445,6 +442,3 @@ class _CategoryBox extends StatelessWidget {
     );
   }
 }
-
-
-

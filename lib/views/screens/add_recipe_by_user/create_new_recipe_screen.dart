@@ -10,6 +10,7 @@ import 'package:recipe_app/models/user_created_recipe.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+
 class CreateNewRecipeScreen extends StatelessWidget {
   final bool isEdit;
   final String? recipeId;
@@ -101,6 +102,7 @@ class CreateNewRecipeScreen extends StatelessWidget {
   }
 }
 
+/// Create New Recipe Screen
 class _CreateRecipeView extends StatelessWidget {
   final bool isEdit;
   const _CreateRecipeView({required this.isEdit});
@@ -116,6 +118,36 @@ class _CreateRecipeView extends StatelessWidget {
         centerTitle: true,
         title: Text(isEdit ? 'Edit Recipe' : 'Create New Recipe', style: const TextStyle(color: Colors.black87, fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.black87),
+        actions: [
+          if (isEdit)
+            TextButton(
+              onPressed: () async {
+                // Save to Firestore
+                final bool success = await vm.saveRecipeToFirestore();
+                if (success) {
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Recipe updated successfully!')),
+                  );
+                  // Navigate back
+                  Navigator.of(context).maybePop();
+                } else {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to update recipe. Please try again.')),
+                  );
+                }
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(
+                  color: AppColors.primary500,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+        ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
@@ -199,34 +231,35 @@ class _CreateRecipeView extends StatelessWidget {
                 onTap: () => vm.addStep(),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary500,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (!isEdit)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary500,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      // Save to Firestore
+                      final bool success = await vm.saveRecipeToFirestore();
+                      if (success) {
+                        // Show success message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Recipe saved successfully!')),
+                        );
+                        // Navigate back
+                        Navigator.of(context).maybePop();
+                      } else {
+                        // Show error message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to save recipe. Please try again.')),
+                        );
+                      }
+                    },
+                    child: const Text('Save Recipe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                   ),
-                  onPressed: () async {
-                    // Save to Firestore
-                    final bool success = await vm.saveRecipeToFirestore();
-                    if (success) {
-                      // Show success message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Recipe saved successfully!')),
-                      );
-                      // Navigate back
-                      Navigator.of(context).maybePop();
-                    } else {
-                      // Show error message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Failed to save recipe. Please try again.')),
-                      );
-                    }
-                  },
-                  child: const Text('Save Recipe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 ),
-              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -236,6 +269,7 @@ class _CreateRecipeView extends StatelessWidget {
   }
 }
 
+/// Image Picker Card
 class _ImagePickerCard extends StatelessWidget {
   final VoidCallback onTap;
   const _ImagePickerCard({required this.onTap});
@@ -318,7 +352,7 @@ class _IngredientRow extends StatelessWidget {
             style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
           ),
         ),
-        const SizedBox(width: 8),
+        // const SizedBox(width: 8),
         Expanded(
           child: Container(
             margin: const EdgeInsets.only(bottom: 12, right: 8),
@@ -332,7 +366,7 @@ class _IngredientRow extends StatelessWidget {
               controller: vm.qtyControllers[index],
               decoration: const InputDecoration(
                 border: InputBorder.none, 
-                hintText: 'Quantity', 
+                hintText: 'Qty', 
                 hintStyle: TextStyle(color: Colors.black45)
               ),
             ),
@@ -352,7 +386,7 @@ class _IngredientRow extends StatelessWidget {
               controller: vm.nameControllers[index],
               decoration: const InputDecoration(
                 border: InputBorder.none, 
-                hintText: 'Ingredient name', 
+                hintText: 'Name', 
                 hintStyle: TextStyle(color: Colors.black45)
               ),
             ),
@@ -379,6 +413,7 @@ class _IngredientRow extends StatelessWidget {
   }
 }
 
+/// the cooking steps section
 class _StepTile extends StatelessWidget {
   final int index;
   const _StepTile({required this.index});
@@ -437,6 +472,7 @@ class _StepTile extends StatelessWidget {
   }
 }
 
+/// the add button to add ingredients or steps
 class _AddButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -468,6 +504,7 @@ class _AddButton extends StatelessWidget {
   }
 }
 
+/// the dashed rounded rectangle painter
 class _DashedRRectPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;

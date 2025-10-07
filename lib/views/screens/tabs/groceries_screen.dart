@@ -7,7 +7,6 @@ import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/planned_meals_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Helper class to hold parsed ingredient information
 class ParsedIngredient {
@@ -26,8 +25,6 @@ class GroceriesScreen extends StatefulWidget {
 }
 
 class _GroceriesScreenState extends State<GroceriesScreen> {
-  final Set<String> _checked = <String>{};
-  final Set<String> _bought = <String>{}; // Permanently bought items
   bool _showAll = false; // Track if "Show All" is selected
   final Set<String> _hiddenRecipes = <String>{}; // Track recipes hidden from grocery list
 
@@ -40,48 +37,6 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       // Only initialize if not already initialized
       vm.init();
     });
-    
-    // Load saved states
-    _loadSavedStates();
-  }
-
-  // Load saved checked and bought states from SharedPreferences
-  Future<void> _loadSavedStates() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Load checked items
-      final List<String> checkedItems = prefs.getStringList('grocery_checked_items') ?? [];
-      _checked.clear();
-      _checked.addAll(checkedItems);
-      
-      // Load bought items
-      final List<String> boughtItems = prefs.getStringList('grocery_bought_items') ?? [];
-      _bought.clear();
-      _bought.addAll(boughtItems);
-      
-      // Update UI
-      if (mounted) {
-        setState(() {});
-      }
-    } catch (e) {
-      debugPrint('Error loading saved states: $e');
-    }
-  }
-
-  // Save checked and bought states to SharedPreferences
-  Future<void> _saveStates() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Save checked items
-      await prefs.setStringList('grocery_checked_items', _checked.toList());
-      
-      // Save bought items
-      await prefs.setStringList('grocery_bought_items', _bought.toList());
-    } catch (e) {
-      debugPrint('Error saving states: $e');
-    }
   }
 
   @override
@@ -110,21 +65,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             const SizedBox(height: 10),
           ],
         ),
-        floatingActionButton: _BuildBuyDoneFAB(checkedItems: _checked, onBuyDone: _onBuyDone),
       ),
     );
-  }
-
-  void _onBuyDone() {
-    setState(() {
-      // Move all checked items to permanently bought
-      _bought.addAll(_checked);
-      // Clear checked items
-      _checked.clear();
-    });
-    
-    // Save states
-    _saveStates();
   }
 
   Widget _buildSearchBar() {
@@ -445,8 +387,6 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           );
         }
         
-        // Group items by category (this is a simplified version)
-        // In a real app, you would have proper categorization
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -465,7 +405,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     final Map<String, double> ingredientQuantities = <String, double>{};
     
     for (final pm in meals) {
-      final int persons = pm.persons <= 0 ? 1 : pm.persons;
+      // For default recipe ingredients for 1 person
+      final int persons = 1;
       for (final ingredient in pm.ingredients) {
         // Parse ingredient to get name and quantity
         final ParsedIngredient parsed = _parseIngredient(ingredient);
@@ -480,7 +421,11 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     
     final List<_GroceryItemWithQuantity> items = <_GroceryItemWithQuantity>[];
     ingredientQuantities.forEach((name, qty) {
-      items.add(_GroceryItemWithQuantity(name, _formatQuantity(qty, ''), 'assets/images/easymakesnack1.jpg'));
+      items.add(_GroceryItemWithQuantity(
+        name: name,
+        quantity: _formatQuantity(qty, ''),
+        imagePath: 'assets/images/easymakesnack1.jpg',
+      ));
     });
     items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return items;
@@ -549,27 +494,6 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                   child: Text(it.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
                 ),
                 Text(it.quantity, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-                const SizedBox(width: 10),
-                GroceryCheckbox(
-                  itemName: it.name,
-                  isChecked: _checked.contains(it.name),
-                  isBought: _bought.contains(it.name),
-                  onToggle: (isChecked) {
-                    // Handle checkbox toggle without rebuilding the entire screen
-                    if (isChecked) {
-                      _checked.add(it.name);
-                    } else {
-                      _checked.remove(it.name);
-                    }
-                    
-                    // Save states
-                    _saveStates();
-                    
-                    // Only rebuild the FAB to show/hide it based on checked items
-                    // We don't need to rebuild the entire screen
-                    // The GroceryCheckbox widget handles its own visual state
-                  },
-                ),
               ],
             ),
           ),
@@ -672,8 +596,6 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           );
         }
         
-        // Group items by category (this is a simplified version)
-        // In a real app, you would have proper categorization
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -692,7 +614,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     final Map<String, double> ingredientQuantities = <String, double>{};
     
     for (final pm in allMeals) {
-      final int persons = pm.persons <= 0 ? 1 : pm.persons;
+      // For default recipe ingredients for 1 person
+      final int persons = 1;
       for (final ingredient in pm.ingredients) {
         // Parse ingredient to get name and quantity
         final ParsedIngredient parsed = _parseIngredient(ingredient);
@@ -707,14 +630,43 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     
     final List<_GroceryItemWithQuantity> items = <_GroceryItemWithQuantity>[];
     ingredientQuantities.forEach((name, qty) {
-      items.add(_GroceryItemWithQuantity(name, _formatQuantity(qty, ''), 'assets/images/easymakesnack1.jpg'));
+      items.add(_GroceryItemWithQuantity(
+        name: name,
+        quantity: _formatQuantity(qty, ''),
+        imagePath: 'assets/images/easymakesnack1.jpg',
+      ));
     });
     items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return items;
   }
 }
 
-/// recipe cards container section on the grocerries screen
+class _GroceryItemWithQuantity {
+  final String name;
+  final String quantity;
+  final String imagePath;
+  
+  const _GroceryItemWithQuantity({
+    required this.name,
+    required this.quantity,
+    required this.imagePath,
+  });
+}
+
+class _SectionTitle extends StatelessWidget {
+  final IconData icon; // ignored (kept for call sites)
+  final String text;
+  const _SectionTitle({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
+    );
+  }
+}
+
 class _RecipeCard extends StatelessWidget {
   final String title;
   final String imagePath;
@@ -835,138 +787,5 @@ class _RecipeCard extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final IconData icon; // ignored (kept for call sites)
-  final String text;
-  const _SectionTitle({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-    );
-  }
-}
-
-class _GroceryItemWithQuantity {
-  final String name;
-  final String quantity;
-  final String imagePath;
-  const _GroceryItemWithQuantity(this.name, this.quantity, this.imagePath);
-}
-
-// old helper class removed; using PlannedMeal from models
-
-// Custom checkbox widget to handle grocery item selection
-class GroceryCheckbox extends StatefulWidget {
-  final String itemName;
-  final bool isChecked;
-  final bool isBought;
-  final Function(bool) onToggle;
-
-  const GroceryCheckbox({
-    super.key,
-    required this.itemName,
-    required this.isChecked,
-    required this.isBought,
-    required this.onToggle,
-  });
-
-  @override
-  State<GroceryCheckbox> createState() => _GroceryCheckboxState();
-}
-
-class _GroceryCheckboxState extends State<GroceryCheckbox> {
-  late bool _isChecked;
-  late bool _isBought;
-
-  @override
-  void initState() {
-    super.initState();
-    _isChecked = widget.isChecked;
-    _isBought = widget.isBought;
-  }
-
-  @override
-  void didUpdateWidget(covariant GroceryCheckbox oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Update local state when parent state changes
-    if (oldWidget.isChecked != widget.isChecked) {
-      setState(() {
-        _isChecked = widget.isChecked;
-      });
-    }
-    if (oldWidget.isBought != widget.isBought) {
-      setState(() {
-        _isBought = widget.isBought;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Only allow checking if not already bought
-        if (!_isBought) {
-          setState(() {
-            _isChecked = !_isChecked;
-          });
-          // Notify parent of the change
-          widget.onToggle(_isChecked);
-        }
-      },
-      child: Container(
-        width: 22,
-        height: 22,
-        decoration: BoxDecoration(
-          color: _isBought
-              ? Colors.green // Permanently bought items shown in green
-              : _isChecked
-                  ? Colors.deepOrange
-                  : Colors.white,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: _isBought
-                ? Colors.green
-                : _isChecked
-                    ? Colors.deepOrange
-                    : const Color(0xFFD1D5DB),
-          ),
-        ),
-        child: _isBought
-            ? const Icon(Icons.check, size: 16, color: Colors.white)
-            : _isChecked
-                ? const Icon(Icons.check, size: 16, color: Colors.white)
-                : null,
-      ),
-    );
-  }
-}
-
-// Separate widget for the Buy Done FAB to prevent unnecessary rebuilds
-class _BuildBuyDoneFAB extends StatelessWidget {
-  final Set<String> checkedItems;
-  final VoidCallback onBuyDone;
-
-  const _BuildBuyDoneFAB({required this.checkedItems, required this.onBuyDone});
-
-  @override
-  Widget build(BuildContext context) {
-    return checkedItems.isEmpty
-        ? const SizedBox.shrink()
-        : FloatingActionButton.extended(
-            onPressed: onBuyDone,
-            backgroundColor: Colors.deepOrange,
-            label: const Text(
-              'Buy Done',
-              style: TextStyle(color: Colors.white),
-            ),
-            icon: const Icon(Icons.shopping_cart, color: Colors.white),
-          );
   }
 }
