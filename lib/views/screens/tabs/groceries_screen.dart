@@ -43,6 +43,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        backgroundColor: Colors.white,
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 70),
           children: [
@@ -250,6 +251,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
         const SizedBox(width: 8),
         PopupMenuButton<Object>(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: Colors.white,
           onSelected: (value) {
             if (value is DateTime) {
               setState(() {
@@ -297,7 +299,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: Colors.white,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),

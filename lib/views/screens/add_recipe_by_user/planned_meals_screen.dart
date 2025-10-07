@@ -99,18 +99,7 @@ class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
         centerTitle: true,
         title: const Text('Planned Meals', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.black87),
-        actions: [
-          // Add a button to navigate to My Recipes screen
-          IconButton(
-            icon: const Icon(Icons.book_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MyRecipesScreen()), // Fixed: Removed const
-              );
-            },
-            tooltip: 'My Recipes',
-          ),
-        ],
+        actions: [],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
