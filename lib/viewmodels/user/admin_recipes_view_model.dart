@@ -508,8 +508,13 @@ class AdminRecipesViewModel extends ChangeNotifier {
             if (e is Map) {
               final text = e['text'] ?? e['name'] ?? e['title'];
               final qty = e['quantity'];
+              final emoji = e['emoji'] ?? e['icon'] ?? e['em'] ?? e['symbol'];
               if (text != null) {
-                out.add(qty != null ? '$qty $text' : text.toString());
+                final String base = qty != null ? '$qty $text' : text.toString();
+                final String withEmoji = (emoji != null && emoji.toString().isNotEmpty)
+                    ? '${emoji.toString()} $base'
+                    : base;
+                out.add(withEmoji);
               }
             }
           }
