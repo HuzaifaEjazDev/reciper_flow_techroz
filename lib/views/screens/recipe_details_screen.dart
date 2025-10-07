@@ -155,6 +155,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: Colors.white,
               title: const Text('Meal Plan'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
