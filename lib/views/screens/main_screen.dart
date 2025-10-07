@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:recipe_app/views/screens/tabs/home_screen.dart';
 import 'package:recipe_app/views/screens/tabs/meal_planner_screen.dart';
 import 'package:recipe_app/views/screens/tabs/groceries_screen.dart';
@@ -30,33 +31,70 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
-        title: Text(
-          _currentIndex == 0
-              ? 'RecipeApp'
-              : _currentIndex == 1
-                  ? 'Meal Planner'
-                  : active.title,
-          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
-        ),
-        actions: _currentIndex == 0
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.notifications_none),
-                  color: Colors.black87,
-                  onPressed: () {
-                  },
-                  tooltip: 'Notifications',
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 12),
-                  child: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFFE5E7EB),
+        centerTitle: _currentIndex == 0 ? false : true, // Left-aligned for home screen, centered for others
+        title: _currentIndex == 0
+            ? Row(
+                children: [
+                  // App logo circle
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.deepOrange,
+                    ),
+                    child: ClipOval(
+                      // shows asset image here
+                      child: Image.asset('assets/images/logo.png'),
+                    ),
                   ),
-                ),
-              ]
-            : null,
+                  const SizedBox(width: 12),
+                  // App title with Noto Sans font
+                  Text(
+                    'Recipeflow',
+                    style: GoogleFonts.notoSans(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 20,
+                      // textStyle: const TextStyle(
+                      //   fontFamilyFallback: ['Noto Sans', 'sans-serif'],
+                      // ),
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                _currentIndex == 1
+                    ? 'Meal Planner'
+                    : _currentIndex == 2
+                        ? 'Groceries'
+                        : 'Profile',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+
+          ),
+              ),
+        // actions: _currentIndex == 0
+        //     ? [] // No actions for home screen
+        //     : [
+        //         // Add notification icon and profile picture for other screens
+        //         IconButton(
+        //           icon: const Icon(Icons.notifications_none),
+        //           color: Colors.black87,
+        //           onPressed: () {
+        //           },
+        //           tooltip: 'Notifications',
+        //         ),
+        //         const Padding(
+        //           padding: EdgeInsets.only(right: 12),
+        //           child: CircleAvatar(
+        //             radius: 14,
+        //             backgroundColor: Color(0xFFE5E7EB),
+        //           ),
+        //         ),
+        //       ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
@@ -88,8 +126,20 @@ class _MainScreenState extends State<MainScreen> {
             backgroundColor: Colors.white,
             selectedItemColor: Colors.deepOrange,
             unselectedItemColor: Colors.grey[800],
-            selectedLabelStyle: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.w600),
-            unselectedLabelStyle: const TextStyle(color: Color(0xFF374151), fontWeight: FontWeight.w600),
+            selectedLabelStyle: GoogleFonts.notoSans(
+              color: Colors.deepOrange, 
+              fontWeight: FontWeight.w600,
+              textStyle: const TextStyle(
+                fontFamilyFallback: ['Noto Sans', 'sans-serif'],
+              ),
+            ),
+            unselectedLabelStyle: GoogleFonts.notoSans(
+              color: const Color(0xFF374151), 
+              fontWeight: FontWeight.w600,
+              textStyle: const TextStyle(
+                fontFamilyFallback: ['Noto Sans', 'sans-serif'],
+              ),
+            ),
             items: _items
                 .map(
                   (e) => BottomNavigationBarItem(
@@ -111,5 +161,3 @@ class _TabItem {
   final IconData icon;
   _TabItem(this.title, this.page, this.icon);
 }
-
-
