@@ -180,7 +180,6 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     });
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         // Clear All button at start position
         TextButton(
@@ -193,7 +192,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           ),
           child: const Text('Clear All', style: TextStyle(fontWeight: FontWeight.w600)),
         ),
-        const SizedBox(width: 8),
+        // Spacer to push sort button to the end
+        const Spacer(),
         const Text('Sort by: ', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         const SizedBox(width: 8),
         PopupMenuButton<Object>(
@@ -283,11 +283,11 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   /// Scales ingredient quantity based on servings
   /// If quantity is a number, multiply it by servings
   /// If quantity contains fractions or mixed numbers, parse and scale accordingly
-  String _scaleIngredientQuantity(String quantity, int servings) {
+  static String _scaleIngredientQuantity(String quantity, int servings) {
     if (quantity.isEmpty || servings <= 1) return quantity;
     
     // Try to parse the quantity as a number
-    final double? qty = _parseQuantity(quantity);
+    final double? qty = _GroceriesScreenState._parseQuantity(quantity);
     if (qty == null) return quantity;
     
     // Scale the quantity
@@ -309,7 +309,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   
   /// Parses quantity string to extract numeric value
   /// Handles simple numbers, fractions, and mixed numbers
-  double? _parseQuantity(String quantity) {
+  static double? _parseQuantity(String quantity) {
     final String trimmed = quantity.trim();
     if (trimmed.isEmpty) return null;
     
@@ -335,7 +335,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       if (parts.length == 2) {
         final double? whole = double.tryParse(parts[0]);
         if (whole != null) {
-          final double? fraction = _parseQuantity(parts[1]);
+          final double? fraction = _GroceriesScreenState._parseQuantity(parts[1]);
           if (fraction != null) {
             return whole + fraction;
           }
@@ -344,6 +344,62 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     }
     
     return null;
+  }
+
+  /// Parse ingredient name that contains emoji, quantity, and name
+  /// Format: "emoji quantity name" (split only on first 2 spaces)
+  /// Returns a map with 'emoji', 'quantity', and 'name' keys
+  static Map<String, String> _parseIngredientName(String fullName) {
+    // Split only on first 2 spaces
+    final List<String> parts = fullName.split(' ');
+    if (parts.length < 3) {
+      // If we don't have enough parts, return as is
+      return {'emoji': '', 'quantity': '', 'name': fullName};
+    }
+    
+    // First part is emoji, second part is quantity, rest is name
+    final String emoji = parts[0];
+    final String quantity = parts[1];
+    final String name = parts.sublist(2).join(' ');
+    
+    return {'emoji': emoji, 'quantity': quantity, 'name': name};
+  }
+
+  /// Build a row with emoji+name at start and quantity at end
+  static Widget _buildIngredientRow(String fullName, String scaledQty, bool checked) {
+    final Map<String, String> parsed = _GroceriesScreenState._parseIngredientName(fullName);
+    final String emoji = parsed['emoji'] ?? '';
+    final String quantity = parsed['quantity'] ?? '';
+    final String name = parsed['name'] ?? fullName;
+    
+    // Use scaled quantity if provided and not empty, otherwise use parsed quantity
+    final String displayQuantity = scaledQty.isNotEmpty ? scaledQty : quantity;
+    
+    return Row(
+      children: [
+        // Emoji and name at start
+        Text(
+          '$emoji $name',
+          style: TextStyle(
+            color: Colors.black87,
+            decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+          ),
+        ),
+        // Spacer to push quantity to the end
+        const Spacer(),
+        // Quantity at end (if exists)
+        if (displayQuantity.isNotEmpty)
+          Text(
+            displayQuantity,
+            style: TextStyle(
+              color: Colors.black87,
+              decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 16),
+      ],
+    );
   }
 
   Widget _buildGroceryItemsFromPlannedMeals(BuildContext context) {
@@ -362,83 +418,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             child: Text('No groceries for selected date', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
           );
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: recipes.map((r) {
-            final String recipeId = (r['id'] ?? '').toString();
-            final String title = (r['title'] ?? '').toString();
-            final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
-            final int servings = r['servings'] is int ? r['servings'] as int : 1;
-            
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: ExpansionTile(
-                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                children: [
-                  ...List<Widget>.generate(ingredients.length, (i) {
-                    final dynamic item = ingredients[i];
-                    final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
-                    final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
-                    final String scaledQty = _scaleIngredientQuantity(qty, servings);
-                    // Use ViewModel to get checkbox state
-                    final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
-                    final bool checked = viewModel.getCheckboxState(recipeId, i) ?? false;
-                    return InkWell(
-                      onTap: () async {
-                        final newValue = !checked;
-                        // Update local state immediately for instant UI feedback
-                        viewModel.updateCheckboxState(recipeId, i, newValue);
-                        // Update database in background
-                        await viewModel.toggleGroceryIngredientChecked(
-                          groceryId: recipeId, 
-                          ingredientIndex: i, 
-                          isChecked: newValue
-                        );
-                      },
-                      child: Container(
-                        color: checked ? Colors.grey.shade100 : Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            Checkbox(
-                              value: checked,
-                              onChanged: (v) async {
-                                final newValue = v ?? false;
-                                // Update local state immediately for instant UI feedback
-                                viewModel.updateCheckboxState(recipeId, i, newValue);
-                                // Update database in background
-                                await viewModel.toggleGroceryIngredientChecked(
-                                  groceryId: recipeId, 
-                                  ingredientIndex: i, 
-                                  isChecked: newValue
-                                );
-                              },
-                            ),
-                            Expanded(
-                              child: Text(
-                                scaledQty.isEmpty ? name : '$scaledQty $name',
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                ],
-              ),
-            );
-          }).toList(),
-        );
+        return _GroceryItemsList(recipes: recipes);
       },
     );
   }
@@ -534,83 +514,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             child: Text('No groceries yet. Use the Groceries feature (separate from Meal Planner).', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
           );
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: recipes.map((r) {
-            final String recipeId = (r['id'] ?? '').toString();
-            final String title = (r['title'] ?? '').toString();
-            final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
-            final int servings = r['servings'] is int ? r['servings'] as int : 1;
-            
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: ExpansionTile(
-                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                children: [
-                  ...List<Widget>.generate(ingredients.length, (i) {
-                    final dynamic item = ingredients[i];
-                    final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
-                    final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
-                    final String scaledQty = _scaleIngredientQuantity(qty, servings);
-                    // Use ViewModel to get checkbox state
-                    final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
-                    final bool checked = viewModel.getCheckboxState(recipeId, i) ?? false;
-                    return InkWell(
-                      onTap: () async {
-                        final newValue = !checked;
-                        // Update local state immediately for instant UI feedback
-                        viewModel.updateCheckboxState(recipeId, i, newValue);
-                        // Update database in background
-                        await viewModel.toggleGroceryIngredientChecked(
-                          groceryId: recipeId, 
-                          ingredientIndex: i, 
-                          isChecked: newValue
-                        );
-                      },
-                      child: Container(
-                        color: checked ? Colors.grey.shade100 : Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            Checkbox(
-                              value: checked,
-                              onChanged: (v) async {
-                                final newValue = v ?? false;
-                                // Update local state immediately for instant UI feedback
-                                viewModel.updateCheckboxState(recipeId, i, newValue);
-                                // Update database in background
-                                await viewModel.toggleGroceryIngredientChecked(
-                                  groceryId: recipeId, 
-                                  ingredientIndex: i, 
-                                  isChecked: newValue
-                                );
-                              },
-                            ),
-                            Expanded(
-                              child: Text(
-                                scaledQty.isEmpty ? name : '$scaledQty $name',
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                ],
-              ),
-            );
-          }).toList(),
-        );
+        return _GroceryItemsList(recipes: recipes);
       },
     );
   }
@@ -652,6 +556,144 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
               child: const Text('Clear All', style: TextStyle(color: Colors.red)),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+/// StatefulWidget to manage grocery items with better performance
+class _GroceryItemsList extends StatefulWidget {
+  final List<Map<String, dynamic>> recipes;
+
+  const _GroceryItemsList({Key? key, required this.recipes}) : super(key: key);
+
+  @override
+  State<_GroceryItemsList> createState() => _GroceryItemsListState();
+}
+
+class _GroceryItemsListState extends State<_GroceryItemsList> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widget.recipes.map((r) {
+        final String recipeId = (r['id'] ?? '').toString();
+        final String title = (r['title'] ?? '').toString();
+        final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
+        final int servings = r['servings'] is int ? r['servings'] as int : 1;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Consumer<GroceriesViewModel>(
+            builder: (context, viewModel, child) {
+              return ExpansionTile(
+                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                initiallyExpanded: viewModel.getExpansionState(recipeId),
+                onExpansionChanged: (isExpanded) {
+                  viewModel.toggleExpansionState(recipeId, isExpanded);
+                },
+                children: [
+                  ...List<Widget>.generate(ingredients.length, (i) {
+                    final dynamic item = ingredients[i];
+                    final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
+                    final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
+                    final String scaledQty = _GroceriesScreenState._scaleIngredientQuantity(qty, servings);
+                    return _IngredientItem(
+                      recipeId: recipeId,
+                      ingredientIndex: i,
+                      name: name,
+                      scaledQty: scaledQty,
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                ],
+              );
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+/// StatefulWidget to manage individual ingredient items with efficient state updates
+class _IngredientItem extends StatefulWidget {
+  final String recipeId;
+  final int ingredientIndex;
+  final String name;
+  final String scaledQty;
+
+  const _IngredientItem({
+    Key? key,
+    required this.recipeId,
+    required this.ingredientIndex,
+    required this.name,
+    required this.scaledQty,
+  }) : super(key: key);
+
+  @override
+  State<_IngredientItem> createState() => _IngredientItemState();
+}
+
+class _IngredientItemState extends State<_IngredientItem> {
+  bool? _checked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<GroceriesViewModel>(
+      builder: (context, viewModel, child) {
+        // Initialize checked state from view model if not already set
+        _checked ??= viewModel.getCheckboxState(widget.recipeId, widget.ingredientIndex) ?? false;
+        
+        return InkWell(
+          onTap: () async {
+            final newValue = !(_checked ?? false);
+            setState(() {
+              _checked = newValue;
+            });
+            // Update view model silently
+            viewModel.updateCheckboxStateSilently(widget.recipeId, widget.ingredientIndex, newValue);
+            // Update database in background
+            await viewModel.toggleGroceryIngredientChecked(
+              groceryId: widget.recipeId, 
+              ingredientIndex: widget.ingredientIndex, 
+              isChecked: newValue
+            );
+          },
+          child: Container(
+            color: _checked == true ? Colors.grey.shade100 : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _checked,
+                  onChanged: (v) async {
+                    final newValue = v ?? false;
+                    setState(() {
+                      _checked = newValue;
+                    });
+                    // Update view model silently
+                    viewModel.updateCheckboxStateSilently(widget.recipeId, widget.ingredientIndex, newValue);
+                    // Update database in background
+                    await viewModel.toggleGroceryIngredientChecked(
+                      groceryId: widget.recipeId, 
+                      ingredientIndex: widget.ingredientIndex, 
+                      isChecked: newValue
+                    );
+                  },
+                ),
+                Expanded(
+                  child: _GroceriesScreenState._buildIngredientRow(widget.name, widget.scaledQty, _checked ?? false),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

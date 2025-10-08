@@ -302,15 +302,21 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   Map<String, dynamic> _parseIngredientToMap(String s) {
     final String trimmed = s.trim();
     if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
-    final int firstSpace = trimmed.indexOf(' ');
-    if (firstSpace == -1) return {'name': trimmed, 'quantity': ''};
-    final String firstToken = trimmed.substring(0, firstSpace);
-    final String rest = trimmed.substring(firstSpace + 1);
-    final double? qty = double.tryParse(firstToken);
-    if (qty == null) {
+    
+    // Split only on first 2 spaces to handle format: "emoji quantity name"
+    final List<String> parts = trimmed.split(' ');
+    if (parts.length < 3) {
+      // If we don't have enough parts, return as is
       return {'name': trimmed, 'quantity': ''};
     }
-    return {'name': rest, 'quantity': firstToken};
+    
+    // First part is emoji, second part is quantity, rest is name
+    final String emoji = parts[0];
+    final String quantity = parts[1];
+    final String name = parts.sublist(2).join(' ');
+    
+    // Combine emoji and name for the name field, and use quantity for the quantity field
+    return {'name': '$emoji $name', 'quantity': quantity};
   }
 }
 

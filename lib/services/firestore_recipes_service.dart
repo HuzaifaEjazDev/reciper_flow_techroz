@@ -519,6 +519,18 @@ class FirestoreRecipesService {
     await docRef.update({'ingredients': updatedIngredients});
   }
 
+  /// Delete an entire grocery recipe document
+  Future<void> deleteGroceryRecipe(String groceryId) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final DocumentReference<Map<String, dynamic>> docRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('GroceryRecipes')
+        .doc(groceryId);
+    await docRef.delete();
+  }
+
   // ===================
   // Bookmarks (per user, server-only)
   // ===================
