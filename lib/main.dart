@@ -4,6 +4,8 @@ import 'firebase_options.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
+import 'package:recipe_app/viewmodels/user/user_recipes_pager_view_model.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
@@ -29,35 +31,17 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()..loadInitial()),
         ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()),
         ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
-        ChangeNotifierProvider<GroceriesViewModel>(create: (_) => GroceriesViewModel()),
+        ChangeNotifierProvider<UserRecipesPagerViewModel>(create: (_) => UserRecipesPagerViewModel(FirestoreRecipesService())),
       ],
       child: MaterialApp(
-      title: 'Recipe App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary500),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary500,
-            foregroundColor: Colors.white,
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+        title: 'Recipe App',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: Colors.deepOrange,
+          fontFamily: 'Poppins',
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-          elevation: 0,
-          centerTitle: true,
-          foregroundColor: Colors.black,
-        ),
-        useMaterial3: true,
+        home: const AuthWrapper(),
       ),
-      home: const AuthWrapper(),
-    ),
     );
   }
 }

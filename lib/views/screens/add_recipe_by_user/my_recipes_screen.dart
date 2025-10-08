@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
-import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
+import 'package:recipe_app/viewmodels/user/user_recipes_pager_view_model.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/user_recipe_details_screen.dart';
 
@@ -10,13 +11,8 @@ class MyRecipesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<MyRecipesViewModel>(
-      create: (_) {
-        final vm = MyRecipesViewModel();
-        // Set up real-time listener for user recipes
-        vm.setupRecipesListener();
-        return vm;
-      },
+    return ChangeNotifierProvider<UserRecipesPagerViewModel>(
+      create: (_) => UserRecipesPagerViewModel(FirestoreRecipesService())..loadInitial(),
       child: const _MyRecipesView(),
     );
   }
@@ -26,8 +22,7 @@ class _MyRecipesView extends StatelessWidget {
   const _MyRecipesView();
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<MyRecipesViewModel>();
-    final items = vm.items;
+    final vm = context.watch<UserRecipesPagerViewModel>();
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -52,103 +47,113 @@ class _MyRecipesView extends StatelessWidget {
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: _SearchField()),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => context.read<MyRecipesViewModel>().applySearch(),
-                      child: Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF7F00),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.search, color: Colors.white, size: 20),
-                        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(25, 16, 25, 8),
+              child: Row(
+                children: [
+                  Expanded(child: _SearchField()),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => vm.applySearch(),
+                    child: Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7F00),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.search, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () async {
-                        await context.read<MyRecipesViewModel>().loadSortOptions();
-                        // ignore: use_build_context_synchronously
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Color(0xFFF5F7F9),
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                          ),
-                          builder: (_) => const _SortBottomSheet(),
-                        );
-                      },
-                      child: Container(
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Row(
-                          children: const [
-                            Icon(Icons.sort, color: Colors.black87),
-                            SizedBox(width: 6),
-                            Text('Sort', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (vm.loading) const Center(child: CircularProgressIndicator()),
-                if (vm.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(vm.error!, style: const TextStyle(color: Colors.red)),
                   ),
-                if (!vm.loading && items.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 40),
-                    child: Center(
-                      child: Text(
-                        'No recipes found.\nCreate your first recipe!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 16,
-                        ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () async {
+                      // TODO: Implement sort functionality
+                      // For now, we'll show a simple dialog
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Sort Options'),
+                            content: const Text('Sorting functionality will be implemented in a future update.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.sort, color: Colors.black87),
+                          SizedBox(width: 6),
+                          Text('Sort', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+                        ],
                       ),
                     ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: items.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.68,
-                    ),
-                    itemBuilder: (context, index) => _RecipeCard(data: items[index]),
                   ),
-                const SizedBox(height: 100),
-              ],
+                ],
+              ),
             ),
-          ),
+            if (vm.error != null)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(vm.error!, style: const TextStyle(color: Colors.red)),
+              ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
+                  child: Column(
+                    children: [
+                      if (vm.loading && vm.items.isEmpty)
+                        const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: vm.items.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.68,
+                        ),
+                        itemBuilder: (context, index) {
+                          final r = vm.items[index];
+                          return _RecipeCard(
+                            title: r['title']?.toString() ?? '', 
+                            imageAssetPath: r['imageUrl']?.toString() ?? 'assets/images/vegitables.jpg',
+                            ingredientsCount: r['ingredients'] is List ? r['ingredients'].length : 0,
+                            stepsCount: r['steps'] is List ? (r['steps'] as List).length : 0,
+                            id: r['id']?.toString() ?? '',
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _PageControls(vm: vm),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -156,8 +161,20 @@ class _MyRecipesView extends StatelessWidget {
 }
 
 class _RecipeCard extends StatelessWidget {
-  final MyRecipeCardData data;
-  const _RecipeCard({required this.data});
+  final String title;
+  final String imageAssetPath;
+  final int ingredientsCount;
+  final int stepsCount;
+  final String id;
+  
+  const _RecipeCard({
+    required this.title,
+    required this.imageAssetPath,
+    required this.ingredientsCount,
+    required this.stepsCount,
+    required this.id,
+  });
+  
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -165,87 +182,87 @@ class _RecipeCard extends StatelessWidget {
       height: 250,
       child: InkWell(
         onTap: () {
-          // Navigate to UserRecipeDetailsScreen instead of CreateNewRecipeScreen for viewing
+          // Navigate to UserRecipeDetailsScreen
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => UserRecipeDetailsScreen(recipeId: data.id),
+              builder: (_) => UserRecipeDetailsScreen(recipeId: id),
             ),
           );
         },
         borderRadius: BorderRadius.circular(22),
         child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: 150,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _RecipeImage(pathOrUrl: data.imageAssetPath),
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Color(0xB3000000)],
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 150,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _RecipeImage(pathOrUrl: imageAssetPath),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Color(0xB3000000)],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 10,
-                    child: Text(
-                      data.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                        shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                    Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 10,
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 0, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.flatware, color: Colors.black54),
-                    const SizedBox(width: 6),
-                    Text('${data.ingredientsCount} ingredients', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 0, 8),
-              child: Row(
-                children: [
-                  const Icon(Icons.local_dining_outlined, color: Colors.black54),
-                  const SizedBox(width: 6),
-                  Text('${data.stepsCount} steps', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 0, 0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.flatware, color: Colors.black54),
+                      const SizedBox(width: 6),
+                      Text('$ingredientsCount ingredients', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 0, 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_dining_outlined, color: Colors.black54),
+                    const SizedBox(width: 6),
+                    Text('$stepsCount steps', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -267,135 +284,6 @@ class _RecipeImage extends StatelessWidget {
           fit: BoxFit.cover,
         );
       },
-    );
-  }
-}
-
-class _SortBottomSheet extends StatelessWidget {
-  const _SortBottomSheet();
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<MyRecipesViewModel>();
-    return Container(
-      color: const Color(0xFFF5F7F9),
-      child: Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE5E7EB),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87)),
-          const SizedBox(height: 12),
-
-          _ChipsExpansionTile(
-            title: 'meal Types',
-            options: vm.mealTypes,
-            selected: vm.selectedMealType,
-            onSelected: (v) => context.read<MyRecipesViewModel>().setSelectedMealType(v),
-          ),
-          const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
-
-          _ChipsExpansionTile(
-            title: 'diets',
-            options: vm.diets,
-            selected: vm.selectedDiet,
-            onSelected: (v) => context.read<MyRecipesViewModel>().setSelectedDiet(v),
-          ),
-          const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
-
-          _ChipsExpansionTile(
-            title: 'cuisines',
-            options: vm.cuisines,
-            selected: vm.selectedCuisine,
-            onSelected: (v) => context.read<MyRecipesViewModel>().setSelectedCuisine(v),
-          ),
-          const Divider(height: 24, thickness: 1, color: Color(0xFFE5E7EB)),
-
-          _ChipsExpansionTile(
-            title: 'special Tags',
-            options: vm.tags,
-            selected: vm.selectedTag,
-            onSelected: (v) => context.read<MyRecipesViewModel>().setSelectedTag(v),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-      ),
-    );
-  }
-}
-
-class _ChipsExpansionTile extends StatelessWidget {
-  final String title;
-  final List<String> options;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
-  const _ChipsExpansionTile({
-    required this.title,
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
-            const SizedBox(height: 2),
-            Text(selected ?? 'Select', style: const TextStyle(color: Colors.black54)),
-          ],
-        ),
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: options.map((opt) {
-              final bool isSelected = opt == selected;
-              return ChoiceChip(
-                label: Text(opt),
-                selected: isSelected,
-                onSelected: (_) => onSelected(isSelected ? null : opt),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: const BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                backgroundColor: Colors.white,
-                selectedColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.black : Colors.black87,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -424,11 +312,61 @@ class _SearchField extends StatelessWidget {
                 hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
               ),
               /// Save the search query temporarily to use it later when search button is tapped
-              onChanged: (v) => context.read<MyRecipesViewModel>().setQueryTemp(v),
+              onChanged: (v) => context.read<UserRecipesPagerViewModel>().setQueryTemp(v),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PageControls extends StatelessWidget {
+  final UserRecipesPagerViewModel vm;
+  const _PageControls({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    if (vm.items.isEmpty && vm.loading) return const SizedBox.shrink();
+    final int totalPages = vm.totalPages;
+    if (totalPages <= 1) return const SizedBox.shrink();
+    return Column(
+      children: [
+        SizedBox(
+          height: 44,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: totalPages,
+            itemBuilder: (context, index) {
+              final int page = index + 1;
+              final bool selected = vm.currentPage == page;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: OutlinedButton(
+                  onPressed: vm.loading ? null : () => vm.goToPage(page),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: selected ? Colors.deepOrange : Colors.white,
+                    foregroundColor: selected ? Colors.white : Colors.black87,
+                    side: BorderSide(color: selected ? Colors.deepOrange : const Color(0xFFE5E7EB)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  child: Text('$page', style: const TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          vm.totalCount > 0
+              ? 'Page ${vm.currentPage} of $totalPages  •  ${vm.totalCount} total User Recipes'
+              : 'Loading pages…',
+          style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

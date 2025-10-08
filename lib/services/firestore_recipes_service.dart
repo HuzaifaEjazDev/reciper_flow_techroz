@@ -712,4 +712,164 @@ class FirestoreRecipesService {
       return 0;
     }
   }
+
+  // Add this new method for fetching user-created recipes with pagination
+  Future<({List<Map<String, dynamic>> items, String? lastId})> fetchUserRecipesPage({
+    int limit = 10,
+    String? startAfterId,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return (items: <Map<String, dynamic>>[], lastId: null);
+    }
+    
+    Query<Map<String, dynamic>> q = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('RecipesCreatedByUser')
+        .orderBy(FieldPath.documentId)
+        .limit(limit);
+        
+    if (startAfterId != null && startAfterId.isNotEmpty) {
+      q = q.startAfter([startAfterId]);
+    }
+    
+    final QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    final List<Map<String, dynamic>> items = docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return data;
+    }).toList();
+    
+    final String? lastId = docs.isEmpty ? null : docs.last.id;
+    return (items: items, lastId: lastId);
+  }
+
+  // Add this new method for counting user-created recipes
+  Future<int> fetchUserRecipesCount() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    
+    try {
+      final AggregateQuerySnapshot snap = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .count()
+          .get();
+      return snap.count ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  // Add this new method for fetching user-created recipes with title prefix search
+  Future<({List<Map<String, dynamic>> items, String? lastTitle})> fetchUserRecipesPageByTitlePrefix({
+    int limit = 10,
+    String? startAfterTitle,
+    required String prefix,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return (items: <Map<String, dynamic>>[], lastTitle: null);
+    }
+    
+    final String lp = prefix.toLowerCase();
+    final String start = lp;
+    final String endExclusive = '$lp\uf8ff';
+    
+    Query<Map<String, dynamic>> q = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('RecipesCreatedByUser')
+        .orderBy('titleLower')
+        .where('titleLower', isGreaterThanOrEqualTo: start)
+        .where('titleLower', isLessThan: endExclusive)
+        .limit(limit);
+        
+    if (startAfterTitle != null && startAfterTitle.isNotEmpty) {
+      q = q.startAfter([startAfterTitle.toLowerCase()]);
+    }
+    
+    QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    
+    // Fallback to legacy 'title' if lower index/field missing
+    if (docs.isEmpty) {
+      final String s2 = prefix;
+      final String e2 = '$prefix\uf8ff';
+      Query<Map<String, dynamic>> q2 = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .orderBy('title')
+          .where('title', isGreaterThanOrEqualTo: s2)
+          .where('title', isLessThan: e2)
+          .limit(limit);
+          
+      if (startAfterTitle != null && startAfterTitle.isNotEmpty) {
+        q2 = q2.startAfter([startAfterTitle]);
+      }
+      
+      snapshot = await q2.get();
+      docs = snapshot.docs;
+    }
+    
+    final List<Map<String, dynamic>> items = docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return data;
+    }).toList();
+    
+    final String? lastTitle = docs.isEmpty
+        ? null
+        : (docs.last.data()['titleLower']?.toString() ?? docs.last.data()['title']?.toString());
+        
+    return (items: items, lastTitle: lastTitle);
+  }
+
+  // Add this new method for counting user-created recipes with title prefix search
+  Future<int> fetchUserRecipesCountByTitlePrefix(String prefix) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    
+    try {
+      final String lp = prefix.toLowerCase();
+      final String start = lp;
+      final String endExclusive = '$lp\uf8ff';
+      
+      AggregateQuerySnapshot snap = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .orderBy('titleLower')
+          .where('titleLower', isGreaterThanOrEqualTo: start)
+          .where('titleLower', isLessThan: endExclusive)
+          .count()
+          .get();
+          
+      int count = snap.count ?? 0;
+      
+      // Fallback to legacy 'title' if lower index/field missing
+      if (count == 0) {
+        final String s2 = prefix;
+        final String e2 = '$prefix\uf8ff';
+        snap = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('RecipesCreatedByUser')
+            .orderBy('title')
+            .where('title', isGreaterThanOrEqualTo: s2)
+            .where('title', isLessThan: e2)
+            .count()
+            .get();
+        count = snap.count ?? 0;
+      }
+      
+      return count;
+    } catch (_) {
+      return 0;
+    }
+  }
 }
