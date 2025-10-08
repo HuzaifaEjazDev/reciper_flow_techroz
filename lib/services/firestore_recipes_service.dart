@@ -424,6 +424,62 @@ class FirestoreRecipesService {
   }
 
   // ===================
+  // User Created Recipes (per user)
+  // ===================
+
+  /// Delete a user-created recipe
+  Future<void> deleteUserCreatedRecipe(String recipeId) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    try {
+      final DocumentReference<Map<String, dynamic>> docRef = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .doc(recipeId);
+      
+      await docRef.delete();
+    } catch (e) {
+      throw Exception('Error deleting user-created recipe: $e');
+    }
+  }
+
+  /// Update a user-created recipe
+  Future<void> updateUserCreatedRecipe({
+    required String recipeId,
+    required String title,
+    required List<Map<String, dynamic>> ingredients,
+    required List<String> steps,
+    required int minutes,
+  }) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    try {
+      final DocumentReference<Map<String, dynamic>> docRef = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .doc(recipeId);
+      
+      await docRef.update({
+        'title': title,
+        'ingredients': ingredients,
+        'steps': steps,
+        'minutes': minutes,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      throw Exception('Error updating user-created recipe: $e');
+    }
+  }
+
+  // ===================
   // GroceryRecipes (per user)
   // ===================
 

@@ -123,13 +123,18 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
   // Save the recipe to Firestore
   Future<bool> saveRecipeToFirestore() async {
     try {
-      // Prepare ingredients as list of maps
+      // Prepare ingredients as list of maps, filtering out empty entries
       final List<Map<String, dynamic>> ingredients = [];
       for (int i = 0; i < qtyControllers.length; i++) {
-        ingredients.add({
-          'quantity': qtyControllers[i].text.trim(),
-          'name': nameControllers[i].text.trim(),
-        });
+        final String quantity = qtyControllers[i].text.trim();
+        final String name = nameControllers[i].text.trim();
+        // Only add ingredient if either quantity or name is not empty
+        if (quantity.isNotEmpty || name.isNotEmpty) {
+          ingredients.add({
+            'quantity': quantity,
+            'name': name,
+          });
+        }
       }
 
       // Prepare steps as list of strings

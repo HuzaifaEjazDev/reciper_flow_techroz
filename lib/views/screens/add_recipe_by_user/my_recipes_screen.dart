@@ -70,44 +70,6 @@ class _MyRecipesView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: () async {
-                      // TODO: Implement sort functionality
-                      // For now, we'll show a simple dialog
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Sort Options'),
-                            content: const Text('Sorting functionality will be implemented in a future update.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.sort, color: Colors.black87),
-                          SizedBox(width: 6),
-                          Text('Sort', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -301,8 +263,6 @@ class _SearchField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
-          const Icon(Icons.search, color: Colors.black54, size: 20),
-          const SizedBox(width: 4),
           Expanded(
             child: TextField(
               decoration: const InputDecoration(

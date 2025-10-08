@@ -77,6 +77,70 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
     }
   }
 
+  // Show delete confirmation dialog
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white, // White background as requested
+          title: const Text('Delete Recipe'),
+          content: const Text('Are you sure you want to delete this recipe? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                await _deleteRecipe(context); // Delete the recipe
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Delete the recipe
+  Future<void> _deleteRecipe(BuildContext context) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Delete the recipe from Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('RecipesCreatedByUser')
+          .doc(widget.recipeId)
+          .delete();
+
+      // Show success message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Recipe deleted successfully!')),
+        );
+        
+        // Navigate back to the previous screen
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Show error message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete recipe. Please try again.')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _recipeListener?.cancel();
@@ -93,6 +157,13 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
         title: const Text('User Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () {
+              // Show delete confirmation dialog
+              _showDeleteConfirmationDialog(context);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
@@ -139,18 +210,6 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HeroImage(title: recipe.title, imageAssetPath: recipe.imageUrl),
-                  const SizedBox(height: 16),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Created Recipe',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.deepOrange,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
