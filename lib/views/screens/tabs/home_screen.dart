@@ -24,10 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _performSearch() {
     final String query = _searchController.text.trim();
     if (query.isNotEmpty) {
-      // Navigate to RecipeByAdminScreen with the search query
+      // Navigate to RecipeByAdminScreen with the search query converted to lowercase
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => RecipeByAdminScreen(initialSearchQuery: query),
+          builder: (_) => RecipeByAdminScreen(initialSearchQuery: query.toLowerCase()),
         ),
       ).then((_) {
         // After returning from the search screen, we could optionally clear the search field

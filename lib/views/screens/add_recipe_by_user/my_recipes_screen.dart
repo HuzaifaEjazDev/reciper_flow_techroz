@@ -61,6 +61,22 @@ class _MyRecipesView extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(child: _SearchField()),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => context.read<MyRecipesViewModel>().applySearch(),
+                      child: Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF7F00),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.search, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     GestureDetector(
                       onTap: () async {
@@ -407,7 +423,8 @@ class _SearchField extends StatelessWidget {
                 hintText: 'Search your recipes...',
                 hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
               ),
-              onChanged: (v) => context.read<MyRecipesViewModel>().setSearchQuery(v),
+              /// Save the search query temporarily to use it later when search button is tapped
+              onChanged: (v) => context.read<MyRecipesViewModel>().setQueryTemp(v),
             ),
           ),
         ],

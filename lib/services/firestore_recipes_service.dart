@@ -68,7 +68,7 @@ class FirestoreRecipesService {
     final String end = '$prefix\uf8ff';
     Query<Map<String, dynamic>> q = _firestore
         .collection(collection)
-        .orderBy('title')
+        .orderBy('titleLower') // Use titleLower field for case-insensitive search
         .startAt([start])
         .endAt([end])
         .limit(limit);
@@ -82,7 +82,7 @@ class FirestoreRecipesService {
       data['id'] = doc.id;
       return data;
     }).toList();
-    final String? lastTitle = docs.isEmpty ? null : (docs.last.data()['title']?.toString());
+    final String? lastTitle = docs.isEmpty ? null : (docs.last.data()['titleLower']?.toString());
     return (items: items, lastTitle: lastTitle);
   }
 
@@ -137,7 +137,7 @@ class FirestoreRecipesService {
       final String end = '$prefix\uf8ff';
       final AggregateQuerySnapshot snap = await _firestore
           .collection(collection)
-          .orderBy('title')
+          .orderBy('titleLower') // Use titleLower field for case-insensitive search
           .startAt([start])
           .endAt([end])
           .count()
@@ -557,6 +557,7 @@ class FirestoreRecipesService {
       await docRef.set({
         'recipeId': recipeId,
         'title': title,
+        'titleLower': title.toLowerCase(),
         'imageUrl': imageUrl,
         'minutes': minutes,
         'createdAt': Timestamp.fromDate(DateTime.now()),
@@ -630,27 +631,48 @@ class FirestoreRecipesService {
     if (user == null) {
       return (items: <Map<String, dynamic>>[], lastTitle: null);
     }
-    final String start = prefix;
-    final String end = '$prefix\uf8ff';
+    final String lp = prefix.toLowerCase();
+    final String start = lp;
+    final String endExclusive = '$lp\uf8ff';
     Query<Map<String, dynamic>> q = _firestore
         .collection('users')
         .doc(user.uid)
         .collection('BookMarkedRecipes')
-        .orderBy('title')
-        .startAt([start])
-        .endAt([end])
+        .orderBy('titleLower')
+        .where('titleLower', isGreaterThanOrEqualTo: start)
+        .where('titleLower', isLessThan: endExclusive)
         .limit(limit);
     if (startAfterTitle != null && startAfterTitle.isNotEmpty) {
-      q = q.startAfter([startAfterTitle]);
+      q = q.startAfter([startAfterTitle.toLowerCase()]);
     }
-    final QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
-    final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    QuerySnapshot<Map<String, dynamic>> snapshot = await q.get();
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = snapshot.docs;
+    if (docs.isEmpty) {
+      // Fallback to legacy 'title' if lower index/field missing
+      final String s2 = prefix;
+      final String e2 = '$prefix\uf8ff';
+      Query<Map<String, dynamic>> q2 = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('BookMarkedRecipes')
+          .orderBy('title')
+          .where('title', isGreaterThanOrEqualTo: s2)
+          .where('title', isLessThan: e2)
+          .limit(limit);
+      if (startAfterTitle != null && startAfterTitle.isNotEmpty) {
+        q2 = q2.startAfter([startAfterTitle]);
+      }
+      snapshot = await q2.get();
+      docs = snapshot.docs;
+    }
     final List<Map<String, dynamic>> items = docs.map((d) {
       final data = d.data();
       data['id'] = d.id;
       return data;
     }).toList();
-    final String? lastTitle = docs.isEmpty ? null : (docs.last.data()['title']?.toString());
+    final String? lastTitle = docs.isEmpty
+        ? null
+        : (docs.last.data()['titleLower']?.toString() ?? docs.last.data()['title']?.toString());
     return (items: items, lastTitle: lastTitle);
   }
 
@@ -658,18 +680,34 @@ class FirestoreRecipesService {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return 0;
     try {
-      final String start = prefix;
-      final String end = '$prefix\uf8ff';
-      final AggregateQuerySnapshot snap = await _firestore
+      final String lp = prefix.toLowerCase();
+      final String start = lp;
+      final String endExclusive = '$lp\uf8ff';
+      AggregateQuerySnapshot snap = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('BookMarkedRecipes')
-          .orderBy('title')
-          .startAt([start])
-          .endAt([end])
+          .orderBy('titleLower')
+          .where('titleLower', isGreaterThanOrEqualTo: start)
+          .where('titleLower', isLessThan: endExclusive)
           .count()
           .get();
-      return snap.count ?? 0;
+      int count = snap.count ?? 0;
+      if (count == 0) {
+        final String s2 = prefix;
+        final String e2 = '$prefix\uf8ff';
+        snap = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('BookMarkedRecipes')
+            .orderBy('title')
+            .where('title', isGreaterThanOrEqualTo: s2)
+            .where('title', isLessThan: e2)
+            .count()
+            .get();
+        count = snap.count ?? 0;
+      }
+      return count;
     } catch (_) {
       return 0;
     }

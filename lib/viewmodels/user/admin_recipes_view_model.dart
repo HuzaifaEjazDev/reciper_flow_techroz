@@ -110,7 +110,8 @@ class AdminRecipesViewModel extends ChangeNotifier {
   // Set temporary query without triggering search
   void setQueryTemp(String q) {
     if (_disposed) return;
-    _queryTemp = q;
+    // Convert to lowercase for case-insensitive search
+    _queryTemp = q.toLowerCase();
     notifyListeners();
   }
 
@@ -314,7 +315,8 @@ class AdminRecipesViewModel extends ChangeNotifier {
     _query = q ?? _queryTemp; // Use provided query or temp query
     // Server-side search pagination when user types something meaningful
     final String trimmed = _query.trim();
-    _activeServerQuery = trimmed.isEmpty ? '' : trimmed;
+    // Use the lowercase query directly for titleLower field search
+    _activeServerQuery = trimmed.isEmpty ? '' : trimmed.toLowerCase();
     _currentPage = 1;
     _pageToCursor
       ..clear()
@@ -326,15 +328,11 @@ class AdminRecipesViewModel extends ChangeNotifier {
   void _applyFilter({bool force = false}) {
     if (_disposed) return;
     final String q = _query.trim().toLowerCase();
-    if (_activeServerQuery.isNotEmpty || force) {
-      _items
-        ..clear()
-        ..addAll(_allItems);
-    } else {
-      _items
-        ..clear()
-        ..addAll(q.isEmpty ? _allItems : _allItems.where((e) => e.title.toLowerCase().contains(q)));
-    }
+    // For client-side filtering, we can still use contains() on the title field
+    // since we're doing case-insensitive matching
+    _items
+      ..clear()
+      ..addAll(q.isEmpty ? _allItems : _allItems.where((e) => e.title.toLowerCase().contains(q)));
     notifyListeners();
   }
 

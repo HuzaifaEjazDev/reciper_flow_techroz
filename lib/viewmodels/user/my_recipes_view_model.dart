@@ -35,6 +35,7 @@ class MyRecipesViewModel extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   String _query = '';
+  String _queryTemp = ''; // Add temporary query storage
   String? _lastId;
   bool _hasMore = true;
 
@@ -63,6 +64,19 @@ class MyRecipesViewModel extends ChangeNotifier {
   String? get selectedCuisine => _selectedCuisine;
   String? get selectedTag => _selectedTag;
   bool get optionsLoading => _optionsLoading;
+
+  // Set temporary query without triggering search
+  void setQueryTemp(String q) {
+    _queryTemp = q;
+    notifyListeners();
+  }
+
+  // Apply search with the temporary query
+  void applySearch() {
+    final String t = _queryTemp.trim().toLowerCase();
+    _query = t;
+    _applyFilter();
+  }
 
   // Set up real-time listener for user-created recipes
   void setupRecipesListener() {
@@ -238,7 +252,8 @@ class MyRecipesViewModel extends ChangeNotifier {
   }
 
   void setSearchQuery(String query) {
-    _query = query;
+    // Convert to lowercase for case-insensitive search
+    _query = query.trim().toLowerCase();
     _applyFilter();
   }
 

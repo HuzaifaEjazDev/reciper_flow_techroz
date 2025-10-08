@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
+import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 
 class BookmarkedRecipesScreen extends StatelessWidget {
   const BookmarkedRecipesScreen({super.key});
@@ -44,8 +45,6 @@ class _BookmarkedRecipesView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.search, color: Colors.black54, size: 20),
-                          const SizedBox(width: 4),
                           Expanded(
                             child: TextField(
                               decoration: const InputDecoration(
@@ -66,14 +65,14 @@ class _BookmarkedRecipesView extends StatelessWidget {
                     onTap: () => vm.applySearch(),
                     child: Container(
                       height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      width: 48,
                       decoration: BoxDecoration(
                         color: const Color(0xFFFF7F00),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: const Center(
-                        child: Text('Search', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                        child: Icon(Icons.search, color: Colors.white, size: 20),
                       ),
                     ),
                   ),
@@ -105,7 +104,12 @@ class _BookmarkedRecipesView extends StatelessWidget {
                         ),
                         itemBuilder: (context, index) {
                           final r = vm.items[index];
-                          return _BookmarkCard(title: r['title']?.toString() ?? '', imageUrl: r['imageUrl']?.toString() ?? '', minutes: (r['minutes'] is int) ? r['minutes'] as int : 0);
+                          return _BookmarkCard(
+                            title: r['title']?.toString() ?? '', 
+                            imageUrl: r['imageUrl']?.toString() ?? '', 
+                            minutes: (r['minutes'] is int) ? r['minutes'] as int : 0,
+                            recipeId: r['id']?.toString() ?? '', // Pass the recipe ID
+                          );
                         },
                       ),
                       const SizedBox(height: 12),
@@ -127,51 +131,68 @@ class _BookmarkCard extends StatelessWidget {
   final String title;
   final String imageUrl;
   final int minutes;
-  const _BookmarkCard({required this.title, required this.imageUrl, required this.minutes});
+  final String recipeId; // Add recipeId parameter
+  const _BookmarkCard({required this.title, required this.imageUrl, required this.minutes, required this.recipeId});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 120,
-            child: imageUrl.startsWith('http')
-                ? Image.network(imageUrl, fit: BoxFit.cover)
-                : Image.asset(imageUrl.isEmpty ? 'assets/images/easymakesnack1.jpg' : imageUrl, fit: BoxFit.cover),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16, color: Colors.black54),
-                      const SizedBox(width: 6),
-                      Text('$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ],
-              ),
+    return GestureDetector(
+      onTap: () {
+        // Navigate to RecipeDetailsScreen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RecipeDetailsScreen(
+              title: title,
+              imageAssetPath: imageUrl,
+              minutes: minutes,
+              recipeId: recipeId, // Use the passed recipe ID
+              fromAdminScreen: false,
             ),
           ),
-        ],
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 120,
+              child: imageUrl.startsWith('http')
+                  ? Image.network(imageUrl, fit: BoxFit.cover)
+                  : Image.asset(imageUrl.isEmpty ? 'assets/images/easymakesnack1.jpg' : imageUrl, fit: BoxFit.cover),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 16, color: Colors.black54),
+                        const SizedBox(width: 6),
+                        Text('$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -180,6 +201,7 @@ class _BookmarkCard extends StatelessWidget {
 class _BookmarksPager extends ChangeNotifier {
   _BookmarksPager(this._service);
   final FirestoreRecipesService _service;
+  final List<Map<String, dynamic>> _allItems = <Map<String, dynamic>>[]; // Store all items for filtering
   final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
   bool loading = false;
@@ -193,19 +215,23 @@ class _BookmarksPager extends ChangeNotifier {
   int _totalCount = 0;
   String _activeQuery = '';
   String _queryTemp = '';
+  bool _usingClientSideFiltering = false; // Flag to track if we're using client-side filtering
 
   Future<void> loadInitial() async {
+    _allItems.clear();
     _items.clear();
     _lastId = null;
     _currentPage = 1;
     _pageToCursor
       ..clear()
-      ..addAll({1: null});
+      ..addAll({1: null}); // Page 1 starts with null cursor
     _pageToTitleCursor
       ..clear()
-      ..addAll({1: null});
+      ..addAll({1: null}); // Page 1 starts with null cursor
+    _usingClientSideFiltering = false;
     await _loadTotalCount();
-    await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+    // Pass null for startAfterId to load the first page
+    await _loadPageAtCursor(startAfterId: null);
   }
 
   Future<void> _loadPageAtCursor({required String? startAfterId}) async {
@@ -214,24 +240,37 @@ class _BookmarksPager extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      if (_activeQuery.isNotEmpty) {
+      if (_activeQuery.isNotEmpty && !_usingClientSideFiltering) {
+        // Try server-side prefix search first
         final page = await _service.fetchBookmarksPageByTitlePrefix(
           limit: _pageSize,
-          startAfterTitle: _pageToTitleCursor[_currentPage],
+          startAfterTitle: startAfterId, // Use startAfterId directly for title-based pagination
           prefix: _activeQuery,
         );
+        _allItems
+          ..clear()
+          ..addAll(page.items);
         _items
           ..clear()
           ..addAll(page.items);
         final String? lastTitle = page.lastTitle;
+        // Store the cursor for the next page (currentPage + 1)
         _pageToTitleCursor[_currentPage + 1] = lastTitle;
+      } else if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
+        // Use client-side filtering
+        _applyFilter();
       } else {
+        // Load all bookmarks without filtering
         final page = await _service.fetchBookmarksPage(limit: _pageSize, startAfterId: startAfterId);
+        _allItems
+          ..clear()
+          ..addAll(page.items);
         _items
           ..clear()
           ..addAll(page.items);
         _lastId = page.lastId;
       // _hasMore = page.lastId != null;
+        // Store the cursor for the next page (currentPage + 1)
         _pageToCursor[_currentPage + 1] = _lastId;
       }
     } catch (e) {
@@ -245,7 +284,7 @@ class _BookmarksPager extends ChangeNotifier {
   Future<void> goToPage(int pageNumber) async {
     if (pageNumber < 1) return;
     int anchor = pageNumber;
-    if (_activeQuery.isNotEmpty) {
+    if (_activeQuery.isNotEmpty && !_usingClientSideFiltering) {
       while (anchor > 1 && !_pageToTitleCursor.containsKey(anchor)) {
         anchor--;
       }
@@ -259,6 +298,11 @@ class _BookmarksPager extends ChangeNotifier {
         _pageToTitleCursor[p + 1] = next.lastTitle;
         if (next.lastTitle == null) break;
       }
+    } else if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
+      // For client-side filtering, we handle pagination manually
+      _currentPage = pageNumber;
+      _applyFilter();
+      return;
     } else {
       while (anchor > 1 && !_pageToCursor.containsKey(anchor)) {
         anchor--;
@@ -271,7 +315,13 @@ class _BookmarksPager extends ChangeNotifier {
       }
     }
     _currentPage = pageNumber;
-    await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+    // Use the correct cursor based on whether we're searching or not
+    // For page N, we need the cursor from page N-1 (or null for page 1)
+    await _loadPageAtCursor(
+      startAfterId: _activeQuery.isNotEmpty && !_usingClientSideFiltering
+        ? _pageToTitleCursor[_currentPage - 1] 
+        : _pageToCursor[_currentPage - 1]
+    );
   }
 
   int get currentPage => _currentPage;
@@ -280,9 +330,17 @@ class _BookmarksPager extends ChangeNotifier {
 
   Future<void> _loadTotalCount() async {
     try {
-      _totalCount = _activeQuery.isNotEmpty
-          ? await _service.fetchBookmarksCountByTitlePrefix(_activeQuery)
-          : await _service.fetchBookmarksCount();
+      if (_activeQuery.isNotEmpty && !_usingClientSideFiltering) {
+        _totalCount = await _service.fetchBookmarksCountByTitlePrefix(_activeQuery);
+      } else if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
+        // For client-side filtering, we need to filter all items and count them
+        final List<Map<String, dynamic>> filtered = _allItems.where(
+          (item) => (item['title'] as String?)?.toLowerCase().contains(_activeQuery.toLowerCase()) ?? false
+        ).toList();
+        _totalCount = filtered.length;
+      } else {
+        _totalCount = await _service.fetchBookmarksCount();
+      }
     } catch (_) {
       _totalCount = ((_pageToCursor.length - 1) * _pageSize) + _items.length;
     }
@@ -294,16 +352,84 @@ class _BookmarksPager extends ChangeNotifier {
   }
 
   Future<void> applySearch() async {
-    _activeQuery = _queryTemp.trim();
+    final String t = _queryTemp.trim().toLowerCase();
+    _activeQuery = t;
     _currentPage = 1;
     _pageToCursor
       ..clear()
-      ..addAll({1: null});
+      ..addAll({1: null}); // Page 1 starts with null cursor
     _pageToTitleCursor
       ..clear()
-      ..addAll({1: null});
-    await _loadTotalCount();
-    await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+      ..addAll({1: null}); // Page 1 starts with null cursor
+    
+    // Always use client-side filtering for substring search since Firestore doesn't support it natively
+    if (_activeQuery.isNotEmpty) {
+      _usingClientSideFiltering = true;
+      // Load all bookmarks for client-side filtering
+      await _loadAllBookmarksForFiltering();
+      await _loadTotalCount();
+      _applyFilter();
+    } else {
+      // No search query, load normally with server-side pagination
+      _usingClientSideFiltering = false;
+      await _loadTotalCount();
+      await _loadPageAtCursor(startAfterId: null);
+    }
+  }
+
+  // Load all bookmarks for client-side filtering
+  Future<void> _loadAllBookmarksForFiltering() async {
+    if (loading) return;
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      // Load all bookmarks without pagination for filtering
+      final List<Map<String, dynamic>> allBookmarks = [];
+      String? lastId;
+      bool hasMore = true;
+      
+      while (hasMore) {
+        final page = await _service.fetchBookmarksPage(limit: 50, startAfterId: lastId);
+        allBookmarks.addAll(page.items);
+        lastId = page.lastId;
+        hasMore = lastId != null;
+      }
+      
+      _allItems
+        ..clear()
+        ..addAll(allBookmarks);
+    } catch (e) {
+      error = e.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  // Apply client-side filtering
+  void _applyFilter() {
+    if (!_usingClientSideFiltering) return;
+    
+    final String query = _activeQuery.toLowerCase();
+    final List<Map<String, dynamic>> filtered = _allItems.where(
+      (item) => (item['title'] as String?)?.toLowerCase().contains(query) ?? false
+    ).toList();
+    
+    // Apply pagination manually for client-side filtering
+    final int start = (_currentPage - 1) * _pageSize;
+    final int end = start + _pageSize;
+    final List<Map<String, dynamic>> paginated = filtered.sublist(
+      start, 
+      end > filtered.length ? filtered.length : end
+    );
+    
+    _items
+      ..clear()
+      ..addAll(paginated);
+    
+    _totalCount = filtered.length;
+    notifyListeners();
   }
 }
 
