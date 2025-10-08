@@ -12,6 +12,7 @@ class RecipeDetailsScreen extends StatefulWidget {
   final bool fromAdminScreen;
   final String? mealType; // Change from MealType? to String?
   final String recipeId; // Add recipe ID
+  final bool fromGroceriesScreen; // Add this new parameter
   
   const RecipeDetailsScreen({
     super.key, 
@@ -23,6 +24,7 @@ class RecipeDetailsScreen extends StatefulWidget {
     this.fromAdminScreen = false,
     this.mealType, // Change from MealType? to String?
     required this.recipeId,
+    this.fromGroceriesScreen = false, // Default to false
   });
   
   @override
@@ -66,6 +68,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       imageUrl: widget.imageAssetPath,
                       minutes: widget.minutes ?? 0,
                       onGroceriesTap: () => _showGroceryDialog(context),
+                      fromGroceriesScreen: widget.fromGroceriesScreen, // Pass the new parameter
                     ),
                     const SizedBox(height: 16),
                     Padding(
@@ -386,7 +389,17 @@ class _ActionRow extends StatelessWidget {
   final String imageUrl;
   final int minutes;
   final VoidCallback? onGroceriesTap;
-  const _ActionRow({required this.onMealPlanTap, this.fromAdminScreen = false, required this.recipeId, required this.title, required this.imageUrl, required this.minutes, this.onGroceriesTap});
+  final bool fromGroceriesScreen; // Add this new parameter
+  const _ActionRow({
+    required this.onMealPlanTap, 
+    this.fromAdminScreen = false, 
+    required this.recipeId, 
+    required this.title, 
+    required this.imageUrl, 
+    required this.minutes, 
+    this.onGroceriesTap,
+    this.fromGroceriesScreen = false, // Default to false
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -396,12 +409,20 @@ class _ActionRow extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes),
+              // Keep Meal Plan button enabled even when navigated from groceries screen
               _ActionItem(
                 icon: Icons.calendar_today_outlined,
                 label: 'Meal Plan',
                 onTap: onMealPlanTap,
               ),
-              _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries', onTap: onGroceriesTap),
+              // Disable Groceries button when navigated from groceries screen
+              fromGroceriesScreen
+                ? _DisabledActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries')
+                : _ActionItem(
+                    icon: Icons.shopping_bag_outlined, 
+                    label: 'Groceries', 
+                    onTap: onGroceriesTap
+                  ),
               const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
               const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
             ],
@@ -506,6 +527,27 @@ class _ActionItem extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+// New widget for disabled action items
+class _DisabledActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _DisabledActionItem({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.grey),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+        ),
+      ],
     );
   }
 }

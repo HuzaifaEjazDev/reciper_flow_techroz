@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class GroceriesScreen extends StatefulWidget {
   const GroceriesScreen({super.key});
@@ -85,15 +86,6 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
           ),
         ),
-        TextButton.icon(
-          onPressed: () {
-            final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
-            viewModel.toggleShowAll(true);
-          },
-          style: TextButton.styleFrom(foregroundColor: Colors.black87),
-          icon: const Text('All Groceries', style: TextStyle(fontWeight: FontWeight.w600)),
-          label: const Icon(CupertinoIcons.chevron_right, color: Colors.black87),
-        )
       ],
     );
   }
@@ -117,7 +109,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           );
         }
         return SizedBox(
-          height: 180,
+          height: 200,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: recipes.length,
@@ -127,42 +119,69 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
               final String title = (r['title'] ?? '').toString();
               final String image = (r['imageUrl'] ?? '').toString();
               final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
+              final int servings = r['servings'] is int ? r['servings'] as int : 1;
               return SizedBox(
                 width: 160,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        height: 108,
-                        child: image.startsWith('http')
-                            ? Image.network(image, fit: BoxFit.cover)
-                            : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              Row(children: [
-                                const Icon(Icons.access_time, size: 14, color: Colors.black54),
-                                const SizedBox(width: 6),
-                                Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                              ]),
-                            ],
-                          ),
+                child: GestureDetector(
+                  onTap: () {
+                    // Navigate to recipe details screen
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RecipeDetailsScreen(
+                          title: title,
+                          imageAssetPath: image,
+                          minutes: minutes,
+                          recipeId: r['id']?.toString() ?? '',
+                          fromAdminScreen: false,
+                          fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
+                          // We don't have ingredients and steps here, they'll need to be fetched
+                          ingredients: const [],
+                          steps: const [],
                         ),
                       ),
-                    ],
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: 108,
+                          child: image.startsWith('http')
+                              ? Image.network(image, fit: BoxFit.cover)
+                              : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 6),
+                                Row(children: [
+                                  const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 6),
+                                  Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                                ]),
+                                const SizedBox(height: 4),
+                                Row(children: [
+                                  const Icon(Icons.person, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 6),
+                                  Text('$servings', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                                ]),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -442,7 +461,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           );
         }
         return SizedBox(
-          height: 180,
+          height: 200,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: recipes.length,
@@ -452,9 +471,29 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
               final String title = (r['title'] ?? '').toString();
               final String image = (r['imageUrl'] ?? '').toString();
               final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
+              final int servings = r['servings'] is int ? r['servings'] as int : 1;
               return SizedBox(
                 width: 160,
-                child: Container(
+                child: GestureDetector(
+                  onTap: () {
+                    // Navigate to recipe details screen
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RecipeDetailsScreen(
+                          title: title,
+                          imageAssetPath: image,
+                          minutes: minutes,
+                          recipeId: r['id']?.toString() ?? '',
+                          fromAdminScreen: false,
+                          fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
+                          // We don't have ingredients and steps here, they'll need to be fetched
+                          ingredients: const [],
+                          steps: const [],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -483,6 +522,12 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                                 const SizedBox(width: 6),
                                 Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
                               ]),
+                              const SizedBox(height: 4),
+                              Row(children: [
+                                const Icon(Icons.person, size: 14, color: Colors.black54),
+                                const SizedBox(width: 6),
+                                Text('$servings', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                              ]),
                             ],
                           ),
                         ),
@@ -490,7 +535,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                     ],
                   ),
                 ),
-              );
+              ),
+            );
             },
           ),
         );
@@ -575,49 +621,110 @@ class _GroceryItemsList extends StatefulWidget {
 class _GroceryItemsListState extends State<_GroceryItemsList> {
   @override
   Widget build(BuildContext context) {
+    // Group recipes by date
+    final Map<String, List<Map<String, dynamic>>> recipesByDate = {};
+    
+    // Group recipes by their dateKey
+    for (final recipe in widget.recipes) {
+      final String dateKey = recipe['dateKey']?.toString() ?? '';
+      if (!recipesByDate.containsKey(dateKey)) {
+        recipesByDate[dateKey] = [];
+      }
+      recipesByDate[dateKey]!.add(recipe);
+    }
+    
+    // Get the list of dates and sort them
+    final List<String> dateKeys = recipesByDate.keys.toList();
+    dateKeys.sort((a, b) {
+      // Simple string comparison for date keys in format "D MMM"
+      return a.compareTo(b);
+    });
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: widget.recipes.map((r) {
-        final String recipeId = (r['id'] ?? '').toString();
-        final String title = (r['title'] ?? '').toString();
-        final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
-        final int servings = r['servings'] is int ? r['servings'] as int : 1;
-        
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Consumer<GroceriesViewModel>(
-            builder: (context, viewModel, child) {
-              return ExpansionTile(
-                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                initiallyExpanded: viewModel.getExpansionState(recipeId),
-                onExpansionChanged: (isExpanded) {
-                  viewModel.toggleExpansionState(recipeId, isExpanded);
-                },
-                children: [
-                  ...List<Widget>.generate(ingredients.length, (i) {
-                    final dynamic item = ingredients[i];
-                    final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
-                    final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
-                    final String scaledQty = _GroceriesScreenState._scaleIngredientQuantity(qty, servings);
-                    return _IngredientItem(
-                      recipeId: recipeId,
-                      ingredientIndex: i,
-                      name: name,
-                      scaledQty: scaledQty,
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                ],
-              );
-            },
-          ),
+      children: dateKeys.map((dateKey) {
+        final List<Map<String, dynamic>> recipesForDate = recipesByDate[dateKey]!;
+        return _DateSection(
+          dateKey: dateKey,
+          recipes: recipesForDate,
         );
       }).toList(),
+    );
+  }
+}
+
+/// Widget to display recipes for a specific date
+class _DateSection extends StatelessWidget {
+  final String dateKey;
+  final List<Map<String, dynamic>> recipes;
+
+  const _DateSection({
+    Key? key,
+    required this.dateKey,
+    required this.recipes,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Date header
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            dateKey,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        // Recipes for this date
+        ...recipes.map((r) {
+          final String recipeId = (r['id'] ?? '').toString();
+          final String title = (r['title'] ?? '').toString();
+          final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
+          final int servings = r['servings'] is int ? r['servings'] as int : 1;
+          
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Consumer<GroceriesViewModel>(
+              builder: (context, viewModel, child) {
+                return ExpansionTile(
+                  title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  initiallyExpanded: viewModel.getExpansionState(recipeId),
+                  onExpansionChanged: (isExpanded) {
+                    viewModel.toggleExpansionState(recipeId, isExpanded);
+                  },
+                  children: [
+                    ...List<Widget>.generate(ingredients.length, (i) {
+                      final dynamic item = ingredients[i];
+                      final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
+                      final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
+                      final String scaledQty = _GroceriesScreenState._scaleIngredientQuantity(qty, servings);
+                      return _IngredientItem(
+                        recipeId: recipeId,
+                        ingredientIndex: i,
+                        name: name,
+                        scaledQty: scaledQty,
+                      );
+                    }),
+                    const SizedBox(height: 4),
+                  ],
+                );
+              },
+            ),
+          );
+        }).toList(),
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
