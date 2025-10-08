@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
 class UserRecipeCardData {
   final String id;
@@ -20,7 +21,11 @@ class UserRecipeCardData {
 }
 
 class UserRecipesPagerViewModel extends ChangeNotifier {
-  UserRecipesPagerViewModel(this._service);
+  UserRecipesPagerViewModel(this._service) {
+    // Set up real-time listener for recipe changes
+    _setupRealTimeListener();
+  }
+  
   final FirestoreRecipesService _service;
   final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
@@ -34,6 +39,57 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   int _totalCount = 0;
   String _activeQuery = '';
   String _queryTemp = '';
+  
+  // Real-time listener
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recipesListener;
+
+  // Set up real-time listener for recipe changes
+  void _setupRealTimeListener() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final CollectionReference<Map<String, dynamic>> recipesRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('RecipesCreatedByUser');
+
+    _recipesListener = recipesRef.snapshots().listen(
+      (snapshot) {
+        // Handle different types of changes
+        for (final change in snapshot.docChanges) {
+          switch (change.type) {
+            case DocumentChangeType.removed:
+              // Remove deleted recipe from the list
+              _items.removeWhere((item) => item['id'] == change.doc.id);
+              _totalCount = _totalCount > 0 ? _totalCount - 1 : 0;
+              notifyListeners();
+              break;
+            case DocumentChangeType.added:
+              // For simplicity, we'll just reload the current page if a new recipe is added
+              // A more sophisticated approach would insert the new recipe in the correct position
+              if (_activeQuery.isEmpty) { // Only for non-search views
+                _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
+              }
+              break;
+            case DocumentChangeType.modified:
+              // Update modified recipe in the list
+              final int index = _items.indexWhere((item) => item['id'] == change.doc.id);
+              if (index != -1) {
+                final Map<String, dynamic>? data = change.doc.data();
+                if (data != null) {
+                  _items[index] = {...data, 'id': change.doc.id};
+                  notifyListeners();
+                }
+              }
+              break;
+          }
+        }
+      },
+      onError: (error) {
+        print('Error listening to recipe changes: $error');
+      },
+    );
+  }
 
   Future<void> loadInitial() async {
     print('Loading initial page');
@@ -177,5 +233,11 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
     await _loadTotalCount();
     // Pass null for startAfterId to load the first page of search results
     await _loadPageAtCursor(startAfterId: null);
+  }
+
+  @override
+  void dispose() {
+    _recipesListener?.cancel();
+    super.dispose();
   }
 }

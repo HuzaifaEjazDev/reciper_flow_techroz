@@ -1,96 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:recipe_app/models/meal_plan.dart';
-import 'package:recipe_app/services/firestore_recipes_service.dart';
-import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart'; // Import MyRecipesScreen
+import 'package:provider/provider.dart';
+import 'package:recipe_app/models/meal_plan.dart'; // Make sure this import is correct
+import 'package:recipe_app/viewmodels/user/planned_meals_view_model.dart';
+import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
 
-class PlannedMealsScreen extends StatefulWidget {
+class PlannedMealsScreen extends StatelessWidget {
   const PlannedMealsScreen({super.key});
 
   @override
-  State<PlannedMealsScreen> createState() => _PlannedMealsScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<PlannedMealsViewModel>(
+      create: (_) => PlannedMealsViewModel()..loadPlannedMeals(),
+      child: const _PlannedMealsView(),
+    );
+  }
 }
 
-class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
-  late Future<Map<String, List<PlannedMeal>>> _plannedMealsFuture;
-  final FirestoreRecipesService _service = FirestoreRecipesService();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPlannedMeals();
-  }
-
-  void _loadPlannedMeals() {
-    setState(() {
-      _plannedMealsFuture = _fetchAllPlannedMealsGroupedByDate();
-    });
-  }
-
-  Future<Map<String, List<PlannedMeal>>> _fetchAllPlannedMealsGroupedByDate() async {
-    try {
-      final List<PlannedMeal> allMeals = await _service.getAllPlannedMeals();
-      
-      // Group meals by date
-      final Map<String, List<PlannedMeal>> groupedMeals = {};
-      for (final meal in allMeals) {
-        if (!groupedMeals.containsKey(meal.dateForRecipe)) {
-          groupedMeals[meal.dateForRecipe] = [];
-        }
-        groupedMeals[meal.dateForRecipe]!.add(meal);
-      }
-      
-      // Sort dates chronologically
-      final List<String> sortedDates = groupedMeals.keys.toList()
-        ..sort((a, b) {
-          // Parse date strings to DateTime for comparison
-          final DateTime dateA = _parseDateKey(a);
-          final DateTime dateB = _parseDateKey(b);
-          return dateA.compareTo(dateB);
-        });
-      
-      // Create a new map with sorted dates
-      final Map<String, List<PlannedMeal>> sortedGroupedMeals = {};
-      for (final date in sortedDates) {
-        sortedGroupedMeals[date] = groupedMeals[date]!;
-      }
-      
-      return sortedGroupedMeals;
-    } catch (e) {
-      throw Exception('Error fetching planned meals: $e');
-    }
-  }
-
-  // Helper method to parse date key back to DateTime
-  DateTime _parseDateKey(String dateKey) {
-    final RegExp regex = RegExp(r'^(\d+) ([A-Za-z]+)$');
-    final Match? match = regex.firstMatch(dateKey);
-    
-    if (match == null) {
-      return DateTime.now(); // fallback
-    }
-    
-    final int day = int.parse(match.group(1)!);
-    final String monthStr = match.group(2)!;
-    
-    final List<String> months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    
-    final int month = months.indexOf(monthStr) + 1;
-    final int year = DateTime.now().year;
-    
-    // Handle year transition (if month is in the past, it's probably next year)
-    final DateTime now = DateTime.now();
-    if (month < now.month && (now.month - month) > 6) {
-      return DateTime(year + 1, month, day);
-    }
-    
-    return DateTime(year, month, day);
-  }
+class _PlannedMealsView extends StatelessWidget {
+  const _PlannedMealsView();
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<PlannedMealsViewModel>();
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -106,66 +38,60 @@ class _PlannedMealsScreenState extends State<PlannedMealsScreen> {
         ),
       ),
       body: SafeArea(
-        child: FutureBuilder<Map<String, List<PlannedMeal>>>(
-          future: _plannedMealsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            
-            if (snapshot.hasError) {
-              return Center(
-                child: Text('Error loading planned meals: ${snapshot.error}'),
+        child: vm.loading && vm.groupedMeals.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : vm.error != null
+                ? Center(
+                    child: Text('Error loading planned meals: ${vm.error}'),
+                  )
+                : vm.groupedMeals.isEmpty
+                    ? _EmptyStateView()
+                    : SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ...vm.groupedMeals.entries.map((entry) {
+                                final String dateKey = entry.key;
+                                final List<PlannedMeal> meals = entry.value;
+                                return _DateSection(dateKey: dateKey, meals: meals);
+                              }).toList(),
+                            ],
+                          ),
+                        ),
+                      ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'No groceries found',
+            style: TextStyle(color: Colors.black54, fontSize: 16),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Create your own recipes and add to groceries!',
+            style: TextStyle(color: Colors.black54, fontSize: 14),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MyRecipesScreen()),
               );
-            }
-            
-            final Map<String, List<PlannedMeal>> groupedMeals = snapshot.data ?? {};
-            
-            if (groupedMeals.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'No groceries found',
-                      style: TextStyle(color: Colors.black54, fontSize: 16),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Create your own recipes and add to groceries!',
-                      style: TextStyle(color: Colors.black54, fontSize: 14),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const MyRecipesScreen()), // Fixed: Removed const
-                        );
-                      },
-                      child: const Text('View My Recipes'),
-                    ),
-                  ],
-                ),
-              );
-            }
-            
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ...groupedMeals.entries.map((entry) {
-                      final String dateKey = entry.key;
-                      final List<PlannedMeal> meals = entry.value;
-                      return _DateSection(dateKey: dateKey, meals: meals);
-                    }).toList(),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
+            },
+            child: const Text('View My Recipes'),
+          ),
+        ],
       ),
     );
   }

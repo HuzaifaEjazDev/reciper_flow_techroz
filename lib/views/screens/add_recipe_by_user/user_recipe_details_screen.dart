@@ -2,88 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/models/user_created_recipe.dart';
-import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart'; // Add this import
-import 'dart:async';
+import 'package:recipe_app/viewmodels/user/user_recipe_details_view_model.dart';
+import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
 
-class UserRecipeDetailsScreen extends StatefulWidget {
+class UserRecipeDetailsScreen extends StatelessWidget {
   final String recipeId;
   
   const UserRecipeDetailsScreen({super.key, required this.recipeId});
 
   @override
-  State<UserRecipeDetailsScreen> createState() => _UserRecipeDetailsScreenState();
-}
-
-class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
-  late Future<UserCreatedRecipe> _recipeFuture;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _recipeListener;
-
-  @override
-  void initState() {
-    super.initState();
-    // Set up real-time listener for the recipe
-    _setupRecipeListener();
-  }
-
-  void _setupRecipeListener() {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final DocumentReference<Map<String, dynamic>> recipeRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('RecipesCreatedByUser')
-        .doc(widget.recipeId);
-
-    _recipeListener = recipeRef.snapshots().listen(
-      (snapshot) {
-        if (snapshot.exists) {
-          setState(() {
-            // Update the UI with the new data
-          });
-        }
-      },
-      onError: (error) {
-        // Handle error
-        debugPrint('Error listening to recipe updates: $error');
-      },
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<UserRecipeDetailsViewModel>(
+      create: (_) => UserRecipeDetailsViewModel(recipeId),
+      child: const _UserRecipeDetailsView(),
     );
   }
+}
 
-  Future<UserCreatedRecipe> _fetchRecipeDetails() async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('User not authenticated');
-    }
+class _UserRecipeDetailsView extends StatefulWidget {
+  const _UserRecipeDetailsView();
 
-    try {
-      final DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('RecipesCreatedByUser')
-          .doc(widget.recipeId)
-          .get();
+  @override
+  State<_UserRecipeDetailsView> createState() => _UserRecipeDetailsViewState();
+}
 
-      if (!doc.exists) {
-        throw Exception('Recipe not found');
-      }
-
-      return UserCreatedRecipe.fromFirestore(doc.data()!, doc.id);
-    } catch (e) {
-      throw Exception('Error fetching recipe details: $e');
-    }
-  }
-
+class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
   // Show delete confirmation dialog
-  void _showDeleteConfirmationDialog(BuildContext context) {
+  void _showDeleteConfirmationDialog(UserRecipeDetailsViewModel vm) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Colors.white, // White background as requested
+          backgroundColor: Colors.white,
           title: const Text('Delete Recipe'),
           content: const Text('Are you sure you want to delete this recipe? This action cannot be undone.'),
           actions: [
@@ -96,7 +46,7 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
-                await _deleteRecipe(context); // Delete the recipe
+                await _deleteRecipe(vm); // Delete the recipe
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),
@@ -107,33 +57,26 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
   }
 
   // Delete the recipe
-  Future<void> _deleteRecipe(BuildContext context) async {
+  Future<void> _deleteRecipe(UserRecipeDetailsViewModel vm) async {
     try {
-      final User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Delete the recipe from Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('RecipesCreatedByUser')
-          .doc(widget.recipeId)
-          .delete();
-
-      // Show success message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recipe deleted successfully!')),
-        );
-        
-        // Navigate back to the previous screen
-        Navigator.of(context).pop();
+      final bool success = await vm.deleteRecipe();
+      
+      if (success) {
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Recipe deleted successfully!')),
+          );
+          
+          // Navigate back to the previous screen
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+        }
       }
     } catch (e) {
       // Show error message
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to delete recipe. Please try again.')),
         );
@@ -142,70 +85,92 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
   }
 
   @override
-  void dispose() {
-    _recipeListener?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('User Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-        iconTheme: const IconThemeData(color: Colors.black87),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: () {
-              // Show delete confirmation dialog
-              _showDeleteConfirmationDialog(context);
-            },
+    return Consumer<UserRecipeDetailsViewModel>(
+      builder: (context, vm, child) {
+        // Handle the case when recipe is deleted (real-time listener detects it's gone)
+        if (vm.recipe == null && !vm.loading) {
+          // Recipe was deleted, automatically pop the screen
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          });
+          
+          // Show a temporary message while popping
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(child: Text('Recipe deleted. Returning to list...')),
+          );
+        }
+
+        // Handle loading state
+        if (vm.loading && vm.recipe == null) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // Handle error state
+        if (vm.error != null && vm.recipe == null) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: Text('Error loading recipe: ${vm.error}'),
+            ),
+          );
+        }
+
+        // Handle recipe not found
+        if (vm.recipe == null) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: Text('Recipe not found'),
+            ),
+          );
+        }
+
+        final recipe = vm.recipe!;
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text('User Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+            iconTheme: const IconThemeData(color: Colors.black87),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () {
+                  // Show delete confirmation dialog
+                  _showDeleteConfirmationDialog(vm);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  // Navigate to edit screen
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CreateNewRecipeScreen(
+                        isEdit: true,
+                        recipeId: vm.recipeId,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+            bottom: const PreferredSize(
+              preferredSize: Size.fromHeight(1),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              // Navigate to edit screen
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => CreateNewRecipeScreen(
-                    isEdit: true,
-                    recipeId: widget.recipeId,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-        ),
-      ),
-      body: SafeArea(
-        child: FutureBuilder<UserCreatedRecipe>(
-          future: _fetchRecipeDetails(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (snapshot.hasError) {
-              return Center(
-                child: Text('Error loading recipe: ${snapshot.error}'),
-              );
-            }
-
-            if (!snapshot.hasData) {
-              return const Center(
-                child: Text('Recipe not found'),
-              );
-            }
-
-            final recipe = snapshot.data!;
-            return SingleChildScrollView(
+          body: SafeArea(
+            child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -242,8 +207,8 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children: recipe.ingredients.isEmpty
-                          ? const [
-                              _IngredientTile(name: 'No ingredients available', note: ''),
+                          ? [
+                              const _IngredientTile(name: 'No ingredients available', note: ''),
                             ]
                           : recipe.ingredients
                               .asMap()
@@ -262,8 +227,8 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children: recipe.steps.isEmpty
-                          ? const [
-                              _StepCard(step: 1, text: 'No steps available'),
+                          ? [
+                              const _StepCard(step: 1, text: 'No steps available'),
                             ]
                           : List<Widget>.generate(
                               recipe.steps.length,
@@ -274,10 +239,10 @@ class _UserRecipeDetailsScreenState extends State<UserRecipeDetailsScreen> {
                   const SizedBox(height: 24),
                 ],
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
