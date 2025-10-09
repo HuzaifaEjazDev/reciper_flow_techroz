@@ -6,9 +6,61 @@ import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'package:recipe_app/views/auth/sign_in_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
 import 'package:recipe_app/views/screens/user/bookmarked_recipes_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _cookingFrequency;
+  String? _dietPreference;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('onboardingData')) {
+          final onboardingData = data['onboardingData'] as Map<String, dynamic>?;
+          if (onboardingData != null) {
+            // Fetch cooking frequency
+            if (onboardingData.containsKey('cookingFrequency')) {
+              setState(() {
+                _cookingFrequency = onboardingData['cookingFrequency'] as String?;
+              });
+            }
+
+            // Fetch diet preference
+            if (onboardingData.containsKey('dietPreference')) {
+              setState(() {
+                _dietPreference = onboardingData['dietPreference'] as String?;
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,25 +74,19 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const _SectionTitle('Your Preferences'),
             const SizedBox(height: 10),
-            _ChipsRow(chips: const ['Vegetarian', 'Low sugar', 'Italian', 'Quick meals']),
+            _UserPreferencesCard(),
             const SizedBox(height: 20),
             const _SectionTitle('Goals Summary'),
             const SizedBox(height: 10),
             _TwoStatsRow(
               leftTitle: 'Weekly Cooking',
-              leftValue: '3–4 days',
+              leftValue: _cookingFrequency ?? 'Not specified', // Use actual value
               rightTitle: 'Cuisine Focus',
-              rightValue: 'Mediterranean',
+              rightValue: _dietPreference ?? 'Not specified', // Use actual value
             ),
             const SizedBox(height: 20),
             const _SectionTitle('Account'),
             const SizedBox(height: 10),
-            _NavTile(
-              icon: Icons.manage_accounts_outlined,
-              title: 'Edit profile',
-              subtitle: 'Name, photo, contact',
-              onTap: () {},
-            ),
             _NavTile(
               icon: Icons.subscriptions_outlined,
               title: 'Subscriptions',
@@ -77,12 +123,41 @@ class ProfileScreen extends StatelessWidget {
             CustomElevatedButton(
               text: 'Log out',
               onPressed: () async {
-                await context.read<AuthViewModel>().signOut();
-                // Navigate to auth wrapper to check auth state
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const AuthWrapper()),
-                  (route) => false,
+                // Show confirmation dialog
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: Colors.white,
+                    title: const Text('Logout'),
+                    content: const Text('Are you sure you want to logout?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Logout'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.deepOrange,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
+                
+                // If user confirmed, proceed with logout
+                if (confirmed == true) {
+                  await context.read<AuthViewModel>().signOut();
+                  // Navigate to auth wrapper to check auth state
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                    (route) => false,
+                  );
+                }
               },
             ),
           ],
@@ -492,6 +567,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                     TextButton(
                                       onPressed: () => Navigator.of(ctx).pop(),
                                       child: const Text('Cancel'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.black,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: authVm.isLoading
@@ -559,8 +637,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                               title: const Text('Delete Account'),
                               content: const Text('This action cannot be undone. Delete your account and all data?'),
                               actions: [
-                                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                                TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('Cancel'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.black,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('Delete'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.black,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -606,25 +696,141 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _ChipsRow extends StatelessWidget {
-  final List<String> chips;
-  const _ChipsRow({required this.chips});
+class _UserPreferencesCard extends StatefulWidget {
+  @override
+  State<_UserPreferencesCard> createState() => _UserPreferencesCardState();
+}
+
+class _UserPreferencesCardState extends State<_UserPreferencesCard> {
+  List<String> _cuisinePreferences = [];
+  String? _dietPreference;
+  String? _cookingFrequency;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserPreferences();
+  }
+
+  Future<void> _fetchUserPreferences() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('onboardingData')) {
+          final onboardingData = data['onboardingData'] as Map<String, dynamic>?;
+          if (onboardingData != null) {
+            // Fetch cuisine preferences
+            if (onboardingData.containsKey('cuisinePreferences') &&
+                onboardingData['cuisinePreferences'] is List) {
+              setState(() {
+                _cuisinePreferences = List<String>.from(onboardingData['cuisinePreferences']);
+              });
+            }
+
+            // Fetch diet preference
+            if (onboardingData.containsKey('dietPreference')) {
+              setState(() {
+                _dietPreference = onboardingData['dietPreference'] as String?;
+              });
+            }
+            
+            // Fetch cooking frequency
+            if (onboardingData.containsKey('cookingFrequency')) {
+              setState(() {
+                _cookingFrequency = onboardingData['cookingFrequency'] as String?;
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching user preferences: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: chips
-          .map((e) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: Text(e, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-              ))
-          .toList(),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Diet Preference',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.deepOrange),
+            ),
+            child: Text(
+              _dietPreference ?? 'Not specified',
+              style: const TextStyle(
+                color: Colors.deepOrange,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Cuisine Interests',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_cuisinePreferences.isEmpty)
+            const Text(
+              'No cuisine preferences selected',
+              style: TextStyle(color: Colors.black54),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _cuisinePreferences
+                  .map((cuisine) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.deepOrange),
+                        ),
+                        child: Text(
+                          cuisine,
+                          style: const TextStyle(
+                            color: Colors.deepOrange,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            ),
+        ],
+      ),
     );
   }
 }

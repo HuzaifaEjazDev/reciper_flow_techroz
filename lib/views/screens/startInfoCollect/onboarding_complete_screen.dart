@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/startInfoCollect/analysis_progress_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class OnboardingCompleteScreen extends StatelessWidget {
   const OnboardingCompleteScreen({super.key});
+
+  Future<void> _markOnboardingComplete() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'onBoardingDone': true,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error marking onboarding complete: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +71,8 @@ class OnboardingCompleteScreen extends StatelessWidget {
               const Spacer(),
               CustomElevatedButton(
                 text: 'Start Cooking',
-                onPressed: () {
+                onPressed: () async {
+                  await _markOnboardingComplete();
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const AnalysisProgressScreen(),
@@ -72,5 +88,3 @@ class OnboardingCompleteScreen extends StatelessWidget {
     );
   }
 }
-
-

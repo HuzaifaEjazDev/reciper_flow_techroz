@@ -4,6 +4,9 @@ import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/auth/singup_screen.dart';
 import 'package:recipe_app/views/screens/main_screen.dart';
+import 'package:recipe_app/views/screens/startInfoCollect/goals_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -21,6 +24,66 @@ class _SignInScreenState extends State<SignInScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<bool> _hasCompletedOnboarding() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+
+    try {
+      final DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        // Check if user has completed onboarding by checking the onBoardingDone field
+        if (data != null) {
+          // Check if onboarding is explicitly marked as done
+          if (data.containsKey('onBoardingDone') && data['onBoardingDone'] == true) {
+            return true;
+          }
+          
+          // Check if all required onboarding data is present (old method)
+          if (data.containsKey('onboardingData')) {
+            final onboardingData = data['onboardingData'] as Map<String, dynamic>?;
+            if (onboardingData != null) {
+              // Check if all required fields are present and not empty/invalid
+              final hasGoals = onboardingData.containsKey('goals') && 
+                               onboardingData['goals'] is List && 
+                               (onboardingData['goals'] as List).isNotEmpty;
+                               
+              final hasCookingFrequency = onboardingData.containsKey('cookingFrequency') && 
+                                          onboardingData['cookingFrequency'] != null && 
+                                          onboardingData['cookingFrequency'] != '';
+                                          
+              final hasDietPreference = onboardingData.containsKey('dietPreference') && 
+                                        onboardingData['dietPreference'] != null && 
+                                        onboardingData['dietPreference'] != '';
+                                        
+              final hasCuisinePreferences = onboardingData.containsKey('cuisinePreferences') && 
+                                            onboardingData['cuisinePreferences'] is List && 
+                                            (onboardingData['cuisinePreferences'] as List).isNotEmpty;
+                                            
+              final hasRecipeSources = onboardingData.containsKey('recipeSources') && 
+                                       onboardingData['recipeSources'] != null && 
+                                       onboardingData['recipeSources'] != '';
+                                       
+              final hasGroceryListHabits = onboardingData.containsKey('groceryListHabits') && 
+                                           onboardingData['groceryListHabits'] != null && 
+                                           onboardingData['groceryListHabits'] != '';
+
+              return hasGoals && hasCookingFrequency && hasDietPreference && 
+                     hasCuisinePreferences && hasRecipeSources && hasGroceryListHabits;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking onboarding status: $e');
+    }
+    return false;
   }
 
   @override
@@ -122,10 +185,22 @@ class _SignInScreenState extends State<SignInScreen> {
                         
                         final success = await context.read<AuthViewModel>().signIn(email, password);
                         if (success) {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const MainScreen()),
-                            (route) => false,
-                          );
+                          // Check if user has completed onboarding
+                          final hasCompletedOnboarding = await _hasCompletedOnboarding();
+                          
+                          if (hasCompletedOnboarding) {
+                            // Skip onboarding and go directly to main screen
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const MainScreen()),
+                              (route) => false,
+                            );
+                          } else {
+                            // User hasn't completed onboarding, start from goals screen
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const GoalsScreen()),
+                              (route) => false,
+                            );
+                          }
                         } else {
                           final msg = context.read<AuthViewModel>().errorMessage ?? 'Sign in failed';
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -162,6 +237,9 @@ class _SignInScreenState extends State<SignInScreen> {
                       );
                     },
                     child: const Text('Sign Up'),
+                style: TextButton.styleFrom(
+                      foregroundColor: Colors.blue, // Explicitly set text color to black
+                    ),
                   ),
                 ],
               ),
@@ -173,11 +251,12 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {},
                       icon: const Icon(Icons.g_mobiledata, color: Colors.red),
-                      label: const Text('Google'),
+                      label: const Text('Google', style: TextStyle(color: Colors.black),),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: Color(0xFFD1D5DB)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        // foregroundColor: Colors.black, // Set text color to black
                       ),
                     ),
                   ),
@@ -191,6 +270,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: Color(0xFFD1D5DB)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        foregroundColor: Colors.black, // Set text color to black
                       ),
                     ),
                   ),

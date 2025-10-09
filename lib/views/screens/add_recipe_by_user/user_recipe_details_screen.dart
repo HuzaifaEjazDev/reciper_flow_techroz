@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
-import 'package:recipe_app/models/user_created_recipe.dart';
 import 'package:recipe_app/viewmodels/user/user_recipe_details_view_model.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
 
@@ -42,6 +41,9 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                 Navigator.of(context).pop(); // Close dialog
               },
               child: const Text('Cancel'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.black,
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -49,6 +51,9 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                 await _deleteRecipe(vm); // Delete the recipe
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
             ),
           ],
         );
@@ -67,11 +72,6 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Recipe deleted successfully!')),
           );
-          
-          // Navigate back to the previous screen
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
         }
       }
     } catch (e) {

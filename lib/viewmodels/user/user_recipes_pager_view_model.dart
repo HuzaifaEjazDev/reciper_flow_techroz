@@ -73,11 +73,13 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
               notifyListeners();
               break;
             case DocumentChangeType.added:
-              // For simplicity, we'll just reload the current page if a new recipe is added
-              // A more sophisticated approach would insert the new recipe in the correct position
-              if (_activeQuery.isEmpty) { // Only for non-search views
-                _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
-              }
+              // Reload the current page when a new recipe is added so UI updates immediately
+              // Works for both normal and search views by using the correct cursor map
+              final String? cursorForCurrentPage = _activeQuery.isNotEmpty
+                  ? _pageToTitleCursor[_currentPage]
+                  : _pageToCursor[_currentPage];
+              _totalCount = _totalCount + 1;
+              _loadPageAtCursor(startAfterId: cursorForCurrentPage);
               break;
             case DocumentChangeType.modified:
               // Update modified recipe in the list
@@ -105,7 +107,10 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   void _onSearchChanged() {
     // When search bar is empty, show all data automatically
     if (searchController.text.trim().isEmpty) {
-      applySearch();
+      _activeQuery = '';
+      _queryTemp = '';
+      // Reset to full dataset
+      loadInitial();
     }
   }
 
@@ -218,7 +223,11 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   }
 
   int get currentPage => _currentPage;
-  int get totalPages => (_totalCount == 0) ? 0 : ((_totalCount + _pageSize - 1) ~/ _pageSize);
+  int get totalPages {
+    // Calculate the correct number of pages based on total count and page size
+    if (_totalCount == 0) return 0;
+    return ((_totalCount - 1) ~/ _pageSize) + 1;
+  }
   int get totalCount => _totalCount;
 
   Future<void> _loadTotalCount() async {
@@ -240,6 +249,12 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
 
   Future<void> applySearch() async {
     final String t = _queryTemp.trim().toLowerCase();
+    // If empty, reset to full data and return
+    if (t.isEmpty) {
+      _activeQuery = '';
+      await loadInitial();
+      return;
+    }
     _activeQuery = t;
     _currentPage = 1;
     _pageToCursor

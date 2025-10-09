@@ -1,3 +1,4 @@
+import 'dart:async'; // Add this import for Timer
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
@@ -72,7 +73,11 @@ class AdminRecipesViewModel extends ChangeNotifier {
   int get currentPage => _currentPage;
   int get totalKnownPages => (_totalCount / _pageSize).ceil().clamp(1, 1000000);
   int get totalCount => _totalCount;
-  int get totalPages => (_totalCount / _pageSize).ceil().clamp(1, 1000000);
+  int get totalPages {
+    // Calculate the correct number of pages based on total count and page size
+    if (_totalCount == 0) return 0;
+    return ((_totalCount - 1) ~/ _pageSize) + 1;
+  }
   List<String> get mealTypes => _mealTypes;
   List<String> get diets => _diets;
   List<String> get cuisines => _cuisines;
@@ -88,9 +93,12 @@ class AdminRecipesViewModel extends ChangeNotifier {
   String? get filterMealType => _filterMealType;
   String get activeServerQuery => _activeServerQuery; // Add this getter
 
+  Timer? _debounceTimer; // Add debounce timer for search
+
   @override
   void dispose() {
     searchController.dispose(); // Dispose controller
+    _debounceTimer?.cancel(); // Cancel timer on dispose
     _disposed = true;
     super.dispose();
   }
@@ -333,6 +341,13 @@ class AdminRecipesViewModel extends ChangeNotifier {
     await _loadTotalCount();
     await _loadPageAtCursor(startAfterId: _pageToCursor[_currentPage]);
   }
+  
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (searchController.text.trim().isEmpty) {
+      setSearchQuery('');
+    }
+  }
 
   void _applyFilter({bool force = false}) {
     if (_disposed) return;
@@ -383,14 +398,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
     // Add listener to handle search when text changes
     searchController.addListener(_onSearchChanged);
   }
-
-  void _onSearchChanged() {
-    // When search bar is empty, show all data automatically
-    if (searchController.text.trim().isEmpty) {
-      setSearchQuery('');
-    }
-  }
-
+  
   Future<List<String>> _loadCategory(String name) async {
     if (_disposed) return const [];
     // Strategy 1: Try common container collections with a single document named <name> that holds an array

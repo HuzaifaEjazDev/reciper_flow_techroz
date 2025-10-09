@@ -83,9 +83,11 @@ class _RecipeByAdminView extends StatelessWidget {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      /// here when tap the use then the searcch wquery runs
+                      /// here when tap the use then the search query runs
                       /// dont search anything until the search button is tapped
-                      context.read<AdminRecipesViewModel>().setSearchQuery();
+                      context.read<AdminRecipesViewModel>().setSearchQuery(
+                        context.read<AdminRecipesViewModel>().searchController.text.trim()
+                      );
                     },
                     child: Container(
                       height: 48,

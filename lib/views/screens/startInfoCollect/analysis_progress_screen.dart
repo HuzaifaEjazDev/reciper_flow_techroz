@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:recipe_app/views/auth/singup_screen.dart';
+import 'package:recipe_app/views/screens/main_screen.dart';
 
 class AnalysisProgressScreen extends StatefulWidget {
   const AnalysisProgressScreen({super.key});
@@ -26,9 +26,10 @@ class _AnalysisProgressScreenState extends State<AnalysisProgressScreen> {
         timer.cancel();
         Future.delayed(const Duration(milliseconds: 250), () {
           if (!mounted) return;
+          
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => const SingUp(),
+              builder: (_) => const MainScreen(),
             ),
           );
         });
@@ -104,5 +105,3 @@ class _AnalysisProgressScreenState extends State<AnalysisProgressScreen> {
     );
   }
 }
-
-

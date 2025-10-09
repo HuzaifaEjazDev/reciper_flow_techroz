@@ -12,6 +12,7 @@ class MealPlannerViewModel extends ChangeNotifier {
   List<String> _mealTypes = const [];
   bool _loading = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _mealTypesListener;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _mealsListener; // Add this line
   bool _initialized = false;
 
   MealPlannerViewModel({FirestoreRecipesService? service})
@@ -52,8 +53,18 @@ class MealPlannerViewModel extends ChangeNotifier {
     // Hydrate meals from Firestore for the generated days
     await _loadMealsForWeek();
     
+    // Set up real-time listener for meal changes
+    _setupMealsListener();
+    
     _initialized = true; // Set the flag
     debugPrint('Generated ${_plans.length} plans');
+    notifyListeners();
+  }
+
+  // Add this method to refresh the meal planner data
+  Future<void> refreshMeals() async {
+    debugPrint('Refreshing meal planner data');
+    await _loadMealsForWeek();
     notifyListeners();
   }
 
@@ -139,6 +150,28 @@ class MealPlannerViewModel extends ChangeNotifier {
       _loadMealsForWeek();
     }, onError: (error) {
       debugPrint('Error listening to meal types: $error');
+    });
+  }
+
+  // Add this method to set up real-time listener for meal changes
+  void _setupMealsListener() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Cancel any existing listener
+    _mealsListener?.cancel();
+    
+    // Set up a real-time listener for planned meals
+    _mealsListener = FirebaseFirestore.instance
+        .collection('planned_meals')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots()
+        .listen((snapshot) async {
+      // When meals change, reload the week's meals
+      await _loadMealsForWeek();
+      notifyListeners();
+    }, onError: (error) {
+      debugPrint('Error listening to planned meals: $error');
     });
   }
 
@@ -231,8 +264,9 @@ class MealPlannerViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    // Cancel the listener when the ViewModel is disposed
+    // Cancel the listeners when the ViewModel is disposed
     _mealTypesListener?.cancel();
+    _mealsListener?.cancel(); // Cancel the meals listener
     super.dispose();
   }
 }

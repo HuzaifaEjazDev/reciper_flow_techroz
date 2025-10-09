@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/startInfoCollect/grocery_list_habits_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RecipeSourcesScreen extends StatefulWidget {
   const RecipeSourcesScreen({super.key});
@@ -19,17 +21,43 @@ class _RecipeSourcesScreenState extends State<RecipeSourcesScreen> {
 
   String? _selected;
 
+  Future<void> _saveRecipeSources() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'onboardingData': {
+          'recipeSources': _selected,
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving recipe sources: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: Colors.black87,
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Back',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 120),
+              const SizedBox(height: 40),
               const Text(
                 'Where do you get your recipes from?',
                 textAlign: TextAlign.center,
@@ -63,12 +91,15 @@ class _RecipeSourcesScreenState extends State<RecipeSourcesScreen> {
               const SizedBox(height: 12),
               CustomElevatedButton(
                 text: 'Next',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const GroceryListHabitsScreen(),
-                    ),
-                  );
+                onPressed: () async {
+                  if (_selected != null) {
+                    await _saveRecipeSources();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GroceryListHabitsScreen(),
+                      ),
+                    );
+                  }
                 },
               ),
               TextButton(
@@ -169,5 +200,3 @@ class _CheckBox extends StatelessWidget {
     );
   }
 }
-
-

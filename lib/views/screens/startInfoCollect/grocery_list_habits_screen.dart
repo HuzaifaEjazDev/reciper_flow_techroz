@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/startInfoCollect/onboarding_complete_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GroceryListHabitsScreen extends StatefulWidget {
   const GroceryListHabitsScreen({super.key});
@@ -17,17 +19,43 @@ class _GroceryListHabitsScreenState extends State<GroceryListHabitsScreen> {
 
   String? _selected;
 
+  Future<void> _saveGroceryListHabits() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'onboardingData': {
+          'groceryListHabits': _selected,
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving grocery list habits: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: Colors.black87,
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Back',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 200),
+              const SizedBox(height: 40),
               const Text(
                 'Do you create a grocery list before going shopping?',
                 textAlign: TextAlign.center,
@@ -61,12 +89,15 @@ class _GroceryListHabitsScreenState extends State<GroceryListHabitsScreen> {
               const SizedBox(height: 12),
               CustomElevatedButton(
                 text: 'Next',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const OnboardingCompleteScreen(),
-                    ),
-                  );
+                onPressed: () async {
+                  if (_selected != null) {
+                    await _saveGroceryListHabits();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const OnboardingCompleteScreen(),
+                      ),
+                    );
+                  }
                 },
               ),
               TextButton(
@@ -145,5 +176,3 @@ class _HabitTile extends StatelessWidget {
     );
   }
 }
-
-

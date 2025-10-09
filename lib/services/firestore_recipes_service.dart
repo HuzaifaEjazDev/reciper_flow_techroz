@@ -239,7 +239,7 @@ class FirestoreRecipesService {
   }
 
   // New methods for PlannedMeals schema
-  // Save a planned meal directly in the PlannedMeals collection
+  // Save a planned meal directly in the global PlannedMeals collection
   Future<String> savePlannedMeal(PlannedMeal plannedMeal) async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -248,7 +248,7 @@ class FirestoreRecipesService {
 
     try {
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+          _firestore.collection('planned_meals');
       
       // First create a new doc ref to get an auto id
       final DocumentReference<Map<String, dynamic>> mealDoc = plannedMealsRef.doc();
@@ -257,6 +257,7 @@ class FirestoreRecipesService {
       final Map<String, dynamic> data = {
         ...plannedMeal.toFirestore(),
         'uniqueId': mealDoc.id,
+        'userId': user.uid, // Add userId to the document
       };
 
       await mealDoc.set(data);
@@ -275,11 +276,12 @@ class FirestoreRecipesService {
 
     try {
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+          _firestore.collection('planned_meals');
       
-      // Query all meals where dateForRecipe field matches
+      // Query all meals where dateForRecipe field matches and userId matches
       final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
           .where('dateForRecipe', isEqualTo: dateForRecipe)
+          .where('userId', isEqualTo: user.uid)
           .get();
       
       return mealsSnapshot.docs.map((doc) {
@@ -299,11 +301,12 @@ class FirestoreRecipesService {
 
     try {
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+          _firestore.collection('planned_meals');
       
-      // Query all meals where dateForRecipe is in the list of dateKeys
+      // Query all meals where dateForRecipe is in the list of dateKeys and userId matches
       final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
           .where('dateForRecipe', whereIn: dateKeys)
+          .where('userId', isEqualTo: user.uid)
           .get();
       
       // Group meals by datedateForRecipeKey
@@ -332,10 +335,12 @@ class FirestoreRecipesService {
 
     try {
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+          _firestore.collection('planned_meals');
       
-      // Query all meals
-      final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef.get();
+      // Query all meals for this user
+      final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
+          .where('userId', isEqualTo: user.uid)
+          .get();
       
       return mealsSnapshot.docs.map((doc) {
         return PlannedMeal.fromFirestore(doc.data(), doc.id);
@@ -354,9 +359,20 @@ class FirestoreRecipesService {
 
     try {
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+          _firestore.collection('planned_meals');
       
-      await plannedMealsRef.doc(mealId).delete();
+      // First verify the meal belongs to this user before deleting
+      final DocumentSnapshot<Map<String, dynamic>> mealDoc = await plannedMealsRef.doc(mealId).get();
+      if (mealDoc.exists) {
+        final data = mealDoc.data();
+        if (data != null && data['userId'] == user.uid) {
+          await plannedMealsRef.doc(mealId).delete();
+        } else {
+          throw Exception('Meal does not belong to this user');
+        }
+      } else {
+        throw Exception('Meal not found');
+      }
     } catch (e) {
       throw Exception('Error deleting planned meal: $e');
     }
@@ -371,9 +387,23 @@ class FirestoreRecipesService {
 
     try {
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
+          _firestore.collection('planned_meals');
       
-      await plannedMealsRef.doc(mealId).update(updatedMeal.toFirestore());
+      // First verify the meal belongs to this user before updating
+      final DocumentSnapshot<Map<String, dynamic>> mealDoc = await plannedMealsRef.doc(mealId).get();
+      if (mealDoc.exists) {
+        final data = mealDoc.data();
+        if (data != null && data['userId'] == user.uid) {
+          await plannedMealsRef.doc(mealId).update({
+            ...updatedMeal.toFirestore(),
+            'userId': user.uid, // Ensure userId is preserved
+          });
+        } else {
+          throw Exception('Meal does not belong to this user');
+        }
+      } else {
+        throw Exception('Meal not found');
+      }
     } catch (e) {
       throw Exception('Error updating planned meal: $e');
     }
@@ -487,7 +517,6 @@ class FirestoreRecipesService {
     required String title,
     required String imageUrl,
     int minutes = 0,
-    required String dateKey, // e.g., formatDateKey(DateTime.now())
     required int servings,
     required List<Map<String, dynamic>> ingredients, // [{name, quantity, isChecked:false}]
   }) async {
@@ -505,7 +534,6 @@ class FirestoreRecipesService {
       'titleLower': title.toLowerCase(),
       'imageUrl': imageUrl,
       'minutes': minutes,
-      'dateKey': dateKey,
       'servings': servings,
       'ingredients': ingredients,
       'createdAt': Timestamp.fromDate(DateTime.now()),
@@ -513,26 +541,31 @@ class FirestoreRecipesService {
     return docRef.id;
   }
 
-  Future<List<Map<String, dynamic>>> fetchGroceryRecipesByDate(String dateKey) async {
+  Future<List<Map<String, dynamic>>> fetchAllGroceryRecipes({String sortBy = 'newest'}) async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return <Map<String, dynamic>>[];
-    final QuerySnapshot<Map<String, dynamic>> q = await _firestore
+    
+    Query<Map<String, dynamic>> query = _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('GroceryRecipes')
-        .where('dateKey', isEqualTo: dateKey)
-        .get();
-    return q.docs.map((d) => {...d.data(), 'id': d.id}).toList();
-  }
-
-  Future<List<Map<String, dynamic>>> fetchAllGroceryRecipes() async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return <Map<String, dynamic>>[];
-    final QuerySnapshot<Map<String, dynamic>> q = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('GroceryRecipes')
-        .get();
+        .collection('GroceryRecipes');
+    
+    // Apply sorting based on the sortBy parameter
+    switch (sortBy) {
+      case 'newest':
+        query = query.orderBy('createdAt', descending: true);
+        break;
+      case 'oldest':
+        query = query.orderBy('createdAt', descending: false);
+        break;
+      case 'a-z':
+        query = query.orderBy('title');
+        break;
+      default:
+        query = query.orderBy('createdAt', descending: true);
+    }
+    
+    final QuerySnapshot<Map<String, dynamic>> q = await query.get();
     return q.docs.map((d) => {...d.data(), 'id': d.id}).toList();
   }
 

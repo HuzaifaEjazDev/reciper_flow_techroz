@@ -1,38 +1,337 @@
 import 'package:flutter/foundation.dart';
 import 'package:recipe_app/models/dish.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeViewModel extends ChangeNotifier {
-  List<Dish> _recommended = const <Dish>[];
+  List<Dish> _personalizedRecipes = const <Dish>[]; // Replace recommended with personalized recipes
+  List<Dish> _easyMakeSnacks = const <Dish>[];
+  List<Dish> _quickWeeknightMeals = const <Dish>[];
+  List<String> _userCuisinePreferences = [];
+  String? _userDietPreference;
 
-  List<Dish> get recommended => _recommended;
+  List<Dish> get personalizedRecipes => _personalizedRecipes; // Replace getter
+  List<Dish> get easyMakeSnacks => _easyMakeSnacks;
+  List<Dish> get quickWeeknightMeals => _quickWeeknightMeals;
 
-  void loadInitial() {
-    _recommended = const <Dish>[
-      Dish(
-        id: '1',
-        title: 'Berry Boost Smoothie Bowl',
-        subtitle:
-            'A refreshing and nutritious blend of mixed berries, banana, and almond milk, garnished with chia seeds and coconut flakes.',
-        imageAssetPath: 'assets/images/dish/dish1.jpg',
-        minutes: 10,
-      ),
-      Dish(
-        id: '2',
-        title: 'Mediterranean Quinoa Salad',
-        subtitle:
-            'Healthy and satisfying quinoa salad packed with fresh vegetables, tangy feta, and a zesty vinaigrette.',
-        imageAssetPath: 'assets/images/dish/dish2.jpg',
-        minutes: 25,
-      ),
-      Dish(
-        id: '3',
-        title: 'Crispy Honey Garlic Wings',
-        subtitle:
-            'Oven-baked chicken wings tossed in a sweet and savory honey-garlic sauce, perfect for appetizers.',
-        imageAssetPath: 'assets/images/dish/dish3.jpg',
-        minutes: 30,
-      ),
-    ];
+  Future<void> loadInitial() async {
+    // Fetch user preferences first
+    await _fetchUserPreferences();
+    
+    // Fetch personalized recipes based on user preferences
+    await _fetchPersonalizedRecipes();
+    
+    // Fetch dishes for Easy Make Snack and Quick Weeknight Meals sections
+    await _fetchEasyMakeSnacks();
+    await _fetchQuickWeeknightMeals();
+  }
+
+  Future<void> _fetchUserPreferences() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('onboardingData')) {
+          final onboardingData = data['onboardingData'] as Map<String, dynamic>?;
+          if (onboardingData != null) {
+            // Fetch cuisine preferences
+            if (onboardingData.containsKey('cuisinePreferences') &&
+                onboardingData['cuisinePreferences'] is List) {
+              _userCuisinePreferences = List<String>.from(onboardingData['cuisinePreferences']);
+            }
+
+            // Fetch diet preference
+            if (onboardingData.containsKey('dietPreference')) {
+              _userDietPreference = onboardingData['dietPreference'] as String?;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching user preferences: $e');
+    }
+  }
+
+  Future<void> _fetchPersonalizedRecipes() async {
+    try {
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection('recipes');
+      
+      // Apply diet filter if user has a diet preference
+      if (_userDietPreference != null && _userDietPreference!.isNotEmpty) {
+        query = query.where('diet', isEqualTo: _userDietPreference);
+      }
+      
+      // Apply cuisine filter if user has cuisine preferences
+      if (_userCuisinePreferences.isNotEmpty) {
+        // Use array-contains-any for multiple cuisines
+        query = query.where('cuisine', arrayContainsAny: _userCuisinePreferences);
+      }
+      
+      // Limit to 5 personalized recipes
+      query = query.limit(5);
+      
+      final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        _personalizedRecipes = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return Dish(
+            id: doc.id,
+            title: data['title'] as String? ?? 'Untitled Recipe',
+            subtitle: data['description'] as String? ?? 'Delicious recipe',
+            imageAssetPath: data['imageUrl'] as String? ?? 'assets/images/dish/dish1.jpg',
+            minutes: (data['totalMinutes'] as num?)?.toInt() ?? 0,
+          );
+        }).toList();
+      } else {
+        // Fallback to default recipes if no personalized ones found
+        _personalizedRecipes = const <Dish>[
+          Dish(
+            id: '1',
+            title: 'Berry Boost Smoothie Bowl',
+            subtitle:
+                'A refreshing and nutritious blend of mixed berries, banana, and almond milk, garnished with chia seeds and coconut flakes.',
+            imageAssetPath: 'assets/images/dish/dish1.jpg',
+            minutes: 10,
+          ),
+          Dish(
+            id: '2',
+            title: 'Mediterranean Quinoa Salad',
+            subtitle:
+                'Healthy and satisfying quinoa salad packed with fresh vegetables, tangy feta, and a zesty vinaigrette.',
+            imageAssetPath: 'assets/images/dish/dish2.jpg',
+            minutes: 25,
+          ),
+          Dish(
+            id: '3',
+            title: 'Crispy Honey Garlic Wings',
+            subtitle:
+                'Oven-baked chicken wings tossed in a sweet and savory honey-garlic sauce, perfect for appetizers.',
+            imageAssetPath: 'assets/images/dish/dish3.jpg',
+            minutes: 30,
+          ),
+        ];
+      }
+    } catch (e) {
+      print('Error fetching personalized recipes: $e');
+      // Fallback to default recipes if there's an error
+      _personalizedRecipes = const <Dish>[
+        Dish(
+          id: '1',
+          title: 'Berry Boost Smoothie Bowl',
+          subtitle:
+              'A refreshing and nutritious blend of mixed berries, banana, and almond milk, garnished with chia seeds and coconut flakes.',
+          imageAssetPath: 'assets/images/dish/dish1.jpg',
+          minutes: 10,
+        ),
+        Dish(
+          id: '2',
+          title: 'Mediterranean Quinoa Salad',
+          subtitle:
+              'Healthy and satisfying quinoa salad packed with fresh vegetables, tangy feta, and a zesty vinaigrette.',
+          imageAssetPath: 'assets/images/dish/dish2.jpg',
+          minutes: 25,
+        ),
+        Dish(
+          id: '3',
+          title: 'Crispy Honey Garlic Wings',
+          subtitle:
+              'Oven-baked chicken wings tossed in a sweet and savory honey-garlic sauce, perfect for appetizers.',
+          imageAssetPath: 'assets/images/dish/dish3.jpg',
+          minutes: 30,
+        ),
+      ];
+    }
+    
+    notifyListeners();
+  }
+
+  Future<void> _fetchEasyMakeSnacks() async {
+    try {
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection('recipes');
+      
+      // Filter for easy make snacks (cooking time <= 15 minutes)
+      query = query.where('totalMinutes', isLessThanOrEqualTo: 15);
+      
+      // Apply diet filter if user has a diet preference
+      if (_userDietPreference != null && _userDietPreference!.isNotEmpty) {
+        query = query.where('diet', isEqualTo: _userDietPreference);
+      }
+      
+      // Apply cuisine filter if user has cuisine preferences
+      if (_userCuisinePreferences.isNotEmpty) {
+        query = query.where('cuisine', arrayContainsAny: _userCuisinePreferences);
+      }
+      
+      // Limit to 5 snacks
+      query = query.limit(5);
+      
+      final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        _easyMakeSnacks = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return Dish(
+            id: doc.id,
+            title: data['title'] as String? ?? 'Untitled Recipe',
+            subtitle: data['description'] as String? ?? 'Quick snack',
+            imageAssetPath: data['imageUrl'] as String? ?? 'assets/images/easymakesnack1.jpg',
+            minutes: (data['totalMinutes'] as num?)?.toInt() ?? 0,
+          );
+        }).toList();
+      } else {
+        // Fallback to default snacks if no personalized ones found
+        _easyMakeSnacks = const <Dish>[
+          Dish(
+            id: 'snack1',
+            title: 'Crispy Bites',
+            subtitle: 'Quick and delicious snack',
+            imageAssetPath: 'assets/images/easymakesnack1.jpg',
+            minutes: 8,
+          ),
+          Dish(
+            id: 'snack2',
+            title: 'Fruit Delight',
+            subtitle: 'Healthy fruit snack',
+            imageAssetPath: 'assets/images/easymakesnack2.jpg',
+            minutes: 6,
+          ),
+          Dish(
+            id: 'snack3',
+            title: 'Cheesy Toast',
+            subtitle: 'Simple cheesy toast',
+            imageAssetPath: 'assets/images/easymakesnack3.jpg',
+            minutes: 10,
+          ),
+        ];
+      }
+    } catch (e) {
+      print('Error fetching easy make snacks: $e');
+      // Fallback to default snacks if there's an error
+      _easyMakeSnacks = const <Dish>[
+        Dish(
+          id: 'snack1',
+          title: 'Crispy Bites',
+          subtitle: 'Quick and delicious snack',
+          imageAssetPath: 'assets/images/easymakesnack1.jpg',
+          minutes: 8,
+        ),
+        Dish(
+          id: 'snack2',
+          title: 'Fruit Delight',
+          subtitle: 'Healthy fruit snack',
+          imageAssetPath: 'assets/images/easymakesnack2.jpg',
+          minutes: 6,
+        ),
+        Dish(
+          id: 'snack3',
+          title: 'Cheesy Toast',
+          subtitle: 'Simple cheesy toast',
+          imageAssetPath: 'assets/images/easymakesnack3.jpg',
+          minutes: 10,
+        ),
+      ];
+    }
+    
+    notifyListeners();
+  }
+
+  Future<void> _fetchQuickWeeknightMeals() async {
+    try {
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection('recipes');
+      
+      // Filter for quick weeknight meals (cooking time between 15-30 minutes)
+      query = query
+          .where('totalMinutes', isGreaterThanOrEqualTo: 15)
+          .where('totalMinutes', isLessThanOrEqualTo: 30);
+      
+      // Apply diet filter if user has a diet preference
+      if (_userDietPreference != null && _userDietPreference!.isNotEmpty) {
+        query = query.where('diet', isEqualTo: _userDietPreference);
+      }
+      
+      // Apply cuisine filter if user has cuisine preferences
+      if (_userCuisinePreferences.isNotEmpty) {
+        query = query.where('cuisine', arrayContainsAny: _userCuisinePreferences);
+      }
+      
+      // Limit to 5 meals
+      query = query.limit(5);
+      
+      final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        _quickWeeknightMeals = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return Dish(
+            id: doc.id,
+            title: data['title'] as String? ?? 'Untitled Recipe',
+            subtitle: data['description'] as String? ?? 'Quick weeknight meal',
+            imageAssetPath: data['imageUrl'] as String? ?? 'assets/images/quickweeknightmeals1.jpg',
+            minutes: (data['totalMinutes'] as num?)?.toInt() ?? 0,
+          );
+        }).toList();
+      } else {
+        // Fallback to default meals if no personalized ones found
+        _quickWeeknightMeals = const <Dish>[
+          Dish(
+            id: 'meal1',
+            title: 'Pasta Bowl',
+            subtitle: 'Quick pasta meal',
+            imageAssetPath: 'assets/images/quickweeknightmeals1.jpg',
+            minutes: 20,
+          ),
+          Dish(
+            id: 'meal2',
+            title: 'Veggie Stir-fry',
+            subtitle: 'Healthy vegetable stir-fry',
+            imageAssetPath: 'assets/images/quickweeknightmeals2.jpg',
+            minutes: 15,
+          ),
+          Dish(
+            id: 'meal3',
+            title: 'Grilled Wraps',
+            subtitle: 'Delicious grilled wraps',
+            imageAssetPath: 'assets/images/quickweeknightmeals3.jpg',
+            minutes: 18,
+          ),
+        ];
+      }
+    } catch (e) {
+      print('Error fetching quick weeknight meals: $e');
+      // Fallback to default meals if there's an error
+      _quickWeeknightMeals = const <Dish>[
+        Dish(
+          id: 'meal1',
+          title: 'Pasta Bowl',
+          subtitle: 'Quick pasta meal',
+          imageAssetPath: 'assets/images/quickweeknightmeals1.jpg',
+          minutes: 20,
+        ),
+        Dish(
+          id: 'meal2',
+          title: 'Veggie Stir-fry',
+          subtitle: 'Healthy vegetable stir-fry',
+          imageAssetPath: 'assets/images/quickweeknightmeals2.jpg',
+          minutes: 15,
+        ),
+        Dish(
+          id: 'meal3',
+          title: 'Grilled Wraps',
+          subtitle: 'Delicious grilled wraps',
+          imageAssetPath: 'assets/images/quickweeknightmeals3.jpg',
+          minutes: 18,
+        ),
+      ];
+    }
+    
     notifyListeners();
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/startInfoCollect/cuisine_interests_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DietPreferenceScreen extends StatefulWidget {
   const DietPreferenceScreen({super.key});
@@ -13,16 +15,45 @@ class _DietPreferenceScreenState extends State<DietPreferenceScreen> {
   final List<String> _options = const <String>[
     'Vegetarian',
     'Vegan',
-    'Planned diet',
-    'No specific',
+    'Gluten-Free',
+    'Keto',
+    'Paleo',
+    'Low-Crab,',
+    'Dairy-Free'
   ];
 
   String? _selected;
+
+  Future<void> _saveDietPreference() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'onboardingData': {
+          'dietPreference': _selected,
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving diet preference: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: Colors.black87,
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Back',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -63,12 +94,15 @@ class _DietPreferenceScreenState extends State<DietPreferenceScreen> {
               const SizedBox(height: 12),
               CustomElevatedButton(
                 text: 'Next',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CuisineInterestsScreen(),
-                    ),
-                  );
+                onPressed: () async {
+                  if (_selected != null) {
+                    await _saveDietPreference();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CuisineInterestsScreen(),
+                      ),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 8),
@@ -148,5 +182,3 @@ class _DietTile extends StatelessWidget {
     );
   }
 }
-
-

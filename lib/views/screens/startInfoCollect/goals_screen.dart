@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/startInfoCollect/cooking_frequency_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -21,6 +23,21 @@ class _GoalsScreenState extends State<GoalsScreen> {
   ];
 
   final Set<String> _selected = <String>{};
+
+  Future<void> _saveGoals() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'onboardingData': {
+          'goals': _selected.toList(),
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving goals: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +99,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
               const SizedBox(height: 12),
               CustomElevatedButton(
                 text: 'Next',
-                onPressed: () {
+                onPressed: () async {
+                  await _saveGoals();
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const CookingFrequencyScreen(),
@@ -178,5 +196,3 @@ class _TickInCircle extends StatelessWidget {
     );
   }
 }
-
-

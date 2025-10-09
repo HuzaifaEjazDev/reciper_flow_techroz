@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'firebase_options.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
@@ -8,8 +9,6 @@ import 'package:recipe_app/viewmodels/user/user_recipes_pager_view_model.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
-import 'package:recipe_app/views/screens/auth_wrapper.dart';
-import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:provider/provider.dart';
 
 Future<void> main() async {

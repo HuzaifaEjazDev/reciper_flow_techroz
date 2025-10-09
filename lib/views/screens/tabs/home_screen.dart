@@ -20,6 +20,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Add listener to handle search when text changes
     _searchController.addListener(_onSearchChanged);
+    
+    // Load initial data for personalized recipes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeViewModel>().loadInitial();
+    });
   }
 
   @override
@@ -39,10 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _performSearch() {
     final String query = _searchController.text.trim();
     if (query.isNotEmpty) {
-      // Navigate to RecipeByAdminScreen with the search query converted to lowercase
+      // Navigate to RecipeByAdminScreen with the search query
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => RecipeByAdminScreen(initialSearchQuery: query.toLowerCase()),
+          builder: (_) => RecipeByAdminScreen(initialSearchQuery: query),
         ),
       ).then((_) {
         // After returning from the search screen, we could optionally clear the search field
@@ -53,7 +58,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Dish> dishes = context.watch<HomeViewModel>().recommended;
+    final homeViewModel = context.watch<HomeViewModel>();
+    final List<Dish> personalizedRecipes = homeViewModel.personalizedRecipes; // Changed from recommended
+    final List<Dish> easyMakeSnacks = homeViewModel.easyMakeSnacks;
+    final List<Dish> quickWeeknightMeals = homeViewModel.quickWeeknightMeals;
+    
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
@@ -188,21 +197,22 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            // Personalized Recipes Section (replaces Recommended Dishes)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 25),
               child: Text(
-                'Recommended Dishes',
+                'Personalized Recipes',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
             ),
             const SizedBox(height: 12),
             ListView.builder(
-              itemCount: dishes.length,
+              itemCount: personalizedRecipes.length,
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(horizontal: 25),
               itemBuilder: (context, index) {
-                final dish = dishes[index];
+                final dish = personalizedRecipes[index];
                 return _DishCard(dish: dish);
               },
             ),
@@ -222,13 +232,17 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 25),
-                children: const [
-                  _SmallDishCard(imageAssetPath: 'assets/images/easymakesnack1.jpg', title: 'Crispy Bites', minutes: 8),
-                  SizedBox(width: 12),
-                  _SmallDishCard(imageAssetPath: 'assets/images/easymakesnack2.jpg', title: 'Fruit Delight', minutes: 6),
-                  SizedBox(width: 12),
-                  _SmallDishCard(imageAssetPath: 'assets/images/easymakesnack3.jpg', title: 'Cheesy Toast', minutes: 10),
-                ],
+                children: easyMakeSnacks.map((dish) => 
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: _SmallDishCard(
+                      imageAssetPath: dish.imageAssetPath, 
+                      title: dish.title, 
+                      minutes: dish.minutes,
+                      dish: dish,
+                    ),
+                  )
+                ).toList(),
               ),
             ),
             const SizedBox(height: 32),
@@ -247,13 +261,17 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 25),
-                children: const [
-                  _SmallDishCard(imageAssetPath: 'assets/images/quickweeknightmeals1.jpg', title: 'Pasta Bowl', minutes: 20),
-                  SizedBox(width: 12),
-                  _SmallDishCard(imageAssetPath: 'assets/images/quickweeknightmeals2.jpg', title: 'Veggie Stir-fry', minutes: 15),
-                  SizedBox(width: 12),
-                  _SmallDishCard(imageAssetPath: 'assets/images/quickweeknightmeals3.jpg', title: 'Grilled Wraps', minutes: 18),
-                ],
+                children: quickWeeknightMeals.map((dish) => 
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: _SmallDishCard(
+                      imageAssetPath: dish.imageAssetPath, 
+                      title: dish.title, 
+                      minutes: dish.minutes,
+                      dish: dish,
+                    ),
+                  )
+                ).toList(),
               ),
             ),
             const SizedBox(height: 100),
@@ -268,22 +286,36 @@ class _SmallDishCard extends StatelessWidget {
   final String imageAssetPath;
   final String title;
   final int minutes;
-  const _SmallDishCard({required this.imageAssetPath, required this.title, required this.minutes});
+  final Dish? dish; // Add this parameter
+  const _SmallDishCard({required this.imageAssetPath, required this.title, required this.minutes, this.dish});
 
   @override
   Widget build(BuildContext context) {
     const double cardHeight = 150;
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => RecipeDetailsScreen(
-              title: title,
-              imageAssetPath: imageAssetPath,
-              recipeId: title.toLowerCase().replaceAll(' ', '_'),
+        if (dish != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RecipeDetailsScreen(
+                title: dish!.title,
+                imageAssetPath: dish!.imageAssetPath,
+                minutes: dish!.minutes,
+                recipeId: dish!.id,
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RecipeDetailsScreen(
+                title: title,
+                imageAssetPath: imageAssetPath,
+                recipeId: title.toLowerCase().replaceAll(' ', '_'),
+              ),
+            ),
+          );
+        }
       },
       child: Container(
       width: 180,

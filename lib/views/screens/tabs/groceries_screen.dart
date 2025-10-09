@@ -1,3 +1,4 @@
+import 'dart:async'; // Add this import for Timer
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,7 @@ class GroceriesScreen extends StatefulWidget {
 
 class _GroceriesScreenState extends State<GroceriesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer; // Add debounce timer for search
   
   @override
   void initState() {
@@ -27,14 +29,18 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _debounceTimer?.cancel(); // Cancel timer on dispose
     super.dispose();
   }
   
   void _onSearchChanged() {
-    // When search bar is empty, show all data automatically
-    if (_searchController.text.trim().isEmpty) {
-      _performSearch();
+    // Debounce search to avoid too many requests
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer!.cancel();
     }
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _performSearch();
+    });
   }
   
   void _performSearch() {
@@ -108,25 +114,11 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                 children: [
                   _buildRecipesHeader(context),
                   const SizedBox(height: 10),
-                  Consumer<GroceriesViewModel>(
-                    builder: (context, viewModel, child) {
-                      return viewModel.showAll 
-                        ? _buildAllRecipeCardsRow(context) 
-                        : _buildRecipeCardsRow(context);
-                    }
-                  ),
-
+                  _buildAllRecipeCardsRow(context),
                   const SizedBox(height: 20),
-                  _buildSortRow(),
-
+                  _buildSortAndClearRow(context), // Add this line
                   const SizedBox(height: 10),
-                  Consumer<GroceriesViewModel>(
-                    builder: (context, viewModel, child) {
-                      return viewModel.showAll 
-                        ? _buildAllGroceryItems(context) 
-                        : _buildGroceryItemsFromPlannedMeals(context);
-                    }
-                  ),
+                  _buildAllGroceryItems(context),
                   const SizedBox(height: 10),
                 ],
               ),
@@ -150,114 +142,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     );
   }
 
-  Widget _buildRecipeCardsRow(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
-        }
-        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
-        if (recipes.isEmpty) {
-          return const Row(
-            children: [
-              Expanded(child: Text('No groceries for selected date', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
-            ],
-          );
-        }
-        return SizedBox(
-          height: 200,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: recipes.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final r = recipes[i];
-              final String title = (r['title'] ?? '').toString();
-              final String image = (r['imageUrl'] ?? '').toString();
-              final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
-              final int servings = r['servings'] is int ? r['servings'] as int : 1;
-              return SizedBox(
-                width: 160,
-                child: GestureDetector(
-                  onTap: () {
-                    // Navigate to recipe details screen
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => RecipeDetailsScreen(
-                          title: title,
-                          imageAssetPath: image,
-                          minutes: minutes,
-                          recipeId: r['id']?.toString() ?? '',
-                          fromAdminScreen: false,
-                          fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
-                          // We don't have ingredients and steps here, they'll need to be fetched
-                          ingredients: const [],
-                          steps: const [],
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          height: 108,
-                          child: image.startsWith('http')
-                              ? Image.network(image, fit: BoxFit.cover)
-                              : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 6),
-                                Row(children: [
-                                  const Icon(Icons.access_time, size: 14, color: Colors.black54),
-                                  const SizedBox(width: 6),
-                                  Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                                ]),
-                                const SizedBox(height: 4),
-                                Row(children: [
-                                  const Icon(Icons.person, size: 14, color: Colors.black54),
-                                  const SizedBox(width: 6),
-                                  Text('$servings', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                                ]),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSortRow() {
-    final List<DateTime> nextSeven = List<DateTime>.generate(7, (i) {
-      final now = DateTime.now();
-      return DateTime(now.year, now.month, now.day).add(Duration(days: i));
-    });
-
+  Widget _buildSortAndClearRow(BuildContext context) {
     return Row(
       children: [
         // Clear All button at start position
@@ -275,64 +160,59 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
         const Spacer(),
         const Text('Sort by: ', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         const SizedBox(width: 8),
-        PopupMenuButton<Object>(
+        PopupMenuButton<String>(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           color: Colors.white,
           onSelected: (value) {
-            final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
-            if (value is DateTime) {
-              viewModel.toggleShowAll(false); // Disable "Show All" mode
-              viewModel.setSelectedDateKey(viewModel.service.formatDateKey(value));
-            } else if (value is String && value == 'show_all') {
-              viewModel.toggleShowAll(true); // Enable "Show All" mode
-            }
+            // Set the sort option in the view model
+            context.read<GroceriesViewModel>().setSortBy(value);
           },
-          itemBuilder: (ctx) => [
-            // Show All option
-            const PopupMenuItem<Object>(
-              value: 'show_all',
-              child: Text('Show All', style: TextStyle(fontWeight: FontWeight.w600)),
+          itemBuilder: (ctx) => const [
+            PopupMenuItem<String>(
+              value: 'newest',
+              child: Text('Newest', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
-            // Divider
-            const PopupMenuDivider(),
-            // Date options
-            ...nextSeven.map((day) {
-              final weekday = _weekdayShort(day.weekday);
-              final dateNum = day.day.toString();
-              return PopupMenuItem<DateTime>(
-                value: day,
-                child: Row(
-                  children: [
-                    Text(weekday, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 8),
-                    Text(dateNum, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              );
-            }),
+            PopupMenuItem<String>(
+              value: 'oldest',
+              child: Text('Oldest', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            PopupMenuItem<String>(
+              value: 'a-z',
+              child: Text('A-Z', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
           ],
-          child: Consumer<GroceriesViewModel>(
-            builder: (context, viewModel, child) {
-              return Container(
-                height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Row(
+              children: [
+                // Display the current sort option
+                Consumer<GroceriesViewModel>(
+                  builder: (context, viewModel, child) {
+                    String sortText = 'Newest';
+                    switch (viewModel.sortBy) {
+                      case 'newest':
+                        sortText = 'Newest';
+                        break;
+                      case 'oldest':
+                        sortText = 'Oldest';
+                        break;
+                      case 'a-z':
+                        sortText = 'A-Z';
+                        break;
+                    }
+                    return Text(sortText, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700));
+                  },
                 ),
-                child: Row(
-                  children: [
-                    Text(
-                      viewModel.showAll ? 'Show All' : viewModel.selectedDateKey, 
-                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.keyboard_arrow_down, color: Colors.black87),
-                  ],
-                ),
-              );
-            },
+                const SizedBox(width: 6),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.black87),
+              ],
+            ),
           ),
         ),
       ],
@@ -354,8 +234,9 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       case DateTime.saturday:
         return 'Sat';
       case DateTime.sunday:
-      default:
         return 'Sun';
+      default:
+        return '';
     }
   }
 
@@ -481,146 +362,133 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     );
   }
 
-  Widget _buildGroceryItemsFromPlannedMeals(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
-        if (recipes.isEmpty) {
-          return const Center(
-            child: Text('No groceries for selected date', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
-          );
-        }
-        return _GroceryItemsList(recipes: recipes);
-      },
-    );
-  }
-
   Widget _buildAllRecipeCardsRow(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
-        }
-        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
-        if (recipes.isEmpty) {
-          return const Row(
-            children: [
-              Expanded(child: Text('No groceries yet', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
-            ],
-          );
-        }
-        return SizedBox(
-          height: 200,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: recipes.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final r = recipes[i];
-              final String title = (r['title'] ?? '').toString();
-              final String image = (r['imageUrl'] ?? '').toString();
-              final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
-              final int servings = r['servings'] is int ? r['servings'] as int : 1;
-              return SizedBox(
-                width: 160,
-                child: GestureDetector(
-                  onTap: () {
-                    // Navigate to recipe details screen
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => RecipeDetailsScreen(
-                          title: title,
-                          imageAssetPath: image,
-                          minutes: minutes,
-                          recipeId: r['id']?.toString() ?? '',
-                          fromAdminScreen: false,
-                          fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
-                          // We don't have ingredients and steps here, they'll need to be fetched
-                          ingredients: const [],
-                          steps: const [],
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        height: 108,
-                        child: image.startsWith('http')
-                            ? Image.network(image, fit: BoxFit.cover)
-                            : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              Row(children: [
-                                const Icon(Icons.access_time, size: 14, color: Colors.black54),
-                                const SizedBox(width: 6),
-                                Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                              ]),
-                              const SizedBox(height: 4),
-                              Row(children: [
-                                const Icon(Icons.person, size: 14, color: Colors.black54),
-                                const SizedBox(width: 6),
-                                Text('$servings', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                              ]),
-                            ],
+    return Consumer<GroceriesViewModel>(
+      builder: (context, viewModel, child) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: viewModel.fetchAllGroceryRecipes(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
+            }
+            final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+            if (recipes.isEmpty) {
+              return const Row(
+                children: [
+                  Expanded(child: Text('No groceries yet', style: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
+                ],
+              );
+            }
+            return SizedBox(
+              height: 200,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recipes.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final r = recipes[i];
+                  final String title = (r['title'] ?? '').toString();
+                  final String image = (r['imageUrl'] ?? '').toString();
+                  final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
+                  final int servings = r['servings'] is int ? r['servings'] as int : 1;
+                  return SizedBox(
+                    width: 160,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Navigate to recipe details screen
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => RecipeDetailsScreen(
+                              title: title,
+                              imageAssetPath: image,
+                              minutes: minutes,
+                              recipeId: r['id']?.toString() ?? '',
+                              fromAdminScreen: false,
+                              fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
+                              // We don't have ingredients and steps here, they'll need to be fetched
+                              ingredients: const [],
+                              steps: const [],
+                            ),
                           ),
-                        ),
+                        );
+                      },
+                      child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
-                    ],
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            height: 108,
+                            child: image.startsWith('http')
+                                ? Image.network(image, fit: BoxFit.cover)
+                                : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 6),
+                                  Row(children: [
+                                    const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                    const SizedBox(width: 6),
+                                    Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                                  ]),
+                                  const SizedBox(height: 4),
+                                  Row(children: [
+                                    const Icon(Icons.person, size: 14, color: Colors.black54),
+                                    const SizedBox(width: 6),
+                                    Text('$servings', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
+                                  ]),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                );
+                }
               ),
             );
-            },
-          ),
+          },
         );
       },
     );
   }
 
   Widget _buildAllGroceryItems(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Provider.of<GroceriesViewModel>(context, listen: false).fetchRecipes(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
-        if (recipes.isEmpty) {
-          return const Center(
-            child: Text('No groceries yet. Use the Groceries feature (separate from Meal Planner).', style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
-          );
-        }
-        return _GroceryItemsList(recipes: recipes);
+    return Consumer<GroceriesViewModel>(
+      builder: (context, viewModel, child) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: viewModel.fetchAllGroceryRecipes(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
+            final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+            if (recipes.isEmpty) {
+              return const Center(
+                child: Text('No groceries yet. Use the Groceries feature (separate from Meal Planner).', style: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
+              );
+            }
+            return _GroceryItemsList(recipes: recipes);
+          },
+        );
       },
     );
   }
@@ -639,6 +507,9 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                 Navigator.of(context).pop(); // Close dialog
               },
               child: const Text('Cancel'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.black,
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -646,6 +517,8 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                 final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
                 try {
                   await viewModel.clearAllCheckedIngredients();
+                  // Force a rebuild of the widget tree
+                  setState(() {});
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('All checked ingredients have been removed')),
@@ -660,6 +533,9 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                 }
               },
               child: const Text('Clear All', style: TextStyle(color: Colors.red)),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
             ),
           ],
         );
@@ -681,68 +557,23 @@ class _GroceryItemsList extends StatefulWidget {
 class _GroceryItemsListState extends State<_GroceryItemsList> {
   @override
   Widget build(BuildContext context) {
-    // Group recipes by date
-    final Map<String, List<Map<String, dynamic>>> recipesByDate = {};
-    
-    // Group recipes by their dateKey
-    for (final recipe in widget.recipes) {
-      final String dateKey = recipe['dateKey']?.toString() ?? '';
-      if (!recipesByDate.containsKey(dateKey)) {
-        recipesByDate[dateKey] = [];
-      }
-      recipesByDate[dateKey]!.add(recipe);
-    }
-    
-    // Get the list of dates and sort them
-    final List<String> dateKeys = recipesByDate.keys.toList();
-    dateKeys.sort((a, b) {
-      // Simple string comparison for date keys in format "D MMM"
-      return a.compareTo(b);
-    });
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: dateKeys.map((dateKey) {
-        final List<Map<String, dynamic>> recipesForDate = recipesByDate[dateKey]!;
-        return _DateSection(
-          dateKey: dateKey,
-          recipes: recipesForDate,
-        );
-      }).toList(),
-    );
-  }
-}
-
-/// Widget to display recipes for a specific date
-class _DateSection extends StatelessWidget {
-  final String dateKey;
-  final List<Map<String, dynamic>> recipes;
-
-  const _DateSection({
-    Key? key,
-    required this.dateKey,
-    required this.recipes,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
+    // Display all recipes without grouping by date
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Date header
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(
-            dateKey,
-            style: const TextStyle(
+          child: const Text(
+            'All Groceries',
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
             ),
           ),
         ),
-        // Recipes for this date
-        ...recipes.map((r) {
+        // Recipes
+        ...widget.recipes.map((r) {
           final String recipeId = (r['id'] ?? '').toString();
           final String title = (r['title'] ?? '').toString();
           final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);

@@ -41,6 +41,7 @@ class AuthService {
           'email': email,
           if (name != null && name.isNotEmpty) 'name': name,
           'createdAt': FieldValue.serverTimestamp(),
+          'onBoardingDone': false, // Initialize onboarding status as false
         });
       }
       

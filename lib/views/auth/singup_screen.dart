@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/auth/sign_in_screen.dart';
-// import removed: main_screen is not used after redirecting to SignIn
+import 'package:recipe_app/views/screens/startInfoCollect/goals_screen.dart';
+import 'package:recipe_app/views/screens/main_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SingUp extends StatefulWidget {
   const SingUp({super.key});
@@ -176,10 +180,9 @@ class _SingUpState extends State<SingUp> {
                           
                           final success = await context.read<AuthViewModel>().signUp(email, password, name: name);
                           if (success) {
-                            // After creating the account, sign out and send user to Sign In screen
-                            await context.read<AuthViewModel>().signOut();
+                            // Navigate to goals screen for new users
                             Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const SignInScreen()),
+                              MaterialPageRoute(builder: (_) => const GoalsScreen()),
                               (route) => false,
                             );
                           } else {
@@ -218,6 +221,9 @@ class _SingUpState extends State<SingUp> {
                         );
                       },
                       child: const Text('Sign In'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.black, // Explicitly set text color to black
+                      ),
                     ),
                   ],
                 ),
@@ -234,6 +240,7 @@ class _SingUpState extends State<SingUp> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          foregroundColor: Colors.black, // Set text color to black
                         ),
                       ),
                     ),
@@ -247,6 +254,7 @@ class _SingUpState extends State<SingUp> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          foregroundColor: Colors.black, // Set text color to black
                         ),
                       ),
                     ),

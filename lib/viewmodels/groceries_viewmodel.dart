@@ -4,10 +4,9 @@ import 'package:recipe_app/services/firestore_recipes_service.dart';
 class GroceriesViewModel extends ChangeNotifier {
   final FirestoreRecipesService _service = FirestoreRecipesService();
   final TextEditingController searchController = TextEditingController(); // Add controller
-  bool _showAll = false;
-  String _selectedDateKey = '';
   String _searchQuery = '';
   String _searchQueryTemp = '';
+  String _sortBy = 'newest'; // Add sort by field
   
   // Cache for recipes data
   List<Map<String, dynamic>>? _cachedRecipes;
@@ -18,18 +17,14 @@ class GroceriesViewModel extends ChangeNotifier {
   // Expansion states for recipes
   final Map<String, bool> _expansionStates = {};
   
-  bool get showAll => _showAll;
-  String get selectedDateKey => _selectedDateKey;
   List<Map<String, dynamic>>? get cachedRecipes => _cachedRecipes;
   String get searchQuery => _searchQuery;
+  String get sortBy => _sortBy; // Add getter for sort by
   
   // Expose the service for access to its methods
   FirestoreRecipesService get service => _service;
   
   GroceriesViewModel() {
-    // Default to today's date key
-    _selectedDateKey = _service.formatDateKey(DateTime.now());
-    
     // Add listener to handle search when text changes
     searchController.addListener(_onSearchChanged);
   }
@@ -47,31 +42,22 @@ class GroceriesViewModel extends ChangeNotifier {
     }
   }
   
-  void toggleShowAll(bool value) {
-    _showAll = value;
-    _cachedRecipes = null; // Clear cache when switching views
-    _checkboxStates.clear(); // Clear checkbox states
-    _expansionStates.clear(); // Clear expansion states
-    notifyListeners();
-  }
-  
-  void setSelectedDateKey(String dateKey) {
-    _selectedDateKey = dateKey;
-    _cachedRecipes = null; // Clear cache when date changes
-    _checkboxStates.clear(); // Clear checkbox states
-    _expansionStates.clear(); // Clear expansion states
-    notifyListeners();
-  }
-  
   // Search methods
   void setSearchQuery([String? query]) {
-    _searchQuery = query ?? _searchQueryTemp;
+    _searchQuery = (query ?? _searchQueryTemp).toLowerCase();
     _cachedRecipes = null; // Clear cache when search query changes
     notifyListeners();
   }
   
   void setSearchQueryTemp(String query) {
-    _searchQueryTemp = query;
+    _searchQueryTemp = query.toLowerCase();
+  }
+  
+  // Sort methods
+  void setSortBy(String sortBy) {
+    _sortBy = sortBy;
+    _cachedRecipes = null; // Clear cache when sort changes
+    notifyListeners();
   }
   
   // Toggle expansion state for a recipe
@@ -85,16 +71,14 @@ class GroceriesViewModel extends ChangeNotifier {
     return _expansionStates[recipeId] ?? false;
   }
   
-  // Fetch recipes with caching and search support
-  Future<List<Map<String, dynamic>>> fetchRecipes() async {
+  // Fetch all grocery recipes (without date filtering)
+  Future<List<Map<String, dynamic>>> fetchAllGroceryRecipes() async {
     // Return cached recipes if available and no search query
     if (_cachedRecipes != null && _searchQuery.isEmpty) {
       return _cachedRecipes!;
     }
     
-    final List<Map<String, dynamic>> recipes = _showAll 
-      ? await _service.fetchAllGroceryRecipes()
-      : await _service.fetchGroceryRecipesByDate(_selectedDateKey);
+    final List<Map<String, dynamic>> recipes = await _service.fetchAllGroceryRecipes(sortBy: _sortBy);
     
     // Apply search filter if there's a query
     List<Map<String, dynamic>> filteredRecipes = recipes;
@@ -177,9 +161,7 @@ class GroceriesViewModel extends ChangeNotifier {
   Future<void> clearAllCheckedIngredients() async {
     try {
       // Fetch current recipes to get the latest data
-      final List<Map<String, dynamic>> recipes = _showAll 
-        ? await _service.fetchAllGroceryRecipes()
-        : await _service.fetchGroceryRecipesByDate(_selectedDateKey);
+      final List<Map<String, dynamic>> recipes = await _service.fetchAllGroceryRecipes();
       
       // Track which recipes should be deleted (all ingredients checked)
       final List<String> recipesToDelete = [];
@@ -234,7 +216,15 @@ class GroceriesViewModel extends ChangeNotifier {
       rethrow;
     }
   }
-  
+
+  // Method to refresh recipes when a new one is added or removed
+  Future<void> refreshRecipes() async {
+    _cachedRecipes = null; // Clear cache to force fetch new data
+    _checkboxStates.clear(); // Clear checkbox states
+    _expansionStates.clear(); // Clear expansion states
+    notifyListeners(); // Notify listeners to rebuild UI
+  }
+
   // Dispose method to clean up
   void disposeViewModel() {
     _checkboxStates.clear();

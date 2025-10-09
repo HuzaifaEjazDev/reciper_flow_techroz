@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/startInfoCollect/recipe_sources_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CuisineInterestsScreen extends StatefulWidget {
   const CuisineInterestsScreen({super.key});
@@ -12,17 +14,66 @@ class CuisineInterestsScreen extends StatefulWidget {
 class _CuisineInterestsScreenState extends State<CuisineInterestsScreen> {
   final List<String> _options = const <String>[
     'Italian',
-    'Asian',
-    'African',
+    'Mexican',
+    'Indian',
+    'Chinese',
+    'Japanese',
+    'French',
+    'Thai',
+    'Mediterrannean',
+    'American',
     'Other',
   ];
 
-  String? _selected;
+  Set<String> _selected = <String>{};
+  final TextEditingController _otherController = TextEditingController();
+  bool _showOtherField = false;
+
+  @override
+  void dispose() {
+    _otherController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveCuisinePreferences() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final List<String> cuisines = _selected.toList();
+      
+      // If "Other" is selected and there's text in the field, add it to the list
+      if (_selected.contains('Other') && _otherController.text.isNotEmpty) {
+        cuisines.remove('Other');
+        cuisines.add(_otherController.text.trim());
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'onboardingData': {
+          'cuisinePreferences': cuisines,
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Handle error silently or show a message to the user
+      print('Error saving cuisine preferences: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: Colors.black87,
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Back',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -43,17 +94,62 @@ class _CuisineInterestsScreenState extends State<CuisineInterestsScreen> {
               const SizedBox(height: 24),
               Expanded(
                 child: ListView.separated(
-                  itemCount: _options.length,
+                  itemCount: _options.length + (_showOtherField ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
+                    // Handle the additional "Other" text field
+                    if (_showOtherField && index == _options.length) {
+                      return TextField(
+                        controller: _otherController,
+                        decoration: const InputDecoration(
+                          hintText: 'Please specify...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            borderSide: BorderSide(color: Color(0xFFD1D5DB)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            borderSide: BorderSide(color: Color(0xFFD1D5DB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            borderSide: BorderSide(color: Colors.deepOrange),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                      );
+                    }
+
                     final label = _options[index];
-                    final isSelected = _selected == label;
+                    final isSelected = _selected.contains(label);
                     return _CuisineTile(
                       label: label,
                       isSelected: isSelected,
                       onTap: () {
                         setState(() {
-                          _selected = label;
+                          if (_selected.contains(label)) {
+                            _selected.remove(label);
+                            // If "Other" is deselected, hide the text field
+                            if (label == 'Other') {
+                              _showOtherField = false;
+                              _otherController.clear();
+                            }
+                          } else {
+                            // If "Other" is selected, deselect all other options
+                            if (label == 'Other') {
+                              _selected.clear();
+                              _selected.add(label);
+                              _showOtherField = true;
+                            } else {
+                              // If any other option is selected and "Other" is currently selected, deselect "Other"
+                              if (_selected.contains('Other')) {
+                                _selected.remove('Other');
+                                _showOtherField = false;
+                                _otherController.clear();
+                              }
+                              _selected.add(label);
+                            }
+                          }
                         });
                       },
                     );
@@ -63,15 +159,20 @@ class _CuisineInterestsScreenState extends State<CuisineInterestsScreen> {
               const SizedBox(height: 12),
               CustomElevatedButton(
                 text: 'Next',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const RecipeSourcesScreen(),
-                    ),
-                  );
+                onPressed: () async {
+                  if (_selected.isNotEmpty) {
+                    // Save cuisine preferences to Firestore
+                    await _saveCuisinePreferences();
+                    
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const RecipeSourcesScreen(),
+                      ),
+                    );
+                  }
                 },
               ),
-              const  SizedBox(height: 8),
+              const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text(
@@ -167,8 +268,13 @@ class _CheckBox extends StatelessWidget {
           width: 1.4,
         ),
       ),
+      child: isChecked
+          ? const Icon(
+              Icons.check,
+              size: 14,
+              color: Colors.white,
+            )
+          : null,
     );
   }
 }
-
-
