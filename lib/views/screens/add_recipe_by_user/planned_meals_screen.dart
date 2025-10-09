@@ -27,6 +27,7 @@ class _PlannedMealsView extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         title: const Text('Groceries', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),

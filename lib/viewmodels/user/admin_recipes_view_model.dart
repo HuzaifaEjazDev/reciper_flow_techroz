@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class AdminRecipeCardData {
@@ -31,6 +32,7 @@ class AdminRecipesViewModel extends ChangeNotifier {
       : _service = service ?? FirestoreRecipesService();
 
   final FirestoreRecipesService _service;
+  final TextEditingController searchController = TextEditingController(); // Add controller
   bool _disposed = false;
   String? _filterMealType;
 
@@ -85,6 +87,13 @@ class AdminRecipesViewModel extends ChangeNotifier {
   bool get disposed => _disposed;
   String? get filterMealType => _filterMealType;
   String get activeServerQuery => _activeServerQuery; // Add this getter
+
+  @override
+  void dispose() {
+    searchController.dispose(); // Dispose controller
+    _disposed = true;
+    super.dispose();
+  }
 
   // Set filter meal type
   void setFilterMealType(String? mealType, {bool autoApply = false}) {
@@ -370,6 +379,16 @@ class AdminRecipesViewModel extends ChangeNotifier {
       _optionsLoading = false;
       notifyListeners();
     }
+    
+    // Add listener to handle search when text changes
+    searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (searchController.text.trim().isEmpty) {
+      setSearchQuery('');
+    }
   }
 
   Future<List<String>> _loadCategory(String name) async {
@@ -523,11 +542,5 @@ class AdminRecipesViewModel extends ChangeNotifier {
     }
     debugPrint('No valid list found for keys: $keys');
     return null;
-  }
-  
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
   }
 }

@@ -27,6 +27,7 @@ class _MyRecipesView extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         title: const Text('User Created Recipes', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
@@ -53,7 +54,7 @@ class _MyRecipesView extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(25, 16, 25, 8),
               child: Row(
                 children: [
-                  Expanded(child: _SearchField()),
+                  Expanded(child: _SearchField(viewModel: vm)),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => vm.applySearch(),
@@ -251,6 +252,10 @@ class _RecipeImage extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
+  final UserRecipesPagerViewModel viewModel;
+  
+  const _SearchField({required this.viewModel});
+  
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -265,6 +270,7 @@ class _SearchField extends StatelessWidget {
         children: [
           Expanded(
             child: TextField(
+              controller: viewModel.searchController, // Use controller from view model
               decoration: const InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
@@ -272,7 +278,7 @@ class _SearchField extends StatelessWidget {
                 hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
               ),
               /// Save the search query temporarily to use it later when search button is tapped
-              onChanged: (v) => context.read<UserRecipesPagerViewModel>().setQueryTemp(v),
+              onChanged: (v) => viewModel.setQueryTemp(v),
             ),
           ),
         ],

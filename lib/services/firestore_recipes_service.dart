@@ -502,6 +502,7 @@ class FirestoreRecipesService {
     final DocumentReference<Map<String, dynamic>> docRef = col.doc();
     await docRef.set({
       'title': title,
+      'titleLower': title.toLowerCase(),
       'imageUrl': imageUrl,
       'minutes': minutes,
       'dateKey': dateKey,

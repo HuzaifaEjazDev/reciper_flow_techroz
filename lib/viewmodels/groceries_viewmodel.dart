@@ -1,10 +1,13 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class GroceriesViewModel extends ChangeNotifier {
   final FirestoreRecipesService _service = FirestoreRecipesService();
+  final TextEditingController searchController = TextEditingController(); // Add controller
   bool _showAll = false;
   String _selectedDateKey = '';
+  String _searchQuery = '';
+  String _searchQueryTemp = '';
   
   // Cache for recipes data
   List<Map<String, dynamic>>? _cachedRecipes;
@@ -18,6 +21,7 @@ class GroceriesViewModel extends ChangeNotifier {
   bool get showAll => _showAll;
   String get selectedDateKey => _selectedDateKey;
   List<Map<String, dynamic>>? get cachedRecipes => _cachedRecipes;
+  String get searchQuery => _searchQuery;
   
   // Expose the service for access to its methods
   FirestoreRecipesService get service => _service;
@@ -25,6 +29,22 @@ class GroceriesViewModel extends ChangeNotifier {
   GroceriesViewModel() {
     // Default to today's date key
     _selectedDateKey = _service.formatDateKey(DateTime.now());
+    
+    // Add listener to handle search when text changes
+    searchController.addListener(_onSearchChanged);
+  }
+  
+  @override
+  void dispose() {
+    searchController.dispose(); // Dispose controller
+    super.dispose();
+  }
+  
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (searchController.text.trim().isEmpty) {
+      setSearchQuery('');
+    }
   }
   
   void toggleShowAll(bool value) {
@@ -43,6 +63,17 @@ class GroceriesViewModel extends ChangeNotifier {
     notifyListeners();
   }
   
+  // Search methods
+  void setSearchQuery([String? query]) {
+    _searchQuery = query ?? _searchQueryTemp;
+    _cachedRecipes = null; // Clear cache when search query changes
+    notifyListeners();
+  }
+  
+  void setSearchQueryTemp(String query) {
+    _searchQueryTemp = query;
+  }
+  
   // Toggle expansion state for a recipe
   void toggleExpansionState(String recipeId, bool isExpanded) {
     _expansionStates[recipeId] = isExpanded;
@@ -54,20 +85,31 @@ class GroceriesViewModel extends ChangeNotifier {
     return _expansionStates[recipeId] ?? false;
   }
   
-  // Fetch recipes with caching
+  // Fetch recipes with caching and search support
   Future<List<Map<String, dynamic>>> fetchRecipes() async {
-    if (_cachedRecipes != null) {
+    // Return cached recipes if available and no search query
+    if (_cachedRecipes != null && _searchQuery.isEmpty) {
       return _cachedRecipes!;
     }
     
     final List<Map<String, dynamic>> recipes = _showAll 
       ? await _service.fetchAllGroceryRecipes()
       : await _service.fetchGroceryRecipesByDate(_selectedDateKey);
-      
-    _cachedRecipes = recipes;
+    
+    // Apply search filter if there's a query
+    List<Map<String, dynamic>> filteredRecipes = recipes;
+    if (_searchQuery.isNotEmpty) {
+      final String queryLower = _searchQuery.toLowerCase();
+      filteredRecipes = recipes.where((recipe) {
+        final String title = (recipe['title'] as String? ?? '').toLowerCase();
+        return title.contains(queryLower);
+      }).toList();
+    }
+    
+    _cachedRecipes = filteredRecipes;
     
     // Initialize checkbox states
-    for (final recipe in recipes) {
+    for (final recipe in filteredRecipes) {
       final String recipeId = recipe['id'].toString();
       final List<dynamic> ingredients = recipe['ingredients'] as List<dynamic>? ?? <dynamic>[];
       
@@ -82,7 +124,7 @@ class GroceriesViewModel extends ChangeNotifier {
       }
     }
     
-    return recipes;
+    return filteredRecipes;
   }
   
   // Helper method to update checkbox state locally without notifying listeners

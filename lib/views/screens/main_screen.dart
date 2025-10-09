@@ -30,6 +30,8 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: _currentIndex == 0 ? false : true, // Left-aligned for home screen, centered for others
         title: _currentIndex == 0
@@ -65,17 +67,12 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               )
             : Text(
-                _currentIndex == 1
-                    ? 'Meal Planner'
-                    : _currentIndex == 2
-                        ? 'Groceries'
-                        : 'Profile',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
-
-          ),
-              ),
+              _currentIndex ==1 ? 'Meal Planner' : _currentIndex == 2 ? 'Groceries' : 'Profile',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                ),
+            ),
         // actions: _currentIndex == 0
         //     ? [] // No actions for home screen
         //     : [

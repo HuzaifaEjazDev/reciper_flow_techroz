@@ -114,6 +114,7 @@ class _CreateRecipeView extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         title: Text(isEdit ? 'Edit Recipe' : 'Create New Recipe', style: const TextStyle(color: Colors.black87, fontSize: 18)),

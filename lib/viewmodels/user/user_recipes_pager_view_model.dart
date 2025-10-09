@@ -27,6 +27,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   }
   
   final FirestoreRecipesService _service;
+  final TextEditingController searchController = TextEditingController(); // Add controller
   final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
   bool loading = false;
@@ -42,6 +43,13 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   
   // Real-time listener
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recipesListener;
+
+  @override
+  void dispose() {
+    searchController.dispose(); // Dispose controller
+    _recipesListener?.cancel();
+    super.dispose();
+  }
 
   // Set up real-time listener for recipe changes
   void _setupRealTimeListener() {
@@ -89,6 +97,16 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
         print('Error listening to recipe changes: $error');
       },
     );
+    
+    // Add listener to handle search when text changes
+    searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (searchController.text.trim().isEmpty) {
+      applySearch();
+    }
   }
 
   Future<void> loadInitial() async {
@@ -233,11 +251,5 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
     await _loadTotalCount();
     // Pass null for startAfterId to load the first page of search results
     await _loadPageAtCursor(startAfterId: null);
-  }
-
-  @override
-  void dispose() {
-    _recipesListener?.cancel();
-    super.dispose();
   }
 }

@@ -14,65 +14,125 @@ class GroceriesScreen extends StatefulWidget {
 }
 
 class _GroceriesScreenState extends State<GroceriesScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  
+  @override
+  void initState() {
+    super.initState();
+    // Add listener to handle search when text changes
+    _searchController.addListener(_onSearchChanged);
+  }
+  
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (_searchController.text.trim().isEmpty) {
+      _performSearch();
+    }
+  }
+  
+  void _performSearch() {
+    final viewModel = context.read<GroceriesViewModel>();
+    viewModel.setSearchQuery(_searchController.text.trim());
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 70),
+        body: Column(
           children: [
-            _buildSearchBar(),
-            const SizedBox(height: 16),
-
-            _buildRecipesHeader(context),
-            const SizedBox(height: 10),
-            Consumer<GroceriesViewModel>(
-              builder: (context, viewModel, child) {
-                return viewModel.showAll 
-                  ? _buildAllRecipeCardsRow(context) 
-                  : _buildRecipeCardsRow(context);
-              }
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                hintText: 'Search groceries...',
+                                hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
+                              ),
+                              onChanged: (v) {
+                                // Update search query as user types
+                                context.read<GroceriesViewModel>().setSearchQueryTemp(v);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _performSearch,
+                    child: Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7F00),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.search, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 70),
+                children: [
+                  _buildRecipesHeader(context),
+                  const SizedBox(height: 10),
+                  Consumer<GroceriesViewModel>(
+                    builder: (context, viewModel, child) {
+                      return viewModel.showAll 
+                        ? _buildAllRecipeCardsRow(context) 
+                        : _buildRecipeCardsRow(context);
+                    }
+                  ),
 
-            const SizedBox(height: 20),
-            _buildSortRow(),
+                  const SizedBox(height: 20),
+                  _buildSortRow(),
 
-            const SizedBox(height: 10),
-            Consumer<GroceriesViewModel>(
-              builder: (context, viewModel, child) {
-                return viewModel.showAll 
-                  ? _buildAllGroceryItems(context) 
-                  : _buildGroceryItemsFromPlannedMeals(context);
-              }
+                  const SizedBox(height: 10),
+                  Consumer<GroceriesViewModel>(
+                    builder: (context, viewModel, child) {
+                      return viewModel.showAll 
+                        ? _buildAllGroceryItems(context) 
+                        : _buildGroceryItemsFromPlannedMeals(context);
+                    }
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        children: const [
-          Icon(Icons.search, color: Colors.black87, size: 20),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Search Groceries',
-              style: TextStyle(color: Colors.black87),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -794,6 +854,7 @@ class _IngredientItemState extends State<_IngredientItem> {
                       isChecked: newValue
                     );
                   },
+                  activeColor: Colors.green,
                 ),
                 Expanded(
                   child: _GroceriesScreenState._buildIngredientRow(widget.name, widget.scaledQty, _checked ?? false),

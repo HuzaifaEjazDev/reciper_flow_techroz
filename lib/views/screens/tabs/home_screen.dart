@@ -16,9 +16,24 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Add listener to handle search when text changes
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (_searchController.text.trim().isEmpty) {
+      _performSearch();
+    }
   }
 
   void _performSearch() {

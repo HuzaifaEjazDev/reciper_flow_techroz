@@ -138,6 +138,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
           backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
             elevation: 0,
             title: const Text('User Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
             iconTheme: const IconThemeData(color: Colors.black87),

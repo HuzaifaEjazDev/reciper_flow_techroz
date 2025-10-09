@@ -25,6 +25,8 @@ class _BookmarkedRecipesView extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Bookmarked Recipes'),
+        surfaceTintColor: Colors.white,
+        backgroundColor: Colors.white,
         centerTitle: true,
       ),
       body: SafeArea(
@@ -47,6 +49,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
                         children: [
                           Expanded(
                             child: TextField(
+                              controller: vm.searchController, // Use controller from view model
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
@@ -61,6 +64,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  //search ison button
                   GestureDetector(
                     onTap: () => vm.applySearch(),
                     child: Container(
@@ -93,6 +97,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
                       if (vm.loading && vm.items.isEmpty)
                         const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
                       GridView.builder(
+                  
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: vm.items.length,
@@ -100,7 +105,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
                           crossAxisCount: 2,
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
-                          childAspectRatio: 0.68,
+                          childAspectRatio: 0.70,
                         ),
                         itemBuilder: (context, index) {
                           final r = vm.items[index];
@@ -127,6 +132,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
   }
 }
 
+/// Bookmark card container for bookmarks
 class _BookmarkCard extends StatelessWidget {
   final String title;
   final String imageUrl;
@@ -201,6 +207,7 @@ class _BookmarkCard extends StatelessWidget {
 class _BookmarksPager extends ChangeNotifier {
   _BookmarksPager(this._service);
   final FirestoreRecipesService _service;
+  final TextEditingController searchController = TextEditingController(); // Add controller
   final List<Map<String, dynamic>> _allItems = <Map<String, dynamic>>[]; // Store all items for filtering
   final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
@@ -210,12 +217,18 @@ class _BookmarksPager extends ChangeNotifier {
   // bool _hasMore = true; // not needed with total count
   int _currentPage = 1;
   final int _pageSize = 10;
-  final Map<int, String?> _pageToCursor = <int, String?>{1: null};
-  final Map<int, String?> _pageToTitleCursor = <int, String?>{1: null};
+  final Map<int, String?> _pageToCursor = <int, String?>{1: null}; // page -> startAfterId (page 1 starts at null)
+  final Map<int, String?> _pageToTitleCursor = <int, String?>{1: null}; // page -> startAfterTitle (page 1 starts at null)
   int _totalCount = 0;
   String _activeQuery = '';
   String _queryTemp = '';
   bool _usingClientSideFiltering = false; // Flag to track if we're using client-side filtering
+
+  @override
+  void dispose() {
+    searchController.dispose(); // Dispose controller
+    super.dispose();
+  }
 
   Future<void> loadInitial() async {
     _allItems.clear();
@@ -232,6 +245,16 @@ class _BookmarksPager extends ChangeNotifier {
     await _loadTotalCount();
     // Pass null for startAfterId to load the first page
     await _loadPageAtCursor(startAfterId: null);
+    
+    // Add listener to handle search when text changes
+    searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    // When search bar is empty, show all data automatically
+    if (searchController.text.trim().isEmpty) {
+      applySearch();
+    }
   }
 
   Future<void> _loadPageAtCursor({required String? startAfterId}) async {
@@ -482,5 +505,3 @@ class _PageControls extends StatelessWidget {
     );
   }
 }
-
-

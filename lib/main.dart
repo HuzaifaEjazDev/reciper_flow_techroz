@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()),
         ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
         ChangeNotifierProvider<UserRecipesPagerViewModel>(create: (_) => UserRecipesPagerViewModel(FirestoreRecipesService())),
+        ChangeNotifierProvider<GroceriesViewModel>(create: (_) => GroceriesViewModel()),
       ],
       child: MaterialApp(
         title: 'Recipe App',

@@ -40,6 +40,8 @@ class _RecipeByAdminView extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         title: const Text('Recipes by Admin'),
         centerTitle: true,
       ),
@@ -61,10 +63,9 @@ class _RecipeByAdminView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.search, color: Colors.black54, size: 20),
-                          const SizedBox(width: 4),
                           Expanded(
                             child: TextField(
+                              controller: vm.searchController, // Use controller from view model
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
@@ -88,14 +89,14 @@ class _RecipeByAdminView extends StatelessWidget {
                     },
                     child: Container(
                       height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFF7F00),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: const Center(
-                        child: Text('Search', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                        child: Icon(Icons.search, color: Colors.white, size: 20),
                       ),
                     ),
                   ),
@@ -121,11 +122,11 @@ class _RecipeByAdminView extends StatelessWidget {
                       height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: const Color(0xFFFF7F00),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
-                      child: const Icon(Icons.sort, color: Colors.black87),
+                      child: const Icon(Icons.sort, color: Colors.white),
                     ),
                   ),
                 ],
@@ -198,8 +199,8 @@ class _AdminRecipeCard extends StatelessWidget {
               title: data.title,
               imageAssetPath: data.imageUrl,
               minutes: data.minutes,
-              ingredients: data.ingredients,
-              steps: data.steps,
+              ingredients: data.ingredients ?? const [],
+              steps: data.steps ?? const [],
               // Show meal plan selection UI only when launched from Meal Planner
               fromAdminScreen: allowMealPlanSelection,
               mealType: allowMealPlanSelection ? filterMealType : null,
@@ -347,7 +348,7 @@ class _SortBottomSheet extends StatelessWidget {
     return Consumer<AdminRecipesViewModel>(
       builder: (context, vm, child) {
         return Container(
-          color: const Color(0xFFF5F5F5),
+          color: Colors.white,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.8,
           ),
@@ -445,6 +446,10 @@ class _SortBottomSheet extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF7F00), // FF7F00
+                                foregroundColor: Colors.white, // White text
+                              ),
                               onPressed: () async {
                                 Navigator.of(context).pop();
                                 // Check if any filters are selected

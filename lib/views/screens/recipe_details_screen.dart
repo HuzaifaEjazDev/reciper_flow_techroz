@@ -41,6 +41,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         title: const Text('Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         iconTheme: const IconThemeData(color: Colors.black87),
@@ -390,6 +391,7 @@ class _ActionRow extends StatelessWidget {
   final int minutes;
   final VoidCallback? onGroceriesTap;
   final bool fromGroceriesScreen; // Add this new parameter
+  final bool fromMealPlannerScreen; // Add this new parameter
   const _ActionRow({
     required this.onMealPlanTap, 
     this.fromAdminScreen = false, 
@@ -399,6 +401,7 @@ class _ActionRow extends StatelessWidget {
     required this.minutes, 
     this.onGroceriesTap,
     this.fromGroceriesScreen = false, // Default to false
+    this.fromMealPlannerScreen = false, // Default to false
   });
 
   @override
