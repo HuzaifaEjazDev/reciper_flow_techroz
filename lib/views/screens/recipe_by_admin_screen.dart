@@ -42,7 +42,7 @@ class _RecipeByAdminView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text('Recipes by Admin'),
+        title: const Text('Recipes', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600,)),
         centerTitle: true,
       ),
       body: SafeArea(

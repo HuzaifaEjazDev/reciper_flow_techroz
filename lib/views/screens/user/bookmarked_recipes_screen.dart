@@ -51,7 +51,7 @@ class _BookmarkedRecipesViewState extends State<_BookmarkedRecipesView> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Bookmarked Recipes'),
+        title: const Text('Bookmarked Recipes', style: TextStyle(fontWeight: FontWeight.w600,),),
         surfaceTintColor: Colors.white,
         backgroundColor: Colors.white,
         centerTitle: true,

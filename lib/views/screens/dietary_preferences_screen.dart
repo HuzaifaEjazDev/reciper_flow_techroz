@@ -12,7 +12,7 @@ class DietaryPreferencesScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text('Dietary Preferences'),
+        title: const Text('Dietary Preferences', style: TextStyle(fontWeight: FontWeight.w600),),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

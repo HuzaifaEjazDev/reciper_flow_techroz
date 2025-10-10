@@ -902,7 +902,7 @@ class _NavTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(subtitle!, style: const TextStyle(color: Colors.black54)),

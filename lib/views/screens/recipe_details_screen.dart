@@ -47,6 +47,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
+        centerTitle: true,
         elevation: 0,
         title: const Text('Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         iconTheme: const IconThemeData(color: Colors.black87),

@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/viewmodels/user/user_recipe_details_view_model.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
+import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
+import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
+import 'package:recipe_app/models/meal_plan.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserRecipeDetailsScreen extends StatelessWidget {
   final String recipeId;
@@ -140,7 +145,8 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
             elevation: 0,
-            title: const Text('User Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+            centerTitle: false,
+            title: const Text('Your Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 20)),
             iconTheme: const IconThemeData(color: Colors.black87),
             actions: [
               IconButton(
@@ -176,6 +182,15 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HeroImage(title: recipe.title, imageAssetPath: recipe.imageUrl),
+                  const SizedBox(height: 16),
+                  _ActionRow(
+                    recipeId: recipe.id,
+                    title: recipe.title,
+                    imageUrl: recipe.imageUrl,
+                    minutes: recipe.minutes,
+                    ingredients: recipe.ingredients.map((ing) => '${ing['quantity']} ${ing['name']}').toList(),
+                    steps: recipe.steps,
+                  ),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -395,6 +410,461 @@ class _StepCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  final String recipeId;
+  final String title;
+  final String imageUrl;
+  final int minutes;
+  final List<String> ingredients;
+  final List<String> steps;
+  const _ActionRow({
+    required this.recipeId,
+    required this.title,
+    required this.imageUrl,
+    required this.minutes,
+    required this.ingredients,
+    required this.steps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes),
+          _ActionItem(
+            icon: Icons.calendar_today_outlined,
+            label: 'Meal Plan',
+            onTap: () => _showMealPlanDialog(context),
+          ),
+          _ActionItem(
+            icon: Icons.shopping_bag_outlined,
+            label: 'Groceries',
+            onTap: () => _showGroceryDialog(context),
+          ),
+          const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
+          const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showMealPlanDialog(BuildContext context) async {
+    // Date selection - today to next 6 days
+    DateTime selectedDate = DateTime.now();
+    List<DateTime> dateOptions = List.generate(7, (index) => DateTime.now().add(Duration(days: index)));
+    
+    // Meal types - to be fetched from Firestore
+    List<String> mealTypes = [];
+    String? selectedMealType;
+    
+    // Fetch meal types from Firestore
+    try {
+      final service = FirestoreRecipesService();
+      // Try to fetch meal types using the existing method
+      mealTypes = await service.fetchCollectionStrings('meal_types');
+      if (mealTypes.isEmpty) {
+        // Fallback to default meal types
+        mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+      }
+      if (mealTypes.isNotEmpty) {
+        selectedMealType = mealTypes.first;
+      }
+    } catch (e) {
+      // Fallback to default meal types if there's an error
+      mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+      if (mealTypes.isNotEmpty) {
+        selectedMealType = mealTypes.first;
+      }
+    }
+
+    TimeOfDay selectedTime = TimeOfDay.now();
+    String? selectedTimeText = selectedTime.format(context); // Pre-fill from current time
+
+    // Show bottom sheet with date picker and meal types
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with drag handle
+                  Container(
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Meal Plan',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Date selection
+                  ListTile(
+                    title: const Text('Select Date'),
+                    subtitle: Text(_ActionRow._formatDate(selectedDate)),
+                    trailing: const Icon(Icons.calendar_today),
+                    onTap: () async {
+                      // Show date picker for the next 7 days
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 6)),
+                      );
+                      if (picked != null) {
+                        setModalState(() {
+                          selectedDate = picked;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Time selection
+                  ListTile(
+                    title: const Text('Set Time'),
+                    subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
+                    trailing: const Icon(Icons.access_time),
+                    onTap: () async {
+                      final TimeOfDay? picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                      );
+                      if (picked != null) {
+                        setModalState(() {
+                          selectedTime = picked;
+                          selectedTimeText = picked.format(context);
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Meal type selection in ExpansionTile with container chips
+                  ExpansionTile(
+                    title: const Text('Select Meal Type'),
+                    subtitle: Text(selectedMealType ?? 'None selected'),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: mealTypes.map((mealType) {
+                            final bool isSelected = mealType == selectedMealType;
+                            return ChoiceChip(
+                              label: Text(mealType),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                setModalState(() {
+                                  selectedMealType = isSelected ? null : mealType;
+                                });
+                              },
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                              ),
+                              backgroundColor: Colors.white,
+                              selectedColor: const Color(0xFFFF7F00),
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black87,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          // Validate that all required fields are selected
+                          if (selectedMealType == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please select a meal type')),
+                            );
+                            return;
+                          }
+                          
+                          try {
+                            // Save the planned meal to Firestore
+                            final service = FirestoreRecipesService();
+                            final String dateKey = service.formatDateKey(selectedDate);
+                            
+                            final plannedMeal = PlannedMeal(
+                              uniqueId: '', // Will be generated by Firestore
+                              recipeTitle: title,
+                              dateForRecipe: dateKey,
+                              timeForRecipe: selectedTimeText ?? selectedTime.format(context),
+                              persons: 1, // Default to 1 person
+                              ingredients: ingredients,
+                              instructions: steps,
+                              recipeImage: imageUrl,
+                              mealType: selectedMealType!,
+                              createdAt: DateTime.now(),
+                              minutes: minutes,
+                            );
+                            
+                            await service.savePlannedMeal(plannedMeal);
+                            
+                            if (context.mounted) {
+                              Navigator.of(context).pop(); // Close bottom sheet
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Meal planned successfully')),
+                              );
+                              
+                              // Notify the MealPlannerViewModel to refresh its data
+                              final mealPlannerVM = Provider.of<MealPlannerViewModel>(context, listen: false);
+                              await mealPlannerVM.refreshMeals();
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Error saving meal plan')),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF7F00), // Teal orange color
+                          foregroundColor: Colors.white, // White text color
+                        ),
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  static String _formatDate(DateTime date) {
+    const List<String> months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  Future<void> _showGroceryDialog(BuildContext context) async {
+    int servings = 1;
+    
+    // Show bottom sheet instead of dialog
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with drag handle
+                  Container(
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Add to Groceries',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Servings'),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => setModalState(() { if (servings > 1) servings--; }),
+                      ),
+                      Text('$servings', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => setModalState(() { servings++; }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final service = FirestoreRecipesService();
+                          final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
+                          for (final s in ingredients) {
+                            final map = _ActionRow._parseIngredientToMap(s);
+                            ingMaps.add({...map, 'isChecked': false});
+                          }
+                          await service.saveGroceryRecipe(
+                            title: title,
+                            imageUrl: imageUrl,
+                            minutes: minutes,
+                            servings: servings,
+                            ingredients: ingMaps,
+                          );
+                          
+                          // Refresh the groceries screen data
+                          final groceriesViewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                          await groceriesViewModel.refreshRecipes();
+                          
+                          if (context.mounted) {
+                            Navigator.of(context).pop(); // Close bottom sheet
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF7F00), // Teal orange color
+                          foregroundColor: Colors.white, // White text color
+                        ),
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  static Map<String, dynamic> _parseIngredientToMap(String s) {
+    final String trimmed = s.trim();
+    if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
+    
+    // Split only on first 2 spaces to handle format: "emoji quantity name"
+    final List<String> parts = trimmed.split(' ');
+    if (parts.length < 3) {
+      // If we don't have enough parts, return as is
+      return {'name': trimmed, 'quantity': ''};
+    }
+    
+    // First part is emoji, second part is quantity, rest is name
+    final String emoji = parts[0];
+    final String quantity = parts[1];
+    final String name = parts.sublist(2).join(' ');
+    
+    // Combine emoji and name for the name field, and use quantity for the quantity field
+    return {'name': '$emoji $name', 'quantity': quantity};
+  }
+}
+
+class _ActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  const _ActionItem({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.black87),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatelessWidget {
+  final String recipeId;
+  final String title;
+  final String imageUrl;
+  final int minutes;
+  const _BookmarkButton({required this.recipeId, required this.title, required this.imageUrl, required this.minutes});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = FirestoreRecipesService();
+    return StreamBuilder<bool>(
+      stream: service.isBookmarkedStream(recipeId),
+      builder: (context, snapshot) {
+        final bool isBookmarked = snapshot.data == true;
+        return InkWell(
+          onTap: () async {
+            await service.toggleBookmark(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes);
+          },
+          child: Column(
+            children: [
+              Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: isBookmarked ? Colors.black : Colors.black87),
+              const SizedBox(height: 4),
+              const Text(
+                'Bookmark',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

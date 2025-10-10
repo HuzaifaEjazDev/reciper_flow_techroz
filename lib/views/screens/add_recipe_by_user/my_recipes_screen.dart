@@ -49,7 +49,7 @@ class _MyRecipesView extends StatelessWidget {
         surfaceTintColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text('User Created Recipes', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
+        title: const Text('Your Recipes', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
         iconTheme: const IconThemeData(color: Colors.black87),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
