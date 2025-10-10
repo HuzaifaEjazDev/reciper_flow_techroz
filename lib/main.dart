@@ -16,10 +16,8 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
   // Reset the random value for recommended recipes when app starts
-  HomeViewModel.resetRandomValue();
-  
+  // HomeViewModel.resetRandomValue();
   runApp(const MyApp());
 }
 
