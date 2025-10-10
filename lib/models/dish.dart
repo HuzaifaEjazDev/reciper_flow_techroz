@@ -4,6 +4,7 @@ class Dish {
   final String subtitle;
   final String imageAssetPath;
   final int minutes;
+  final double? randomValue; // Add randomValue field for recommended recipes algorithm
 
   const Dish({
     required this.id,
@@ -11,5 +12,6 @@ class Dish {
     required this.subtitle,
     required this.imageAssetPath,
     required this.minutes,
+    this.randomValue, // Add randomValue parameter
   });
 }

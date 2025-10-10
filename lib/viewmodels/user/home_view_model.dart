@@ -2,24 +2,56 @@ import 'package:flutter/foundation.dart';
 import 'package:recipe_app/models/dish.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math';
 
 class HomeViewModel extends ChangeNotifier {
-  List<Dish> _personalizedRecipes = const <Dish>[]; // Replace recommended with personalized recipes
+  List<Dish> _recommendedRecipes = const <Dish>[];
   List<Dish> _easyMakeSnacks = const <Dish>[];
   List<Dish> _quickWeeknightMeals = const <Dish>[];
   List<String> _userCuisinePreferences = [];
   String? _userDietPreference;
+  double _userRandomValue = 0.0; // Random value between 0-0.4
 
-  List<Dish> get personalizedRecipes => _personalizedRecipes; // Replace getter
+  List<Dish> get recommendedRecipes => _recommendedRecipes;
   List<Dish> get easyMakeSnacks => _easyMakeSnacks;
   List<Dish> get quickWeeknightMeals => _quickWeeknightMeals;
 
+  // Method to refresh recommended recipes with a new random value
+  Future<void> refreshRecommendedRecipes({double? forcedRandomValue}) async {
+    // Use the forced random value if provided, otherwise generate a new one
+    if (forcedRandomValue != null) {
+      _userRandomValue = forcedRandomValue;
+      print('Using forced user random value: $_userRandomValue');
+    } else {
+      // Generate a new random value between 0 and 0.4
+      _userRandomValue = Random().nextDouble() * 0.4;
+      print('Generated new user random value: $_userRandomValue');
+    }
+    
+    // Fetch recommended recipes based on the new random value
+    await _fetchRecommendedRecipes();
+  }
+
+  // Public method to refresh all data except recommended recipes
+  Future<void> refreshOtherData() async {
+    // Fetch user preferences
+    await _fetchUserPreferences();
+    
+    // Fetch dishes for Easy Make Snack and Quick Weeknight Meals sections
+    await _fetchEasyMakeSnacks();
+    await _fetchQuickWeeknightMeals();
+  }
+
   Future<void> loadInitial() async {
+    // Generate random value between 0 and 0.4
+    _userRandomValue = Random().nextDouble() * 0.4;
+    print('Generated user random value: $_userRandomValue');
+    
     // Fetch user preferences first
     await _fetchUserPreferences();
     
-    // Fetch personalized recipes based on user preferences
-    await _fetchPersonalizedRecipes();
+    // Fetch recommended recipes based on random value algorithm
+    await _fetchRecommendedRecipes();
     
     // Fetch dishes for Easy Make Snack and Quick Weeknight Meals sections
     await _fetchEasyMakeSnacks();
@@ -45,11 +77,13 @@ class HomeViewModel extends ChangeNotifier {
             if (onboardingData.containsKey('cuisinePreferences') &&
                 onboardingData['cuisinePreferences'] is List) {
               _userCuisinePreferences = List<String>.from(onboardingData['cuisinePreferences']);
+              print('User cuisine preferences: $_userCuisinePreferences');
             }
 
             // Fetch diet preference
             if (onboardingData.containsKey('dietPreference')) {
               _userDietPreference = onboardingData['dietPreference'] as String?;
+              print('User diet preference: $_userDietPreference');
             }
           }
         }
@@ -59,40 +93,64 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchPersonalizedRecipes() async {
+  Future<void> _fetchRecommendedRecipes() async {
     try {
-      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection('recipes');
-      
-      // Apply diet filter if user has a diet preference
-      if (_userDietPreference != null && _userDietPreference!.isNotEmpty) {
-        query = query.where('diet', isEqualTo: _userDietPreference);
-      }
-      
-      // Apply cuisine filter if user has cuisine preferences
-      if (_userCuisinePreferences.isNotEmpty) {
-        // Use array-contains-any for multiple cuisines
-        query = query.where('cuisine', arrayContainsAny: _userCuisinePreferences);
-      }
-      
-      // Limit to 5 personalized recipes
-      query = query.limit(5);
+      // For recommended recipes, we only filter by random value, not by cuisine or diet preferences
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection('recipes').limit(20);
       
       final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
+      print('Fetched ${snapshot.docs.length} recipes from Firestore for recommended section');
       
       if (snapshot.docs.isNotEmpty) {
-        _personalizedRecipes = snapshot.docs.map((doc) {
+        // Filter recipes where randomValue > userRandomValue
+        List<Dish> filteredRecipes = snapshot.docs.map((doc) {
           final data = doc.data();
+          final double recipeRandomValue = (data['randomValue'] as num?)?.toDouble() ?? 0.0;
+          print('Recipe ${data['title']} has randomValue: $recipeRandomValue, user randomValue: $_userRandomValue');
           return Dish(
             id: doc.id,
             title: data['title'] as String? ?? 'Untitled Recipe',
             subtitle: data['description'] as String? ?? 'Delicious recipe',
             imageAssetPath: data['imageUrl'] as String? ?? 'assets/images/dish/dish1.jpg',
             minutes: (data['totalMinutes'] as num?)?.toInt() ?? 0,
+            randomValue: recipeRandomValue,
           );
-        }).toList();
-      } else {
-        // Fallback to default recipes if no personalized ones found
-        _personalizedRecipes = const <Dish>[
+        }).where((dish) => dish.randomValue != null && dish.randomValue! > _userRandomValue).toList();
+        
+        print('Filtered to ${filteredRecipes.length} recipes based on random value');
+        
+        // Shuffle the filtered recipes and take first 3
+        if (filteredRecipes.isNotEmpty) {
+          filteredRecipes.shuffle();
+          _recommendedRecipes = filteredRecipes.take(3).toList();
+          print('Selected 3 random recipes: ${_recommendedRecipes.map((d) => d.title).toList()}');
+        } else {
+          // If no recipes match the strict filter, try a more lenient approach
+          print('No recipes matched strict filter, using all fetched recipes');
+          List<Dish> allRecipes = snapshot.docs.map((doc) {
+            final data = doc.data();
+            final double recipeRandomValue = (data['randomValue'] as num?)?.toDouble() ?? 0.0;
+            return Dish(
+              id: doc.id,
+              title: data['title'] as String? ?? 'Untitled Recipe',
+              subtitle: data['description'] as String? ?? 'Delicious recipe',
+              imageAssetPath: data['imageUrl'] as String? ?? 'assets/images/dish/dish1.jpg',
+              minutes: (data['totalMinutes'] as num?)?.toInt() ?? 0,
+              randomValue: recipeRandomValue,
+            );
+          }).toList();
+          
+          // Shuffle all recipes and take first 3
+          allRecipes.shuffle();
+          _recommendedRecipes = allRecipes.take(3).toList();
+          print('Selected 3 random recipes from all fetched: ${_recommendedRecipes.map((d) => d.title).toList()}');
+        }
+      } 
+      
+      // If we still don't have recommended recipes, fallback to default logic
+      if (_recommendedRecipes.isEmpty) {
+        print('No recipes found, using fallback static recipes');
+        _recommendedRecipes = const <Dish>[
           Dish(
             id: '1',
             title: 'Berry Boost Smoothie Bowl',
@@ -118,11 +176,13 @@ class HomeViewModel extends ChangeNotifier {
             minutes: 30,
           ),
         ];
+      } else {
+        print('Successfully loaded ${_recommendedRecipes.length} recommended recipes from database');
       }
     } catch (e) {
-      print('Error fetching personalized recipes: $e');
+      print('Error fetching recommended recipes: $e');
       // Fallback to default recipes if there's an error
-      _personalizedRecipes = const <Dish>[
+      _recommendedRecipes = const <Dish>[
         Dish(
           id: '1',
           title: 'Berry Boost Smoothie Bowl',

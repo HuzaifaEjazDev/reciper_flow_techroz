@@ -16,6 +16,10 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Reset the random value for recommended recipes when app starts
+  HomeViewModel.resetRandomValue();
+  
   runApp(const MyApp());
 }
 
@@ -27,7 +31,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthViewModel>(create: (_) => AuthViewModel()),
-        ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()..loadInitial()),
+        ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()),
         ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()),
         ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
         ChangeNotifierProvider<GroceriesViewModel>(create: (_) => GroceriesViewModel()),

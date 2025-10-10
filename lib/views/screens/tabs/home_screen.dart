@@ -4,6 +4,7 @@ import 'package:recipe_app/views/screens/recipe_by_admin_screen.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/models/dish.dart';
+import 'dart:math';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,8 +13,10 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  final Random _random = Random();
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -21,17 +24,60 @@ class _HomeScreenState extends State<HomeScreen> {
     // Add listener to handle search when text changes
     _searchController.addListener(_onSearchChanged);
     
-    // Load initial data for personalized recipes
+    // Load initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeViewModel>().loadInitial();
+      _initializeData();
     });
+    
+    // Add observer to detect when app resumes
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // When app resumes from background, refresh recommended recipes
+    if (state == AppLifecycleState.resumed) {
+      _refreshRecommendedRecipesOnly();
+    }
+  }
+
+  void _initializeData() {
+    if (!_initialized) {
+      _initialized = true;
+      _refreshData();
+    }
+  }
+
+  void _refreshData() {
+    final homeViewModel = context.read<HomeViewModel>();
+    // Force a new random value every time this method is called
+    final newRandomValue = _random.nextDouble() * 0.4; // 0-0.4 as per requirements
+    print('Force generated new user random value: $newRandomValue');
+    
+    // Call refresh with the new random value
+    homeViewModel.refreshRecommendedRecipes(forcedRandomValue: newRandomValue).then((_) {
+      // Load other initial data (excluding recommended recipes which are already loaded)
+      homeViewModel.refreshOtherData();
+    });
+  }
+
+  void _refreshRecommendedRecipesOnly() {
+    final homeViewModel = context.read<HomeViewModel>();
+    // Generate a new random value for recommended recipes only
+    final newRandomValue = _random.nextDouble() * 0.4; // 0-0.4 as per requirements
+    print('Force generated new user random value for refresh: $newRandomValue');
+    
+    // Call refresh with the new random value
+    homeViewModel.refreshRecommendedRecipes(forcedRandomValue: newRandomValue);
   }
 
   void _onSearchChanged() {
@@ -59,7 +105,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final homeViewModel = context.watch<HomeViewModel>();
-    final List<Dish> personalizedRecipes = homeViewModel.personalizedRecipes; // Changed from recommended
     final List<Dish> easyMakeSnacks = homeViewModel.easyMakeSnacks;
     final List<Dish> quickWeeknightMeals = homeViewModel.quickWeeknightMeals;
     
@@ -197,23 +242,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Personalized Recipes Section (replaces Recommended Dishes)
+            // Recommended Recipes Section
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 25),
               child: Text(
-                'Personalized Recipes',
+                'Recommended Recipes',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
             ),
             const SizedBox(height: 12),
-            ListView.builder(
-              itemCount: personalizedRecipes.length,
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              itemBuilder: (context, index) {
-                final dish = personalizedRecipes[index];
-                return _DishCard(dish: dish);
+            Consumer<HomeViewModel>(
+              builder: (context, homeViewModel, child) {
+                final recommendedRecipes = homeViewModel.recommendedRecipes;
+                // Show loading indicator while recommended recipes are being fetched
+                if (recommendedRecipes.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return ListView.builder(
+                  itemCount: recommendedRecipes.length,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  itemBuilder: (context, index) {
+                    return _DishCard(dish: recommendedRecipes[index]);
+                  },
+                );
               },
             ),
             const SizedBox(height: 32),
