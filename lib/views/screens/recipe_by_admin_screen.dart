@@ -109,7 +109,6 @@ class _RecipeByAdminView extends StatelessWidget {
                       final viewModel = context.read<AdminRecipesViewModel>();
                       showModalBottomSheet(
                         context: context,
-                        isScrollControlled: true,
                         backgroundColor: const Color(0xFFF5F5F5),
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -351,9 +350,7 @@ class _SortBottomSheet extends StatelessWidget {
       builder: (context, vm, child) {
         return Container(
           color: Colors.white,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-          ),
+          height: MediaQuery.of(context).size.height * 0.65, // 65% of screen height
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

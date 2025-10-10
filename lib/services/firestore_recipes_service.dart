@@ -247,8 +247,9 @@ class FirestoreRecipesService {
     }
 
     try {
+      // Use the user's sub-collection instead of global collection
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('planned_meals');
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // First create a new doc ref to get an auto id
       final DocumentReference<Map<String, dynamic>> mealDoc = plannedMealsRef.doc();
@@ -275,13 +276,13 @@ class FirestoreRecipesService {
     }
 
     try {
+      // Use the user's sub-collection instead of global collection
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('planned_meals');
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // Query all meals where dateForRecipe field matches and userId matches
       final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
           .where('dateForRecipe', isEqualTo: dateForRecipe)
-          .where('userId', isEqualTo: user.uid)
           .get();
       
       return mealsSnapshot.docs.map((doc) {
@@ -300,13 +301,13 @@ class FirestoreRecipesService {
     }
 
     try {
+      // Use the user's sub-collection instead of global collection
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('planned_meals');
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // Query all meals where dateForRecipe is in the list of dateKeys and userId matches
       final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
           .where('dateForRecipe', whereIn: dateKeys)
-          .where('userId', isEqualTo: user.uid)
           .get();
       
       // Group meals by datedateForRecipeKey
@@ -334,12 +335,12 @@ class FirestoreRecipesService {
     }
 
     try {
+      // Use the user's sub-collection instead of global collection
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('planned_meals');
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // Query all meals for this user
       final QuerySnapshot<Map<String, dynamic>> mealsSnapshot = await plannedMealsRef
-          .where('userId', isEqualTo: user.uid)
           .get();
       
       return mealsSnapshot.docs.map((doc) {
@@ -358,8 +359,9 @@ class FirestoreRecipesService {
     }
 
     try {
+      // Use the user's sub-collection instead of global collection
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('planned_meals');
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // First verify the meal belongs to this user before deleting
       final DocumentSnapshot<Map<String, dynamic>> mealDoc = await plannedMealsRef.doc(mealId).get();
@@ -386,8 +388,9 @@ class FirestoreRecipesService {
     }
 
     try {
+      // Use the user's sub-collection instead of global collection
       final CollectionReference<Map<String, dynamic>> plannedMealsRef =
-          _firestore.collection('planned_meals');
+          _firestore.collection('users').doc(user.uid).collection('PlannedMeals');
       
       // First verify the meal belongs to this user before updating
       final DocumentSnapshot<Map<String, dynamic>> mealDoc = await plannedMealsRef.doc(mealId).get();

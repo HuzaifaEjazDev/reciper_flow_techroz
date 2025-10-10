@@ -161,10 +161,11 @@ class MealPlannerViewModel extends ChangeNotifier {
     // Cancel any existing listener
     _mealsListener?.cancel();
     
-    // Set up a real-time listener for planned meals
+    // Set up a real-time listener for planned meals using the user's sub-collection
     _mealsListener = FirebaseFirestore.instance
-        .collection('planned_meals')
-        .where('userId', isEqualTo: user.uid)
+        .collection('users')
+        .doc(user.uid)
+        .collection('PlannedMeals')
         .snapshots()
         .listen((snapshot) async {
       // When meals change, reload the week's meals

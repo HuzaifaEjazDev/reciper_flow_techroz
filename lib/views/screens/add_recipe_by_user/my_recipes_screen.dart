@@ -6,13 +6,32 @@ import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/create_new_recipe_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/user_recipe_details_screen.dart';
 
-class MyRecipesScreen extends StatelessWidget {
+class MyRecipesScreen extends StatefulWidget {
   const MyRecipesScreen({super.key});
 
   @override
+  State<MyRecipesScreen> createState() => _MyRecipesScreenState();
+}
+
+class _MyRecipesScreenState extends State<MyRecipesScreen> {
+  late UserRecipesPagerViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = UserRecipesPagerViewModel(FirestoreRecipesService())..loadInitial();
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<UserRecipesPagerViewModel>(
-      create: (_) => UserRecipesPagerViewModel(FirestoreRecipesService())..loadInitial(),
+    return ChangeNotifierProvider<UserRecipesPagerViewModel>.value(
+      value: _viewModel,
       child: const _MyRecipesView(),
     );
   }

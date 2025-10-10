@@ -15,7 +15,7 @@ class _RecipeSourcesScreenState extends State<RecipeSourcesScreen> {
   final List<String> _options = const <String>[
     'Social media',
     'Google',
-    'Cookbooks',
+    'AI',
     'Other',
   ];
 

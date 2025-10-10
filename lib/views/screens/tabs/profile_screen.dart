@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
+import 'package:recipe_app/viewmodels/dietary_preferences_view_model.dart';
 import 'package:recipe_app/views/widgets/custom_elevated_button.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
 import 'package:recipe_app/views/auth/sign_in_screen.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
 import 'package:recipe_app/views/screens/user/bookmarked_recipes_screen.dart';
+import 'package:recipe_app/views/screens/dietary_preferences_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -18,7 +20,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String? _cookingFrequency;
-  String? _dietPreference;
+  List<String> _dietPreferences = [];
+  List<String> _cuisinePreferences = [];
 
   @override
   void initState() {
@@ -48,10 +51,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               });
             }
 
-            // Fetch diet preference
-            if (onboardingData.containsKey('dietPreference')) {
+            // Fetch diet preferences (now as array)
+            if (onboardingData.containsKey('dietPreferences') && 
+                onboardingData['dietPreferences'] is List) {
               setState(() {
-                _dietPreference = onboardingData['dietPreference'] as String?;
+                _dietPreferences = List<String>.from(onboardingData['dietPreferences']);
+              });
+            }
+            
+            // Fetch cuisine preferences (now as array)
+            if (onboardingData.containsKey('cuisinePreferences') && 
+                onboardingData['cuisinePreferences'] is List) {
+              setState(() {
+                _cuisinePreferences = List<String>.from(onboardingData['cuisinePreferences']);
               });
             }
           }
@@ -60,6 +72,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       print('Error fetching user data: $e');
     }
+  }
+
+  // Navigate to dietary preferences screen
+  void _navigateToDietaryPreferences() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const DietaryPreferencesScreen(),
+      ),
+    ).then((_) {
+      // Refresh user data when coming back from preferences screen
+      _fetchUserData();
+    });
   }
 
   @override
@@ -74,15 +98,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             const _SectionTitle('Your Preferences'),
             const SizedBox(height: 10),
-            _UserPreferencesCard(),
+            _UserPreferencesCard(
+              dietPreferences: _dietPreferences,
+              cuisinePreferences: _cuisinePreferences,
+            ),
             const SizedBox(height: 20),
             const _SectionTitle('Goals Summary'),
             const SizedBox(height: 10),
             _TwoStatsRow(
               leftTitle: 'Weekly Cooking',
-              leftValue: _cookingFrequency ?? 'Not specified', // Use actual value
-              rightTitle: 'Cuisine Focus',
-              rightValue: _dietPreference ?? 'Not specified', // Use actual value
+              leftValue: _cookingFrequency ?? 'Not specified',
+              rightTitle: 'Diet Preferences',
+              rightValue: _dietPreferences.isEmpty ? 'Not specified' : _dietPreferences.join(', '),
             ),
             const SizedBox(height: 20),
             const _SectionTitle('Account'),
@@ -97,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.tune_outlined,
               title: 'Dietary preferences',
               subtitle: 'Allergies, dislikes, cuisines',
-              onTap: () {},
+              onTap: _navigateToDietaryPreferences,
             ),
             _NavTile(
               icon: Icons.book_outlined,
@@ -696,66 +723,15 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _UserPreferencesCard extends StatefulWidget {
-  @override
-  State<_UserPreferencesCard> createState() => _UserPreferencesCardState();
-}
-
-class _UserPreferencesCardState extends State<_UserPreferencesCard> {
-  List<String> _cuisinePreferences = [];
-  String? _dietPreference;
-  String? _cookingFrequency;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserPreferences();
-  }
-
-  Future<void> _fetchUserPreferences() async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      final DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
-        if (data != null && data.containsKey('onboardingData')) {
-          final onboardingData = data['onboardingData'] as Map<String, dynamic>?;
-          if (onboardingData != null) {
-            // Fetch cuisine preferences
-            if (onboardingData.containsKey('cuisinePreferences') &&
-                onboardingData['cuisinePreferences'] is List) {
-              setState(() {
-                _cuisinePreferences = List<String>.from(onboardingData['cuisinePreferences']);
-              });
-            }
-
-            // Fetch diet preference
-            if (onboardingData.containsKey('dietPreference')) {
-              setState(() {
-                _dietPreference = onboardingData['dietPreference'] as String?;
-              });
-            }
-            
-            // Fetch cooking frequency
-            if (onboardingData.containsKey('cookingFrequency')) {
-              setState(() {
-                _cookingFrequency = onboardingData['cookingFrequency'] as String?;
-              });
-            }
-          }
-        }
-      }
-    } catch (e) {
-      print('Error fetching user preferences: $e');
-    }
-  }
-
+class _UserPreferencesCard extends StatelessWidget {
+  final List<String> dietPreferences;
+  final List<String> cuisinePreferences;
+  
+  const _UserPreferencesCard({
+    required this.dietPreferences,
+    required this.cuisinePreferences,
+  });
+  
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -769,7 +745,7 @@ class _UserPreferencesCardState extends State<_UserPreferencesCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Diet Preference',
+            'Diet Preferences',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -777,21 +753,34 @@ class _UserPreferencesCardState extends State<_UserPreferencesCard> {
             ),
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.deepOrange),
+          if (dietPreferences.isEmpty)
+            const Text(
+              'Not specified',
+              style: TextStyle(color: Colors.black54),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: dietPreferences
+                  .map((diet) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.deepOrange),
+                        ),
+                        child: Text(
+                          diet,
+                          style: const TextStyle(
+                            color: Colors.deepOrange,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ))
+                  .toList(),
             ),
-            child: Text(
-              _dietPreference ?? 'Not specified',
-              style: const TextStyle(
-                color: Colors.deepOrange,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
           const SizedBox(height: 16),
           const Text(
             'Cuisine Interests',
@@ -802,7 +791,7 @@ class _UserPreferencesCardState extends State<_UserPreferencesCard> {
             ),
           ),
           const SizedBox(height: 8),
-          if (_cuisinePreferences.isEmpty)
+          if (cuisinePreferences.isEmpty)
             const Text(
               'No cuisine preferences selected',
               style: TextStyle(color: Colors.black54),
@@ -811,9 +800,10 @@ class _UserPreferencesCardState extends State<_UserPreferencesCard> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _cuisinePreferences
+              children: cuisinePreferences
                   .map((cuisine) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
@@ -928,3 +918,5 @@ class _NavTile extends StatelessWidget {
     );
   }
 }
+
+

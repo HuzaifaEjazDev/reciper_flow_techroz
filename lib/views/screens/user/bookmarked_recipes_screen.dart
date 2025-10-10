@@ -6,21 +6,45 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 
-class BookmarkedRecipesScreen extends StatelessWidget {
+class BookmarkedRecipesScreen extends StatefulWidget {
   const BookmarkedRecipesScreen({super.key});
 
   @override
+  State<BookmarkedRecipesScreen> createState() => _BookmarkedRecipesScreenState();
+}
+
+class _BookmarkedRecipesScreenState extends State<BookmarkedRecipesScreen> {
+  late _BookmarksPager _pager;
+
+  @override
+  void initState() {
+    super.initState();
+    _pager = _BookmarksPager(FirestoreRecipesService())..loadInitial();
+  }
+
+  @override
+  void dispose() {
+    _pager.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<_BookmarksPager>(
-      create: (_) => _BookmarksPager(FirestoreRecipesService())..loadInitial(),
+    return ChangeNotifierProvider<_BookmarksPager>.value(
+      value: _pager,
       child: const _BookmarkedRecipesView(),
     );
   }
 }
 
-class _BookmarkedRecipesView extends StatelessWidget {
+class _BookmarkedRecipesView extends StatefulWidget {
   const _BookmarkedRecipesView();
 
+  @override
+  State<_BookmarkedRecipesView> createState() => _BookmarkedRecipesViewState();
+}
+
+class _BookmarkedRecipesViewState extends State<_BookmarkedRecipesView> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<_BookmarksPager>();
@@ -52,7 +76,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
                         children: [
                           Expanded(
                             child: TextField(
-                              controller: vm.searchController, // Use controller from view model
+                              controller: vm.searchController,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
@@ -67,7 +91,6 @@ class _BookmarkedRecipesView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  //search ison button
                   GestureDetector(
                     onTap: () => vm.applySearch(),
                     child: Container(
@@ -100,7 +123,6 @@ class _BookmarkedRecipesView extends StatelessWidget {
                       if (vm.loading && vm.items.isEmpty)
                         const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
                       GridView.builder(
-                  
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: vm.items.length,
@@ -116,7 +138,7 @@ class _BookmarkedRecipesView extends StatelessWidget {
                             title: r['title']?.toString() ?? '', 
                             imageUrl: r['imageUrl']?.toString() ?? '', 
                             minutes: (r['minutes'] is int) ? r['minutes'] as int : 0,
-                            recipeId: r['id']?.toString() ?? '', // Pass the recipe ID
+                            recipeId: r['id']?.toString() ?? '',
                           );
                         },
                       ),
@@ -140,21 +162,20 @@ class _BookmarkCard extends StatelessWidget {
   final String title;
   final String imageUrl;
   final int minutes;
-  final String recipeId; // Add recipeId parameter
+  final String recipeId;
   const _BookmarkCard({required this.title, required this.imageUrl, required this.minutes, required this.recipeId});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to RecipeDetailsScreen
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => RecipeDetailsScreen(
               title: title,
               imageAssetPath: imageUrl,
               minutes: minutes,
-              recipeId: recipeId, // Use the passed recipe ID
+              recipeId: recipeId,
               fromAdminScreen: false,
               fromBookmarksScreen: true,
             ),
@@ -212,54 +233,61 @@ class _BookmarksPager extends ChangeNotifier {
   _BookmarksPager(this._service) {
     _setupRealTimeListener();
   }
+  
   final FirestoreRecipesService _service;
-  final TextEditingController searchController = TextEditingController(); // Add controller
-  final List<Map<String, dynamic>> _allItems = <Map<String, dynamic>>[]; // Store all items for filtering
+  final TextEditingController searchController = TextEditingController();
+  final List<Map<String, dynamic>> _allItems = <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
   bool loading = false;
   String? error;
   String? _lastId;
-  // bool _hasMore = true; // not needed with total count
   int _currentPage = 1;
   final int _pageSize = 10;
-  final Map<int, String?> _pageToCursor = <int, String?>{1: null}; // page -> startAfterId (page 1 starts at null)
-  final Map<int, String?> _pageToTitleCursor = <int, String?>{1: null}; // page -> startAfterTitle (page 1 starts at null)
+  final Map<int, String?> _pageToCursor = <int, String?>{1: null};
+  final Map<int, String?> _pageToTitleCursor = <int, String?>{1: null};
   int _totalCount = 0;
   String _activeQuery = '';
   String _queryTemp = '';
-  bool _usingClientSideFiltering = false; // Flag to track if we're using client-side filtering
+  bool _usingClientSideFiltering = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _bookmarksListener;
+  bool _disposed = false;
 
   @override
   void dispose() {
-    searchController.dispose(); // Dispose controller
+    _disposed = true;
+    searchController.dispose();
     _bookmarksListener?.cancel();
     super.dispose();
   }
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   Future<void> loadInitial() async {
+    if (_disposed) return;
     _allItems.clear();
     _items.clear();
     _lastId = null;
     _currentPage = 1;
     _pageToCursor
       ..clear()
-      ..addAll({1: null}); // Page 1 starts with null cursor
+      ..addAll({1: null});
     _pageToTitleCursor
       ..clear()
-      ..addAll({1: null}); // Page 1 starts with null cursor
+      ..addAll({1: null});
     _usingClientSideFiltering = false;
     await _loadTotalCount();
-    // Pass null for startAfterId to load the first page
     await _loadPageAtCursor(startAfterId: null);
     
-    // Add listener to handle search when text changes
     searchController.addListener(_onSearchChanged);
   }
 
   void _onSearchChanged() {
-    // When search bar is empty, show all data automatically
+    if (_disposed) return;
     if (searchController.text.trim().isEmpty) {
       _activeQuery = '';
       _queryTemp = '';
@@ -268,16 +296,15 @@ class _BookmarksPager extends ChangeNotifier {
   }
 
   Future<void> _loadPageAtCursor({required String? startAfterId}) async {
-    if (loading) return;
+    if (_disposed || loading) return;
     loading = true;
     error = null;
-    notifyListeners();
+    _safeNotifyListeners();
     try {
       if (_activeQuery.isNotEmpty && !_usingClientSideFiltering) {
-        // Try server-side prefix search first
         final page = await _service.fetchBookmarksPageByTitlePrefix(
           limit: _pageSize,
-          startAfterTitle: startAfterId, // Use startAfterId directly for title-based pagination
+          startAfterTitle: startAfterId,
           prefix: _activeQuery,
         );
         _allItems
@@ -287,13 +314,10 @@ class _BookmarksPager extends ChangeNotifier {
           ..clear()
           ..addAll(page.items);
         final String? lastTitle = page.lastTitle;
-        // Store the cursor for the next page (currentPage + 1)
         _pageToTitleCursor[_currentPage + 1] = lastTitle;
       } else if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
-        // Use client-side filtering
         _applyFilter();
       } else {
-        // Load all bookmarks without filtering
         final page = await _service.fetchBookmarksPage(limit: _pageSize, startAfterId: startAfterId);
         _allItems
           ..clear()
@@ -302,21 +326,21 @@ class _BookmarksPager extends ChangeNotifier {
           ..clear()
           ..addAll(page.items);
         _lastId = page.lastId;
-      // _hasMore = page.lastId != null;
-        // Store the cursor for the next page (currentPage + 1)
         _pageToCursor[_currentPage + 1] = _lastId;
       }
     } catch (e) {
-      error = e.toString();
+      if (!_disposed) {
+        error = e.toString();
+      }
     } finally {
       loading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   void _setupRealTimeListener() {
     final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || _disposed) return;
 
     final CollectionReference<Map<String, dynamic>> bookmarksRef = FirebaseFirestore.instance
         .collection('users')
@@ -325,10 +349,10 @@ class _BookmarksPager extends ChangeNotifier {
 
     _bookmarksListener = bookmarksRef.snapshots().listen(
       (snapshot) {
+        if (_disposed) return;
         for (final change in snapshot.docChanges) {
           switch (change.type) {
             case DocumentChangeType.removed:
-              // Remove un-bookmarked recipe and update counts
               _items.removeWhere((item) => item['id'] == change.doc.id);
               _allItems.removeWhere((item) => item['id'] == change.doc.id);
               _totalCount = _totalCount > 0 ? _totalCount - 1 : 0;
@@ -342,11 +366,13 @@ class _BookmarksPager extends ChangeNotifier {
               }
               break;
             case DocumentChangeType.added:
-              // New bookmark added, refresh current view and counts
               _totalCount = _totalCount + 1;
               if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
-                // Keep all cache fresh for client-side
-                _loadAllBookmarksForFiltering().then((_) => _applyFilter());
+                _loadAllBookmarksForFiltering().then((_) {
+                  if (!_disposed) {
+                    _applyFilter();
+                  }
+                });
               } else {
                 final String? cursorForCurrentPage = _activeQuery.isNotEmpty && !_usingClientSideFiltering
                     ? _pageToTitleCursor[_currentPage]
@@ -359,18 +385,20 @@ class _BookmarksPager extends ChangeNotifier {
               final Map<String, dynamic>? data = change.doc.data();
               if (idx != -1 && data != null) {
                 _items[idx] = {...data, 'id': change.doc.id};
-                notifyListeners();
+                _safeNotifyListeners();
               }
               break;
           }
         }
       },
-      onError: (_) {},
+      onError: (_) {
+        if (_disposed) return;
+      },
     );
   }
 
   Future<void> goToPage(int pageNumber) async {
-    if (pageNumber < 1) return;
+    if (_disposed || pageNumber < 1) return;
     int anchor = pageNumber;
     if (_activeQuery.isNotEmpty && !_usingClientSideFiltering) {
       while (anchor > 1 && !_pageToTitleCursor.containsKey(anchor)) {
@@ -387,7 +415,6 @@ class _BookmarksPager extends ChangeNotifier {
         if (next.lastTitle == null) break;
       }
     } else if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
-      // For client-side filtering, we handle pagination manually
       _currentPage = pageNumber;
       _applyFilter();
       return;
@@ -403,8 +430,6 @@ class _BookmarksPager extends ChangeNotifier {
       }
     }
     _currentPage = pageNumber;
-    // Use the correct cursor based on whether we're searching or not
-    // For page N, we need the cursor from page N-1 (or null for page 1)
     await _loadPageAtCursor(
       startAfterId: _activeQuery.isNotEmpty && !_usingClientSideFiltering
         ? _pageToTitleCursor[_currentPage - 1] 
@@ -414,18 +439,17 @@ class _BookmarksPager extends ChangeNotifier {
 
   int get currentPage => _currentPage;
   int get totalPages {
-    // Calculate the correct number of pages based on total count and page size
     if (_totalCount == 0) return 0;
     return ((_totalCount - 1) ~/ _pageSize) + 1;
   }
   int get totalCount => _totalCount;
 
   Future<void> _loadTotalCount() async {
+    if (_disposed) return;
     try {
       if (_activeQuery.isNotEmpty && !_usingClientSideFiltering) {
         _totalCount = await _service.fetchBookmarksCountByTitlePrefix(_activeQuery);
       } else if (_activeQuery.isNotEmpty && _usingClientSideFiltering) {
-        // For client-side filtering, we need to filter all items and count them
         final List<Map<String, dynamic>> filtered = _allItems.where(
           (item) => (item['title'] as String?)?.toLowerCase().contains(_activeQuery.toLowerCase()) ?? false
         ).toList();
@@ -436,14 +460,16 @@ class _BookmarksPager extends ChangeNotifier {
     } catch (_) {
       _totalCount = ((_pageToCursor.length - 1) * _pageSize) + _items.length;
     }
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setQueryTemp(String v) {
+    if (_disposed) return;
     _queryTemp = v;
   }
 
   Future<void> applySearch() async {
+    if (_disposed) return;
     final String t = _queryTemp.trim().toLowerCase();
     if (t.isEmpty) {
       _activeQuery = '';
@@ -454,34 +480,29 @@ class _BookmarksPager extends ChangeNotifier {
     _currentPage = 1;
     _pageToCursor
       ..clear()
-      ..addAll({1: null}); // Page 1 starts with null cursor
+      ..addAll({1: null});
     _pageToTitleCursor
       ..clear()
-      ..addAll({1: null}); // Page 1 starts with null cursor
+      ..addAll({1: null});
     
-    // Always use client-side filtering for substring search since Firestore doesn't support it natively
     if (_activeQuery.isNotEmpty) {
       _usingClientSideFiltering = true;
-      // Load all bookmarks for client-side filtering
       await _loadAllBookmarksForFiltering();
       await _loadTotalCount();
       _applyFilter();
     } else {
-      // No search query, load normally with server-side pagination
       _usingClientSideFiltering = false;
       await _loadTotalCount();
       await _loadPageAtCursor(startAfterId: null);
     }
   }
 
-  // Load all bookmarks for client-side filtering
   Future<void> _loadAllBookmarksForFiltering() async {
-    if (loading) return;
+    if (_disposed || loading) return;
     loading = true;
     error = null;
-    notifyListeners();
+    _safeNotifyListeners();
     try {
-      // Load all bookmarks without pagination for filtering
       final List<Map<String, dynamic>> allBookmarks = [];
       String? lastId;
       bool hasMore = true;
@@ -497,28 +518,26 @@ class _BookmarksPager extends ChangeNotifier {
         ..clear()
         ..addAll(allBookmarks);
     } catch (e) {
-      error = e.toString();
+      if (!_disposed) {
+        error = e.toString();
+      }
     } finally {
       loading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
-  // Apply client-side filtering
   void _applyFilter() {
-    if (!_usingClientSideFiltering) return;
+    if (_disposed || !_usingClientSideFiltering) return;
     
     final String query = _activeQuery.toLowerCase();
     final List<Map<String, dynamic>> filtered = _allItems.where(
       (item) => (item['title'] as String?)?.toLowerCase().contains(query) ?? false
     ).toList();
     
-    // Apply pagination manually for client-side filtering
     final int start = (_currentPage - 1) * _pageSize;
-    // Calculate the end index, ensuring it doesn't exceed the filtered list length
     final int end = start + _pageSize > filtered.length ? filtered.length : start + _pageSize;
     
-    // Only take items if there are any in the range
     final List<Map<String, dynamic>> paginated = start < filtered.length 
         ? filtered.sublist(start, end) 
         : <Map<String, dynamic>>[];
@@ -528,7 +547,7 @@ class _BookmarksPager extends ChangeNotifier {
       ..addAll(paginated);
     
     _totalCount = filtered.length;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 }
 
@@ -540,7 +559,6 @@ class _PageControls extends StatelessWidget {
   Widget build(BuildContext context) {
     if (vm.items.isEmpty && vm.loading) return const SizedBox.shrink();
     final int totalPages = vm.totalPages;
-    // Don't show pagination controls if there's only one page or no items
     if (totalPages <= 1) return const SizedBox.shrink();
     return Column(
       children: [

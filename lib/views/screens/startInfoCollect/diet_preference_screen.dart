@@ -14,28 +14,29 @@ class DietPreferenceScreen extends StatefulWidget {
 class _DietPreferenceScreenState extends State<DietPreferenceScreen> {
   final List<String> _options = const <String>[
     'Vegetarian',
-    'Vegan',
+    'Non-Veg',
     'Gluten-Free',
     'Keto',
     'Paleo',
-    'Low-Crab,',
+    'Low-Carb',
     'Dairy-Free'
   ];
 
-  String? _selected;
+  Set<String> _selected = <String>{}; // Changed from String? to Set<String>
 
   Future<void> _saveDietPreference() async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
+      // Save as an array of selected diet preferences
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'onboardingData': {
-          'dietPreference': _selected,
+          'dietPreferences': _selected.toList(), // Changed from dietPreference to dietPreferences (plural)
         }
       }, SetOptions(merge: true));
     } catch (e) {
-      print('Error saving diet preference: $e');
+      print('Error saving diet preferences: $e');
     }
   }
 
@@ -78,13 +79,17 @@ class _DietPreferenceScreenState extends State<DietPreferenceScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final label = _options[index];
-                    final isSelected = _selected == label;
+                    final isSelected = _selected.contains(label);
                     return _DietTile(
                       label: label,
                       isSelected: isSelected,
                       onTap: () {
                         setState(() {
-                          _selected = label;
+                          if (isSelected) {
+                            _selected.remove(label);
+                          } else {
+                            _selected.add(label);
+                          }
                         });
                       },
                     );
@@ -95,14 +100,13 @@ class _DietPreferenceScreenState extends State<DietPreferenceScreen> {
               CustomElevatedButton(
                 text: 'Next',
                 onPressed: () async {
-                  if (_selected != null) {
-                    await _saveDietPreference();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const CuisineInterestsScreen(),
-                      ),
-                    );
-                  }
+                  // Allow proceeding even if no diet is selected
+                  await _saveDietPreference();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CuisineInterestsScreen(),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 8),
@@ -140,7 +144,7 @@ class _DietTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? Colors.deepOrange : Colors.white,
+      color: Colors.white, // Changed to always white
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -151,17 +155,16 @@ class _DietTile extends StatelessWidget {
         child: Container(
           height: 56,
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: isSelected
-                ? null
-                : Border.all(
-                    color: const Color(0xFFD1D5DB),
-                    width: 1.2,
-                  ),
+            border: Border.all(
+              color: const Color(0xFFD1D5DB),
+              width: 1.2,
+            ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Changed to space between
             children: [
               Expanded(
                 child: Text(
@@ -169,11 +172,31 @@ class _DietTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color: isSelected ? Colors.deepOrange : Colors.black87, // Changed color based on selection
                     fontFamily: 'Roboto',
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
+              ),
+              // Added checkbox similar to cuisine interests screen
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: isSelected ? Colors.deepOrange : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected ? Colors.deepOrange : const Color(0xFFD1D5DB),
+                    width: 1.4,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(
+                        Icons.check,
+                        size: 14,
+                        color: Colors.white,
+                      )
+                    : null,
               ),
             ],
           ),

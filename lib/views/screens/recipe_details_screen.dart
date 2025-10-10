@@ -479,6 +479,10 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Meal planned successfully')),
                               );
+                              
+                              // Notify the MealPlannerViewModel to refresh its data
+                              final mealPlannerVM = Provider.of<MealPlannerViewModel>(context, listen: false);
+                              await mealPlannerVM.refreshMeals();
                             }
                           } catch (e) {
                             if (context.mounted) {

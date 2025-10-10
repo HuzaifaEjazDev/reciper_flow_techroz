@@ -27,7 +27,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   }
   
   final FirestoreRecipesService _service;
-  final TextEditingController searchController = TextEditingController(); // Add controller
+  final TextEditingController searchController = TextEditingController();
   final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
   bool loading = false;
@@ -40,21 +40,30 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   int _totalCount = 0;
   String _activeQuery = '';
   String _queryTemp = '';
+  bool _disposed = false; // Add disposed flag
   
   // Real-time listener
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recipesListener;
 
   @override
   void dispose() {
-    searchController.dispose(); // Dispose controller
+    _disposed = true; // Set disposed flag
+    searchController.dispose();
     _recipesListener?.cancel();
     super.dispose();
+  }
+
+  // Add safeNotifyListeners method to prevent calling notifyListeners after disposal
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
   }
 
   // Set up real-time listener for recipe changes
   void _setupRealTimeListener() {
     final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || _disposed) return; // Check if disposed
 
     final CollectionReference<Map<String, dynamic>> recipesRef = FirebaseFirestore.instance
         .collection('users')
@@ -63,6 +72,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
 
     _recipesListener = recipesRef.snapshots().listen(
       (snapshot) {
+        if (_disposed) return; // Check if disposed
         // Handle different types of changes
         for (final change in snapshot.docChanges) {
           switch (change.type) {
@@ -70,7 +80,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
               // Remove deleted recipe from the list
               _items.removeWhere((item) => item['id'] == change.doc.id);
               _totalCount = _totalCount > 0 ? _totalCount - 1 : 0;
-              notifyListeners();
+              _safeNotifyListeners();
               break;
             case DocumentChangeType.added:
               // Reload the current page when a new recipe is added so UI updates immediately
@@ -88,7 +98,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
                 final Map<String, dynamic>? data = change.doc.data();
                 if (data != null) {
                   _items[index] = {...data, 'id': change.doc.id};
-                  notifyListeners();
+                  _safeNotifyListeners();
                 }
               }
               break;
@@ -96,6 +106,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
         }
       },
       onError: (error) {
+        if (_disposed) return; // Check if disposed
         print('Error listening to recipe changes: $error');
       },
     );
@@ -105,6 +116,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   }
 
   void _onSearchChanged() {
+    if (_disposed) return; // Check if disposed
     // When search bar is empty, show all data automatically
     if (searchController.text.trim().isEmpty) {
       _activeQuery = '';
@@ -115,6 +127,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   }
 
   Future<void> loadInitial() async {
+    if (_disposed) return; // Check if disposed
     print('Loading initial page');
     _items.clear();
     _lastId = null;
@@ -132,10 +145,10 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   }
 
   Future<void> _loadPageAtCursor({required String? startAfterId}) async {
-    if (loading) return;
+    if (_disposed || loading) return; // Check if disposed
     loading = true;
     error = null;
-    notifyListeners();
+    _safeNotifyListeners();
     try {
       print('Loading page $_currentPage with startAfterId: $startAfterId');
       if (_activeQuery.isNotEmpty) {
@@ -164,16 +177,18 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
         _pageToCursor[_currentPage + 1] = _lastId;
       }
     } catch (e) {
-      error = e.toString();
+      if (!_disposed) { // Check if disposed before setting error
+        error = e.toString();
+      }
       print('Error loading page: $e');
     } finally {
       loading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   Future<void> goToPage(int pageNumber) async {
-    if (pageNumber < 1) return;
+    if (_disposed || pageNumber < 1) return; // Check if disposed
     print('Going to page $pageNumber, current page: $_currentPage');
     print('Page cursors: $_pageToCursor');
     print('Title cursors: $_pageToTitleCursor');
@@ -231,6 +246,7 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
   int get totalCount => _totalCount;
 
   Future<void> _loadTotalCount() async {
+    if (_disposed) return; // Check if disposed
     try {
       _totalCount = _activeQuery.isNotEmpty
           ? await _service.fetchUserRecipesCountByTitlePrefix(_activeQuery)
@@ -240,14 +256,16 @@ class UserRecipesPagerViewModel extends ChangeNotifier {
       print('Error loading total count: $e');
       _totalCount = ((_pageToCursor.length - 1) * _pageSize) + _items.length;
     }
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setQueryTemp(String v) {
+    if (_disposed) return; // Check if disposed
     _queryTemp = v;
   }
 
   Future<void> applySearch() async {
+    if (_disposed) return; // Check if disposed
     final String t = _queryTemp.trim().toLowerCase();
     // If empty, reset to full data and return
     if (t.isEmpty) {
