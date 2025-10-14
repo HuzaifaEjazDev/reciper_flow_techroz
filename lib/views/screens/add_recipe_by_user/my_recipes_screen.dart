@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/viewmodels/user/user_recipes_pager_view_model.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
@@ -105,7 +106,21 @@ class _MyRecipesView extends StatelessWidget {
                   child: Column(
                     children: [
                       if (vm.loading && vm.items.isEmpty)
-                        const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+                        Skeletonizer(
+                          enabled: true,
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: 4,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.68,
+                            ),
+                            itemBuilder: (context, index) => const _RecipeCardSkeleton(),
+                          ),
+                        ),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -247,6 +262,53 @@ class _RecipeCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RecipeCardSkeleton extends StatelessWidget {
+  const _RecipeCardSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Image area (matches real card ratio but flexible to grid constraints)
+            Expanded(
+              flex: 3,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                child: Container(color: Colors.white),
+              ),
+            ),
+            // Middle row (ingredients count placeholder)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: Row(
+                children: [
+                  Container(height: 16, width: 120, color: Colors.white),
+                  const Spacer(),
+                ],
+              ),
+            ),
+            // Bottom row (steps count placeholder)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+              child: Row(
+                children: [
+                  Container(height: 14, width: 90, color: Colors.white),
+                  const Spacer(),
+                ],
+              ),
+            )
+          ],
+        ),
+      );
   }
 }
 

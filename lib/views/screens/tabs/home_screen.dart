@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:recipe_app/views/screens/recipe_by_admin_screen.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
 import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/models/dish.dart';
-import 'dart:math';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,7 +15,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
-  final Random _random = Random();
   bool _initialized = false;
 
   @override
@@ -59,25 +58,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _refreshData() {
     final homeViewModel = context.read<HomeViewModel>();
-    // Force a new random value every time this method is called
-    final newRandomValue = _random.nextDouble() * 0.4; // 0-0.4 as per requirements
-    print('Force generated new user random value: $newRandomValue');
-    
-    // Call refresh with the new random value
-    homeViewModel.refreshRecommendedRecipes(forcedRandomValue: newRandomValue).then((_) {
-      // Load other initial data (excluding recommended recipes which are already loaded)
+    // Initialize recommended recipes only once per app session
+    homeViewModel.refreshRecommendedRecipes().then((_) {
+      // Load other initial data
       homeViewModel.refreshOtherData();
     });
   }
 
   void _refreshRecommendedRecipesOnly() {
-    final homeViewModel = context.read<HomeViewModel>();
-    // Generate a new random value for recommended recipes only
-    final newRandomValue = _random.nextDouble() * 0.4; // 0-0.4 as per requirements
-    print('Force generated new user random value for refresh: $newRandomValue');
-    
-    // Call refresh with the new random value
-    homeViewModel.refreshRecommendedRecipes(forcedRandomValue: newRandomValue);
+    // Do nothing on resume to keep recommended stable in-session
   }
 
   void _onSearchChanged() {
@@ -104,9 +93,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final homeViewModel = context.watch<HomeViewModel>();
-    final List<Dish> easyMakeSnacks = homeViewModel.easyMakeSnacks;
-    final List<Dish> quickWeeknightMeals = homeViewModel.quickWeeknightMeals;
+    context.watch<HomeViewModel>();
     
     return SafeArea(
       child: SingleChildScrollView(
@@ -256,7 +243,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 final recommendedRecipes = homeViewModel.recommendedRecipes;
                 // Show loading indicator while recommended recipes are being fetched
                 if (recommendedRecipes.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Skeletonizer(
+                      enabled: true,
+                      child: ListView.builder(
+                        itemCount: 3,
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _DishCardSkeleton(),
+                          );
+                        },
+                      ),
+                    ),
+                  );
                 }
                 return ListView.builder(
                   itemCount: recommendedRecipes.length,
@@ -271,62 +274,109 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 32),
 
-            // Easy Make Snack Section
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 25),
-              child: Text(
-                'Easy Make Snack',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 150,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                children: easyMakeSnacks.map((dish) => 
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: _SmallDishCard(
-                      imageAssetPath: dish.imageAssetPath, 
-                      title: dish.title, 
-                      minutes: dish.minutes,
-                      dish: dish,
+            // Cuisine sections based on user-selected preferences
+            Consumer<HomeViewModel>(
+              builder: (context, vm, child) {
+                final sections = vm.cuisineToDishes;
+                if (sections.isEmpty) {
+                  // Show a single cuisine row skeleton with 3 items while loading
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 25),
+                          child: Text(
+                            'Cuisines',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 150,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 25),
+                            child: Skeletonizer(
+                              enabled: true,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: 3,
+                                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                                itemBuilder: (context, index) => const _CuisineSkeletonCard(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                ).toList(),
-              ),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: sections.entries.map((entry) {
+                    final String cuisine = entry.key;
+                    final List<Dish> dishes = entry.value;
+                    if (dishes.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 25),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    cuisine,
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => RecipeByAdminScreen(
+                                          autoApplyFilter: true,
+                                          initialCuisine: cuisine,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text('See All', style: TextStyle(color: Colors.black54)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 150,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              children: dishes
+                                  .take(3)
+                                  .map((dish) => Padding(
+                                        padding: const EdgeInsets.only(right: 12),
+                                        child: _SmallDishCard(
+                                          imageAssetPath: dish.imageAssetPath,
+                                          title: dish.title,
+                                          minutes: dish.minutes,
+                                          dish: dish,
+                                        ),
+                                      ))
+                                  .toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
-            const SizedBox(height: 32),
 
-            // Quick Weeknight Meals Section
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 25),
-              child: Text(
-                'Quick Weeknight Meals',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 150,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                children: quickWeeknightMeals.map((dish) => 
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: _SmallDishCard(
-                      imageAssetPath: dish.imageAssetPath, 
-                      title: dish.title, 
-                      minutes: dish.minutes,
-                      dish: dish,
-                    ),
-                  )
-                ).toList(),
-              ),
-            ),
             const SizedBox(height: 100),
           ],
         ),
@@ -389,10 +439,13 @@ class _SmallDishCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              imageAssetPath,
-              fit: BoxFit.cover,
-            ),
+            child: imageAssetPath.startsWith('http')
+                ? Image.network(
+                    imageAssetPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
+                  )
+                : Image.asset(imageAssetPath, fit: BoxFit.cover),
           ),
           Positioned.fill(child: Container(color: Colors.black.withOpacity(0.12))),
           // Title just above the bottom info bar
@@ -436,6 +489,42 @@ class _SmallDishCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
+    );
+  }
+}
+
+class _SmallDishCardSkeleton extends StatelessWidget {
+  const _SmallDishCardSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    const double cardHeight = 150;
+    return Container(
+      width: 180,
+      height: cardHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(height: 100, color: Colors.white),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(height: 14, width: 90, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Container(height: 12, width: 60, color: Colors.white),
+                ],
+              ),
+            ),
+          )
+        ],
       ),
     );
   }
@@ -487,7 +576,11 @@ class _DishCard extends StatelessWidget {
         children: [
           Positioned.fill(
             child: dish.imageAssetPath.startsWith('http')
-                ? Image.network(dish.imageAssetPath, fit: BoxFit.cover)
+                ? Image.network(
+                    dish.imageAssetPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
+                  )
                 : Image.asset(dish.imageAssetPath, fit: BoxFit.cover),
           ),
           // Dim overlay to reduce image transparency slightly
@@ -517,7 +610,7 @@ class _DishCard extends StatelessWidget {
                   dish.subtitle,
                   style: const TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600, // a little bold
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
                     height: 1.3,
                     shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
@@ -548,6 +641,78 @@ class _DishCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
+    );
+  }
+}
+
+class _DishCardSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: Colors.white,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: 7, child: Container(color: Colors.white)),
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: const [
+                  SizedBox(height: 16, width: 90, child: ColoredBox(color: Colors.white)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CuisineSkeletonCard extends StatelessWidget {
+  const _CuisineSkeletonCard();
+  @override
+  Widget build(BuildContext context) {
+    const double cardHeight = 150;
+    return SizedBox(
+      width: 180,
+      height: cardHeight,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          color: Colors.white,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 7, child: Container(color: Colors.white)),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: const [
+                    SizedBox(height: 12, width: 14, child: ColoredBox(color: Colors.white)),
+                    SizedBox(width: 6),
+                    SizedBox(height: 12, width: 50, child: ColoredBox(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

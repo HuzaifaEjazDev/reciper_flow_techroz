@@ -89,6 +89,12 @@ class MealPlannerViewModel extends ChangeNotifier {
         final List<PlannedMeal> plannedMeals = weekMeals[dateForRecipe] ?? [];
         
         final List<MealEntry> mealEntries = plannedMeals.map((plannedMeal) {
+          // Convert List<Ingredient> to List<String>
+          List<String>? ingredients = null;
+          if (plannedMeal.ingredients != null) {
+            ingredients = plannedMeal.ingredients.map((ingredient) => ingredient.toString()).toList();
+          }
+          
           return MealEntry(
             id: plannedMeal.uniqueId,
             type: plannedMeal.mealType,
@@ -98,7 +104,7 @@ class MealPlannerViewModel extends ChangeNotifier {
             time: plannedMeal.timeForRecipe,
             people: plannedMeal.persons,
             plannedId: plannedMeal.uniqueId,
-            ingredients: plannedMeal.ingredients,
+            ingredients: ingredients,
             instructions: plannedMeal.instructions,
           );
         }).toList();
@@ -182,6 +188,48 @@ class MealPlannerViewModel extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Parse an ingredient string into an Ingredient object
+  Ingredient _parseIngredientString(String ingredientString) {
+    final String trimmed = ingredientString.trim();
+    if (trimmed.isEmpty) {
+      return const Ingredient(name: '');
+    }
+    
+    // Split the string into parts
+    final List<String> parts = trimmed.split(' ');
+    if (parts.length < 2) {
+      return Ingredient(name: trimmed);
+    }
+    
+    // Check if first part is an emoji
+    final String firstPart = parts[0];
+    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final int startIndex = hasEmoji ? 1 : 0;
+    
+    // If we have enough parts, try to parse quantity and unit
+    if (parts.length > startIndex + 1) {
+      final String quantity = parts[startIndex];
+      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
+      final String name = parts.length > startIndex + 2 
+          ? parts.sublist(startIndex + 2).join(' ') 
+          : parts.sublist(startIndex + 1).join(' ');
+      
+      return Ingredient(
+        name: name,
+        quantity: quantity,
+        unit: unit.isNotEmpty ? unit : null,
+        emoji: hasEmoji ? firstPart : null,
+      );
+    } else {
+      // Just name and possibly emoji
+      final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
+      return Ingredient(
+        name: name,
+        emoji: hasEmoji ? firstPart : null,
+      );
+    }
+  }
+
   // Method to add a meal entry to a specific day and save to Firestore
   Future<void> addMealToDay(int dayIndex, MealEntry meal, {String? time, int? persons}) async {
     if (dayIndex < 0 || dayIndex >= _plans.length) return;
@@ -195,6 +243,12 @@ class MealPlannerViewModel extends ChangeNotifier {
     debugPrint('Meal instructions: ${meal.instructions}');
     
     try {
+      // Convert List<String>? to List<Ingredient> by parsing each ingredient
+      List<Ingredient> ingredients = [];
+      if (meal.ingredients != null) {
+        ingredients = meal.ingredients!.map((ingredientStr) => _parseIngredientString(ingredientStr)).toList();
+      }
+      
       // Create a PlannedMeal object
       final PlannedMeal plannedMeal = PlannedMeal(
         uniqueId: '', // Will be set by Firestore5
@@ -202,7 +256,7 @@ class MealPlannerViewModel extends ChangeNotifier {
         dateForRecipe: dateForRecipe,
         timeForRecipe: time ?? meal.time ?? '12:00',
         persons: persons ?? meal.people ?? 1,
-        ingredients: meal.ingredients ?? [],
+        ingredients: ingredients,
         instructions: meal.instructions ?? [],
         recipeImage: meal.imageAssetPath,
         mealType: meal.type,

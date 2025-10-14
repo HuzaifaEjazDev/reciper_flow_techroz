@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -121,7 +122,21 @@ class _BookmarkedRecipesViewState extends State<_BookmarkedRecipesView> {
                   child: Column(
                     children: [
                       if (vm.loading && vm.items.isEmpty)
-                        const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+                        Skeletonizer(
+                          enabled: true,
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: 4,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.70,
+                            ),
+                            itemBuilder: (context, index) => const _BookmarkCardSkeleton(),
+                          ),
+                        ),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -195,8 +210,12 @@ class _BookmarkCard extends StatelessWidget {
             SizedBox(
               height: 120,
               child: imageUrl.startsWith('http')
-                  ? Image.network(imageUrl, fit: BoxFit.cover)
-                  : Image.asset(imageUrl.isEmpty ? 'assets/images/easymakesnack1.jpg' : imageUrl, fit: BoxFit.cover),
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
+                    )
+                  : Image.asset(imageUrl.isEmpty ? 'assets/images/dish/dish1.jpg' : imageUrl, fit: BoxFit.cover),
             ),
             Expanded(
               child: Padding(
@@ -224,6 +243,38 @@ class _BookmarkCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BookmarkCardSkeleton extends StatelessWidget {
+  const _BookmarkCardSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: 120, child: Container(color: Colors.white)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                SizedBox(height: 16, width: 140, child: ColoredBox(color: Colors.white)),
+                SizedBox(height: 8),
+                SizedBox(height: 12, width: 90, child: ColoredBox(color: Colors.white)),
+              ],
+            ),
+          ),
+          const Spacer(),
+        ],
       ),
     );
   }
@@ -562,30 +613,33 @@ class _PageControls extends StatelessWidget {
     if (totalPages <= 1) return const SizedBox.shrink();
     return Column(
       children: [
-        SizedBox(
-          height: 44,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: totalPages,
-            itemBuilder: (context, index) {
-              final int page = index + 1;
-              final bool selected = vm.currentPage == page;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: OutlinedButton(
-                  onPressed: vm.loading ? null : () => vm.goToPage(page),
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: selected ? Colors.deepOrange : Colors.white,
-                    foregroundColor: selected ? Colors.white : Colors.black87,
-                    side: BorderSide(color: selected ? Colors.deepOrange : const Color(0xFFE5E7EB)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+        // Center the pagination buttons
+        Center(
+          child: SizedBox(
+            height: 44,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: totalPages,
+              itemBuilder: (context, index) {
+                final int page = index + 1;
+                final bool selected = vm.currentPage == page;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: OutlinedButton(
+                    onPressed: vm.loading ? null : () => vm.goToPage(page),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: selected ? Colors.deepOrange : Colors.white,
+                      foregroundColor: selected ? Colors.white : Colors.black87,
+                      side: BorderSide(color: selected ? Colors.deepOrange : const Color(0xFFE5E7EB)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                    ),
+                    child: Text('$page', style: const TextStyle(fontWeight: FontWeight.w700)),
                   ),
-                  child: Text('$page', style: const TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: 8),

@@ -71,6 +71,50 @@ class RecipeData {
   });
 }
 
+// New model for ingredients with unit information
+@immutable
+class Ingredient {
+  final String name;
+  final String? quantity;
+  final String? unit;
+  final String? emoji;
+
+  const Ingredient({
+    required this.name,
+    this.quantity,
+    this.unit,
+    this.emoji,
+  });
+
+  factory Ingredient.fromMap(Map<String, dynamic> data) {
+    return Ingredient(
+      name: data['name']?.toString() ?? '',
+      quantity: data['quantity']?.toString(),
+      unit: data['unit']?.toString(),
+      emoji: data['emoji']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      if (quantity != null) 'quantity': quantity,
+      if (unit != null) 'unit': unit,
+      if (emoji != null) 'emoji': emoji,
+    };
+  }
+
+  @override
+  String toString() {
+    final List<String> parts = <String>[];
+    if (emoji != null && emoji!.isNotEmpty) parts.add(emoji!);
+    if (quantity != null && quantity!.isNotEmpty) parts.add(quantity!);
+    if (unit != null && unit!.isNotEmpty) parts.add(unit!);
+    parts.add(name);
+    return parts.join(' ');
+  }
+}
+
 @immutable
 class PlannedMeal {
   final String uniqueId; // Auto-generated unique ID for recipe data
@@ -78,7 +122,7 @@ class PlannedMeal {
   final String dateForRecipe; // Date in format "D MMM" (e.g., "2 Oct", "7 Oct") - stored as field
   final String timeForRecipe; // User set time from dialog box
   final int persons; // User set persons from dialog box
-  final List<String> ingredients; // Uploaded from admin app
+  final List<Ingredient> ingredients; // Updated to use Ingredient model with unit information
   final List<String> instructions; // Uploaded from admin app
   final String recipeImage; // Static image for all recipe data
   final String mealType; // breakfast, lunch, dinner, etc. - stored as field
@@ -106,7 +150,16 @@ class PlannedMeal {
       dateForRecipe: data['dateForRecipe']?.toString() ?? '',
       timeForRecipe: data['timeForRecipe']?.toString() ?? '',
       persons: data['persons'] as int? ?? 1,
-      ingredients: data['ingredients'] is List ? List<String>.from(data['ingredients']) : [],
+      ingredients: data['ingredients'] is List 
+          ? (data['ingredients'] as List).map((item) {
+              if (item is Map<String, dynamic>) {
+                return Ingredient.fromMap(item);
+              } else {
+                // Handle legacy string format
+                return Ingredient(name: item.toString());
+              }
+            }).toList() 
+          : [],
       instructions: data['instructions'] is List ? List<String>.from(data['instructions']) : [],
       recipeImage: data['recipeImage']?.toString() ?? 'assets/images/dish/dish1.jpg',
       mealType: data['mealType']?.toString() ?? '',
@@ -121,7 +174,7 @@ class PlannedMeal {
       'dateForRecipe': dateForRecipe,
       'timeForRecipe': timeForRecipe,
       'persons': persons,
-      'ingredients': ingredients,
+      'ingredients': ingredients.map((ingredient) => ingredient.toMap()).toList(),
       'instructions': instructions,
       'recipeImage': recipeImage,
       'mealType': mealType,
@@ -136,7 +189,7 @@ class PlannedMeal {
     String? dateForRecipe,
     String? timeForRecipe,
     int? persons,
-    List<String>? ingredients,
+    List<Ingredient>? ingredients,
     List<String>? instructions,
     String? recipeImage,
     String? mealType,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
-import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 
@@ -13,25 +13,25 @@ class RecipeDetailsScreen extends StatefulWidget {
   final List<String>? ingredients;
   final List<String>? steps;
   final bool fromAdminScreen;
-  final String? mealType; // Change from MealType? to String?
-  final String recipeId; // Add recipe ID
-  final bool fromGroceriesScreen; // Add this new parameter
-  final bool fromBookmarksScreen; // Add this new parameter
-  
+  final String? mealType;
+  final String recipeId;
+  final bool fromGroceriesScreen;
+  final bool fromBookmarksScreen;
+
   const RecipeDetailsScreen({
-    super.key, 
-    required this.title, 
-    required this.imageAssetPath, 
-    this.minutes, 
-    this.ingredients, 
+    super.key,
+    required this.title,
+    required this.imageAssetPath,
+    required this.recipeId,
+    this.minutes,
+    this.ingredients,
     this.steps,
     this.fromAdminScreen = false,
-    this.mealType, // Change from MealType? to String?
-    required this.recipeId,
-    this.fromGroceriesScreen = false, // Default to false
-    this.fromBookmarksScreen = false, // Default to false
+    this.mealType,
+    this.fromGroceriesScreen = false,
+    this.fromBookmarksScreen = false,
   });
-  
+
   @override
   State<RecipeDetailsScreen> createState() => _RecipeDetailsScreenState();
 }
@@ -41,7 +41,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('RecipeDetailsScreen building with title: ${widget.title}, mealType: ${widget.mealType}, fromAdminScreen: ${widget.fromAdminScreen}');
+    final FirestoreRecipesService service = FirestoreRecipesService();
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -55,275 +55,276 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
         ),
-        actions: null,
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _HeroImage(title: widget.title, imageAssetPath: widget.imageAssetPath),
-                    const SizedBox(height: 16),
-                    _ActionRow(
-                      onMealPlanTap: () => _showMealPlanDialog(context),
-                      fromAdminScreen: widget.fromAdminScreen,
-                      recipeId: widget.recipeId,
-                      title: widget.title,
-                      imageUrl: widget.imageAssetPath,
-                      minutes: widget.minutes ?? 0,
-                      onGroceriesTap: () => _showGroceryDialog(context),
-                      fromGroceriesScreen: widget.fromGroceriesScreen, // Pass the new parameter
-                      fromBookmarksScreen: widget.fromBookmarksScreen,
-                    ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
+        child: FutureBuilder<Map<String, dynamic>?>(
+          // If recipeId looks like a recipes doc id, fetch from 'recipes';
+          // otherwise attempt PlannedMeals fallback to extract embedded fields
+          future: service.fetchRecipeById(widget.recipeId).then((recipesDoc) async {
+            if (recipesDoc != null) return recipesDoc; // Case 1 (Home) / Case 3 (Grocery references using recipeId)
+
+            // Case 2: Bookmarked sub-collection (doc id == recipeId)
+            final Map<String, dynamic>? bookmarked = await service.fetchBookmarkedRecipeById(widget.recipeId);
+            if (bookmarked != null) {
+              return <String, dynamic>{
+                'title': bookmarked['title'],
+                'imageUrl': bookmarked['imageUrl'],
+                'minutes': bookmarked['minutes'],
+                // Bookmarks typically do not store ingredients/steps; fall back to empty
+                'ingredients': <String>[],
+                'steps': <String>[],
+              };
+            }
+
+            // Case 4: PlannedMeals sub-collection (doc id == mealId)
+            final Map<String, dynamic>? planned = await service.fetchPlannedMealById(widget.recipeId);
+            if (planned != null) {
+              return <String, dynamic>{
+                'title': planned['recipeTitle'],
+                'imageUrl': planned['recipeImage'],
+                'minutes': planned['minutes'],
+                'ingredients': planned['ingredients'],
+                'steps': planned['instructions'],
+              };
+            }
+            return null;
+          }),
+          builder: (context, snap) {
+            final Map<String, dynamic>? data = snap.data;
+            final String title = widget.title.isNotEmpty
+                ? widget.title
+                : (data != null ? (data['title']?.toString() ?? '') : '');
+            final String imageUrl = widget.imageAssetPath.isNotEmpty
+                ? widget.imageAssetPath
+                : (data != null ? (data['imageUrl']?.toString() ?? '') : '');
+            final int minutes = widget.minutes ?? ((data?['totalMinutes'] as num?)?.toInt() ?? (data?['minutes'] as num?)?.toInt() ?? 0);
+            final List<String> ingredients = (widget.ingredients != null && widget.ingredients!.isNotEmpty)
+                ? widget.ingredients!
+                : _extractIngredientsStrings(data?['ingredients']);
+            final List<String> steps = (widget.steps != null && widget.steps!.isNotEmpty)
+                ? widget.steps!
+                : _extractStepsStrings(data?['steps']) ?? _extractStepsStrings(data?['instructions']) ?? <String>[];
+
+            if (snap.connectionState == ConnectionState.waiting) {
+              // Show minimal header while loading details
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _HeroImage(title: title.isEmpty ? widget.title : title, imageAssetPath: imageUrl.isEmpty ? (widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath) : imageUrl),
+                        const SizedBox(height: 16),
+                        _ActionRow(
+                          onMealPlanTap: () => _showMealPlanDialog(context),
+                          recipeId: widget.recipeId,
+                          title: title.isEmpty ? widget.title : title,
+                          imageUrl: imageUrl.isEmpty ? (widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath) : imageUrl,
+                          minutes: minutes,
+                          onGroceriesTap: () => _showGroceryDialog(context),
+                          fromGroceriesScreen: widget.fromGroceriesScreen,
+                          fromBookmarksScreen: widget.fromBookmarksScreen,
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.access_time, color: Colors.black87),
-                            const SizedBox(width: 10),
-                            const Text('Estimate Time:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
-                            const SizedBox(width: 8),
-                            Text(
-                              widget.minutes == null ? 'Not available' : '${widget.minutes} min',
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
                             ),
-                          ],
+                            child: Row(
+                              children: [
+                                const Icon(Icons.access_time, color: Colors.black87),
+                                const SizedBox(width: 10),
+                                const Text('Estimate Time:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  minutes > 0 ? '$minutes min' : 'Not available',
+                                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        const _SectionTitle(text: 'Ingredients'),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: ingredients.isEmpty
+                                ? const [
+                                    _IngredientTile(name: 'No ingredients available', note: ''),
+                                  ]
+                                : ingredients.map((e) => _IngredientTile(name: e, note: '')).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const _SectionTitle(text: 'Cooking Steps'),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: steps.isEmpty
+                                ? const [
+                                    _StepCard(step: 1, text: 'No steps available'),
+                                  ]
+                                : List<Widget>.generate(
+                                    steps.length,
+                                    (i) => _StepCard(step: i + 1, text: steps[i]),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    const _SectionTitle(text: 'Ingredients'),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: (widget.ingredients == null || widget.ingredients!.isEmpty)
-                            ? const [
-                                _IngredientTile(name: 'No ingredients available', note: ''),
-                              ]
-                            : widget.ingredients!
-                                .map((e) => _IngredientTile(name: e, note: ''))
-                                .toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const _SectionTitle(text: 'Cooking Steps'),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: (widget.steps == null || widget.steps!.isEmpty)
-                            ? const [
-                                _StepCard(step: 1, text: 'No steps available'),
-                              ]
-                            : List<Widget>.generate(
-                                widget.steps!.length,
-                                (i) => _StepCard(step: i + 1, text: widget.steps![i]),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
+  List<String> _extractIngredientsStrings(dynamic raw) {
+    final List<String> out = <String>[];
+    if (raw is List) {
+      for (final dynamic e in raw) {
+        if (e is String) {
+          out.add(e);
+        } else if (e is Map) {
+          final String qty = (e['quantity'] ?? e['qty'] ?? '').toString();
+          final String unit = (e['unit'] ?? e['u'] ?? '').toString();
+          final String emoji = (e['emoji'] ?? e['icon'] ?? e['em'] ?? '').toString();
+          final String name = (e['name'] ?? e['text'] ?? e['title'] ?? '').toString();
+          final List<String> parts = <String>[];
+          if (emoji.isNotEmpty) parts.add(emoji);
+          if (qty.isNotEmpty) parts.add(qty);
+          // Add unit if it exists and is not empty
+          if (unit.isNotEmpty) parts.add(unit);
+          if (name.isNotEmpty) parts.add(name);
+          if (parts.isNotEmpty) out.add(parts.join(' '));
+        }
+      }
+    }
+    return out;
+  }
+
+  List<String>? _extractStepsStrings(dynamic raw) {
+    if (raw is List) {
+      return raw.map((e) => e.toString()).toList();
+    }
+    return null;
+  }
+
   Future<void> _showMealPlanDialog(BuildContext context) async {
-    // Only show the extended options if NOT from admin screen
-    if (!widget.fromAdminScreen) {
-      // Show the new bottom sheet with date picker and meal types
-      await _showExtendedMealPlanDialog(context);
-      return;
-    }
-    
-    TimeOfDay _parseTimeOfDay(String s) {
-      final RegExp re = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false);
-      final Match? m = re.firstMatch(s.trim());
-      if (m == null) return TimeOfDay.now();
-      int hour = int.tryParse(m.group(1) ?? '') ?? 0;
-      final int minute = int.tryParse(m.group(2) ?? '') ?? 0;
-      final String period = (m.group(3) ?? '').toUpperCase();
-      hour = hour % 12;
-      if (period == 'PM') hour += 12;
-      return TimeOfDay(hour: hour, minute: minute);
-    }
-
-    final TimeOfDay initialTime = _selectedTime != null ? _parseTimeOfDay(_selectedTime!) : TimeOfDay.now();
-    TimeOfDay selectedTime = initialTime;
-    String? selectedTimeText = _selectedTime; // Pre-fill from previously selected time
-
-    // Show bottom sheet instead of dialog
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header with drag handle
-                  Container(
-                    height: 4,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+    // Admin flow: only pick time and return to caller
+    // This flow is ONLY for when the meal planner screen directly opens the recipe admin screen
+    // to select a recipe (indicated by allowMealPlanSelection being true)
+    if (widget.fromAdminScreen && (widget.mealType != null && widget.mealType!.isNotEmpty)) {
+      TimeOfDay selectedTime = TimeOfDay.now();
+      String? selectedTimeText;
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (BuildContext ctx) {
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(height: 4, width: 40, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                    const SizedBox(height: 16),
+                    const Text('Set Time', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      title: const Text('Pick time'),
+                      subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final TimeOfDay? picked = await showTimePicker(context: context, initialTime: selectedTime);
+                        if (picked != null) {
+                          setModalState(() {
+                            selectedTime = picked;
+                            selectedTimeText = picked.format(context);
+                          });
+                        }
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Meal Plan',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ListTile(
-                    title: const Text('Set Time'),
-                    subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
-                    trailing: const Icon(Icons.access_time),
-                    onTap: () async {
-                      final TimeOfDay? picked = await showTimePicker(
-                        context: context,
-                        initialTime: selectedTime,
-                      );
-                      if (picked != null) {
-                        setModalState(() {
-                          selectedTime = picked;
-                          selectedTimeText = picked.format(context);
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.black,
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Update the parent state with selected values
-                          if (mounted) {
-                            setState(() {
-                              _selectedTime = selectedTimeText ?? selectedTime.format(context);
-                            });
-                          }
-                          
-                          Navigator.of(context).pop();
-                          
-                          // Show confirmation
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Meal planned at ${selectedTimeText ?? selectedTime.format(context)}'),
-                            ),
-                          );
-
-                          // If we came from Admin screen, save and return MealEntry (same as old AppBar button)
-                          if (widget.fromAdminScreen && widget.mealType != null) {
-                            final mealEntry = MealEntry(
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'), style: TextButton.styleFrom(foregroundColor: Colors.black)),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Create a MealEntry with ingredients and instructions for proper saving
+                            final MealEntry entry = MealEntry(
                               id: widget.recipeId,
                               type: widget.mealType!,
                               title: widget.title,
                               minutes: widget.minutes ?? 0,
-                              imageAssetPath: widget.imageAssetPath,
-                              time: _selectedTime,
-                              people: null,
+                              imageAssetPath: widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath,
+                              time: selectedTimeText ?? selectedTime.format(context),
                               ingredients: widget.ingredients,
                               instructions: widget.steps,
                             );
-                            Navigator.of(context).pop(mealEntry);
-                          }
-                        },
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _showExtendedMealPlanDialog(BuildContext context) async {
-    TimeOfDay _parseTimeOfDay(String s) {
-      final RegExp re = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false);
-      final Match? m = re.firstMatch(s.trim());
-      if (m == null) return TimeOfDay.now();
-      int hour = int.tryParse(m.group(1) ?? '') ?? 0;
-      final int minute = int.tryParse(m.group(2) ?? '') ?? 0;
-      final String period = (m.group(3) ?? '').toUpperCase();
-      hour = hour % 12;
-      if (period == 'PM') hour += 12;
-      return TimeOfDay(hour: hour, minute: minute);
+                            debugPrint('Creating MealEntry with ingredients: ${widget.ingredients}');
+                            debugPrint('Creating MealEntry with steps: ${widget.steps}');
+                            debugPrint('MealEntry ingredients: ${entry.ingredients}');
+                            debugPrint('MealEntry instructions: ${entry.instructions}');
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop(entry);
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary500, foregroundColor: Colors.white),
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+      return;
     }
 
-    final TimeOfDay initialTime = _selectedTime != null ? _parseTimeOfDay(_selectedTime!) : TimeOfDay.now();
-    TimeOfDay selectedTime = initialTime;
-    String? selectedTimeText = _selectedTime; // Pre-fill from previously selected time
-    
-    // Date selection - today to next 6 days
+    // Extended flow: date + time + meal type, then save to Firestore
+    // This flow is used for normal meal planning from any screen
+    TimeOfDay selectedTime = TimeOfDay.now();
+    String? selectedTimeText;
     DateTime selectedDate = DateTime.now();
-    List<DateTime> dateOptions = List.generate(7, (index) => DateTime.now().add(Duration(days: index)));
-    
-    // Meal types - to be fetched from Firestore
-    List<String> mealTypes = [];
+    List<String> mealTypes = <String>[];
     String? selectedMealType;
-    
-    // Fetch meal types from Firestore
+
     try {
       final service = FirestoreRecipesService();
-      // Try to fetch meal types using the existing method
       mealTypes = await service.fetchCollectionStrings('meal_types');
-      if (mealTypes.isEmpty) {
-        // Fallback to default meal types
-        mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-      }
-      if (mealTypes.isNotEmpty) {
-        selectedMealType = mealTypes.first;
-      }
-    } catch (e) {
-      // Fallback to default meal types if there's an error
+      if (mealTypes.isEmpty) mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+      selectedMealType = mealTypes.first;
+    } catch (_) {
       mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-      if (mealTypes.isNotEmpty) {
-        selectedMealType = mealTypes.first;
-      }
+      selectedMealType = mealTypes.first;
     }
 
-    // Show bottom sheet with date picker and meal types
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -331,7 +332,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) {
+      builder: (BuildContext ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Container(
@@ -339,55 +340,31 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with drag handle
-                  Container(
-                    height: 4,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  Container(height: 4, width: 40, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Meal Plan',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const Text('Meal Plan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
-                  // Date selection
                   ListTile(
                     title: const Text('Select Date'),
                     subtitle: Text(_formatDate(selectedDate)),
                     trailing: const Icon(Icons.calendar_today),
                     onTap: () async {
-                      // Show date picker for the next 7 days
                       final DateTime? picked = await showDatePicker(
                         context: context,
                         initialDate: selectedDate,
                         firstDate: DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 6)),
                       );
-                      if (picked != null) {
-                        setModalState(() {
-                          selectedDate = picked;
-                        });
-                      }
+                      if (picked != null) setModalState(() => selectedDate = picked);
                     },
                   ),
                   const SizedBox(height: 16),
-                  // Time selection
                   ListTile(
                     title: const Text('Set Time'),
                     subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
                     trailing: const Icon(Icons.access_time),
                     onTap: () async {
-                      final TimeOfDay? picked = await showTimePicker(
-                        context: context,
-                        initialTime: selectedTime,
-                      );
+                      final TimeOfDay? picked = await showTimePicker(context: context, initialTime: selectedTime);
                       if (picked != null) {
                         setModalState(() {
                           selectedTime = picked;
@@ -397,7 +374,6 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  // Meal type selection in ExpansionTile with container chips
                   ExpansionTile(
                     title: const Text('Select Meal Type'),
                     subtitle: Text(selectedMealType ?? 'None selected'),
@@ -407,26 +383,16 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: mealTypes.map((mealType) {
-                            final bool isSelected = mealType == selectedMealType;
+                          children: mealTypes.map((m) {
+                            final bool isSelected = m == selectedMealType;
                             return ChoiceChip(
-                              label: Text(mealType),
+                              label: Text(m),
                               selected: isSelected,
-                              onSelected: (_) {
-                                setModalState(() {
-                                  selectedMealType = isSelected ? null : mealType;
-                                });
-                              },
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                side: const BorderSide(color: Color(0xFFE5E7EB)),
-                              ),
+                              onSelected: (_) => setModalState(() => selectedMealType = isSelected ? null : m),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE5E7EB))),
                               backgroundColor: Colors.white,
-                              selectedColor: const Color(0xFFFF7F00),
-                              labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black87,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              ),
+                              selectedColor: AppColors.primary500,
+                              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
                             );
                           }).toList(),
                         ),
@@ -437,66 +403,65 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.black,
-                        ),
-                      ),
+                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'), style: TextButton.styleFrom(foregroundColor: Colors.black)),
                       ElevatedButton(
                         onPressed: () async {
-                          // Validate that all required fields are selected
                           if (selectedMealType == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please select a meal type')),
-                            );
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a meal type')));
                             return;
                           }
-                          
                           try {
-                            // Save the planned meal to Firestore
                             final service = FirestoreRecipesService();
                             final String dateKey = service.formatDateKey(selectedDate);
                             
+                            // Convert string ingredients to Ingredient objects with unit information
+                            final List<Ingredient> ingredientObjects = <Ingredient>[];
+                            
+                            // Use widget.ingredients if available, otherwise fetch from Firestore
+                            List<String>? ingredientsToUse = widget.ingredients;
+                            if (ingredientsToUse == null || ingredientsToUse.isEmpty) {
+                              // Fetch recipe data from Firestore to get ingredients
+                              final Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
+                              if (recipeData != null) {
+                                ingredientsToUse = _extractIngredientsStrings(recipeData['ingredients']);
+                              }
+                            }
+                            
+                            if (ingredientsToUse != null) {
+                              for (final ingredientString in ingredientsToUse) {
+                                // Parse the ingredient string to extract components
+                                final Ingredient ingredient = _parseIngredientString(ingredientString);
+                                ingredientObjects.add(ingredient);
+                              }
+                            }
+                            
                             final plannedMeal = PlannedMeal(
-                              uniqueId: '', // Will be generated by Firestore
+                              uniqueId: '',
                               recipeTitle: widget.title,
                               dateForRecipe: dateKey,
                               timeForRecipe: selectedTimeText ?? selectedTime.format(context),
-                              persons: 1, // Default to 1 person
-                              ingredients: widget.ingredients ?? [],
-                              instructions: widget.steps ?? [],
+                              persons: 1,
+                              ingredients: ingredientObjects,
+                              instructions: widget.steps ?? <String>[],
                               recipeImage: widget.imageAssetPath,
                               mealType: selectedMealType!,
                               createdAt: DateTime.now(),
                               minutes: widget.minutes ?? 0,
                             );
-                            
                             await service.savePlannedMeal(plannedMeal);
-                            
                             if (context.mounted) {
-                              Navigator.of(context).pop(); // Close bottom sheet
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Meal planned successfully')),
-                              );
-                              
-                              // Notify the MealPlannerViewModel to refresh its data
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meal planned successfully')));
                               final mealPlannerVM = Provider.of<MealPlannerViewModel>(context, listen: false);
                               await mealPlannerVM.refreshMeals();
                             }
-                          } catch (e) {
+                          } catch (_) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Error saving meal plan')),
-                              );
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error saving meal plan')));
                             }
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF7F00), // Teal orange color
-                          foregroundColor: Colors.white, // White text color
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary500, foregroundColor: Colors.white),
                         child: const Text('Save'),
                       ),
                     ],
@@ -510,27 +475,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       },
     );
   }
-  
+
   String _formatDate(DateTime date) {
-    const List<String> months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
+    const List<String> months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Future<void> _showGroceryDialog(BuildContext context) async {
     int servings = 1;
-    
-    // Show bottom sheet instead of dialog
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (BuildContext ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Container(
@@ -538,82 +496,68 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with drag handle
-                  Container(
-                    height: 4,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  Container(height: 4, width: 40, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Add to Groceries',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const Text('Add to Groceries', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
                   const Text('Servings'),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: () => setModalState(() { if (servings > 1) servings--; }),
-                      ),
+                      IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => setModalState(() { if (servings > 1) servings--; })),
                       Text('$servings', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () => setModalState(() { servings++; }),
-                      ),
+                      IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => setModalState(() { servings++; })),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.black,
-                        ),
-                      ),
+                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'), style: TextButton.styleFrom(foregroundColor: Colors.black)),
                       ElevatedButton(
                         onPressed: () async {
-                          final service = FirestoreRecipesService();
-                          final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
-                          if (widget.ingredients != null) {
-                            for (final s in widget.ingredients!) {
-                              final map = _parseIngredientToMap(s);
-                              ingMaps.add({...map, 'isChecked': false});
+                          try {
+                            final service = FirestoreRecipesService();
+                            final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
+                            
+                            // Use widget.ingredients if available, otherwise fetch from Firestore
+                            List<String>? ingredientsToUse = widget.ingredients;
+                            if (ingredientsToUse == null || ingredientsToUse.isEmpty) {
+                              // Fetch recipe data from Firestore to get ingredients
+                              final Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
+                              if (recipeData != null) {
+                                ingredientsToUse = _extractIngredientsStrings(recipeData['ingredients']);
+                              }
+                            }
+                            
+                            if (ingredientsToUse != null) {
+                              for (final s in ingredientsToUse) {
+                                final map = _parseIngredientToMap(s);
+                                ingMaps.add({...map, 'isChecked': false});
+                              }
+                            }
+                            
+                            await service.saveGroceryRecipe(
+                              title: widget.title,
+                              imageUrl: widget.imageAssetPath,
+                              minutes: widget.minutes ?? 0,
+                              servings: servings,
+                              ingredients: ingMaps,
+                            );
+                            final groceriesViewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                            await groceriesViewModel.refreshRecipes();
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error adding to Groceries')));
                             }
                           }
-                          await service.saveGroceryRecipe(
-                            title: widget.title,
-                            imageUrl: widget.imageAssetPath,
-                            minutes: widget.minutes ?? 0,
-                            servings: servings,
-                            ingredients: ingMaps,
-                          );
-                          
-                          // Refresh the groceries screen data
-                          final groceriesViewModel = Provider.of<GroceriesViewModel>(context, listen: false);
-                          await groceriesViewModel.refreshRecipes();
-                          
-                          if (context.mounted) {
-                            Navigator.of(context).pop(); // Close bottom sheet
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
-                          }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF7F00), // Teal orange color
-                          foregroundColor: Colors.white, // White text color
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary500, foregroundColor: Colors.white),
                         child: const Text('Save'),
                       ),
                     ],
@@ -632,20 +576,110 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     final String trimmed = s.trim();
     if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
     
-    // Split only on first 2 spaces to handle format: "emoji quantity name"
+    // Split the string into parts
     final List<String> parts = trimmed.split(' ');
-    if (parts.length < 3) {
-      // If we don't have enough parts, return as is
-      return {'name': trimmed, 'quantity': ''};
+    if (parts.isEmpty) return {'name': '', 'quantity': ''};
+    
+    // Check if first part is an emoji
+    final String firstPart = parts[0];
+    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final int startIndex = hasEmoji ? 1 : 0;
+    
+    // If we have enough parts, try to parse quantity and unit
+    if (parts.length > startIndex + 1) {
+      final String quantity = parts[startIndex];
+      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
+      final String name = parts.length > startIndex + 2 
+          ? parts.sublist(startIndex + 2).join(' ') 
+          : parts.sublist(startIndex + 1).join(' ');
+      
+      final Map<String, dynamic> result = {
+        'name': name,
+        'quantity': quantity,
+        'isChecked': false,
+      };
+      
+      // Add emoji if it exists
+      if (hasEmoji) {
+        result['emoji'] = firstPart;
+      }
+      // Add unit if it exists
+      if (unit.isNotEmpty) {
+        result['unit'] = unit;
+      }
+      
+      return result;
+    } else {
+      // Just name and possibly emoji
+      final String fullName = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
+      
+      // Split the full name from the first space: first part is unit, rest is name
+      String unit = '';
+      String name = fullName;
+      if (fullName.isNotEmpty) {
+        final List<String> nameParts = fullName.split(' ');
+        if (nameParts.length > 1) {
+          unit = nameParts[0];
+          name = nameParts.sublist(1).join(' ');
+        }
+      }
+      
+      final Map<String, dynamic> result = {
+        'name': name,
+        'quantity': '',
+        'isChecked': false,
+        if (unit.isNotEmpty) 'unit': unit,
+      };
+      
+      // Add emoji if it exists
+      if (hasEmoji) {
+        result['emoji'] = firstPart;
+      }
+      
+      return result;
+    }
+  }
+  
+  /// Parse an ingredient string into an Ingredient object
+  Ingredient _parseIngredientString(String ingredientString) {
+    final String trimmed = ingredientString.trim();
+    if (trimmed.isEmpty) {
+      return const Ingredient(name: '');
     }
     
-    // First part is emoji, second part is quantity, rest is name
-    final String emoji = parts[0];
-    final String quantity = parts[1];
-    final String name = parts.sublist(2).join(' ');
+    // Split the string into parts
+    final List<String> parts = trimmed.split(' ');
+    if (parts.length < 2) {
+      return Ingredient(name: trimmed);
+    }
     
-    // Combine emoji and name for the name field, and use quantity for the quantity field
-    return {'name': '$emoji $name', 'quantity': quantity};
+    // Check if first part is an emoji
+    final String firstPart = parts[0];
+    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final int startIndex = hasEmoji ? 1 : 0;
+    
+    // If we have enough parts, try to parse quantity and unit
+    if (parts.length > startIndex + 1) {
+      final String quantity = parts[startIndex];
+      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
+      final String name = parts.length > startIndex + 2 
+          ? parts.sublist(startIndex + 2).join(' ') 
+          : parts.sublist(startIndex + 1).join(' ');
+      
+      return Ingredient(
+        name: name,
+        quantity: quantity,
+        unit: unit.isNotEmpty ? unit : null,
+        emoji: hasEmoji ? firstPart : null,
+      );
+    } else {
+      // Just name and possibly emoji
+      final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
+      return Ingredient(
+        name: name,
+        emoji: hasEmoji ? firstPart : null,
+      );
+    }
   }
 }
 
@@ -667,8 +701,15 @@ class _HeroImage extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 imageAssetPath.startsWith('http')
-                    ? Image.network(imageAssetPath, fit: BoxFit.cover)
-                    : Image.asset(imageAssetPath, fit: BoxFit.cover),
+                    ? Image.network(
+                        imageAssetPath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
+                      )
+                    : Image.asset(
+                        imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : imageAssetPath,
+                        fit: BoxFit.cover,
+                      ),
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: const BoxDecoration(
@@ -709,58 +750,43 @@ class _HeroImage extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   final VoidCallback onMealPlanTap;
-  final bool fromAdminScreen;
   final String recipeId;
   final String title;
   final String imageUrl;
   final int minutes;
   final VoidCallback? onGroceriesTap;
-  final bool fromGroceriesScreen; // Add this new parameter
-  final bool fromBookmarksScreen; // Add this new parameter
+  final bool fromGroceriesScreen;
+  final bool fromBookmarksScreen;
   const _ActionRow({
-    required this.onMealPlanTap, 
-    this.fromAdminScreen = false, 
-    required this.recipeId, 
-    required this.title, 
-    required this.imageUrl, 
-    required this.minutes, 
+    required this.onMealPlanTap,
+    required this.recipeId,
+    required this.title,
+    required this.imageUrl,
+    required this.minutes,
     this.onGroceriesTap,
-    this.fromGroceriesScreen = false, // Default to false
-    this.fromBookmarksScreen = false, // Default to false
+    this.fromGroceriesScreen = false,
+    this.fromBookmarksScreen = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes, fromBookmarksScreen: fromBookmarksScreen),
-              // Keep Meal Plan button enabled even when navigated from groceries screen
-              _ActionItem(
-                icon: Icons.calendar_today_outlined,
-                label: 'Meal Plan',
-                onTap: onMealPlanTap,
-              ),
-              // Disable Groceries button when navigated from groceries screen
-              fromGroceriesScreen
-                ? _DisabledActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries')
-                : _ActionItem(
-                    icon: Icons.shopping_bag_outlined, 
-                    label: 'Groceries', 
-                    onTap: onGroceriesTap
-                  ),
-              const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
-              const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
-            ],
-          ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes, fromBookmarksScreen: fromBookmarksScreen),
+          _ActionItem(icon: Icons.calendar_today_outlined, label: 'Meal Plan', onTap: onMealPlanTap),
+          fromGroceriesScreen
+              ? const _DisabledActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries')
+              : _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries', onTap: onGroceriesTap),
+          const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
+          const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
+        ],
+      ),
     );
   }
-
-  // Removed unused _showGroceryDialogStatic to satisfy linter
 }
-
 
 class _ActionItem extends StatelessWidget {
   final IconData icon;
@@ -786,7 +812,6 @@ class _ActionItem extends StatelessWidget {
   }
 }
 
-// New widget for disabled action items
 class _DisabledActionItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -826,8 +851,6 @@ class _BookmarkButton extends StatelessWidget {
           onTap: () async {
             await service.toggleBookmark(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes);
             if (fromBookmarksScreen && context.mounted) {
-              // If we un-bookmarked while coming from bookmarks, close this details screen
-              // Pop only if un-bookmarked now
               final bool nowBookmarked = (await service.isBookmarkedStream(recipeId).first);
               if (!nowBookmarked && Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
@@ -879,7 +902,7 @@ class _IngredientTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Color.fromRGBO(247, 244, 244, 1)),
+        border: Border.all(color: const Color(0xFFF7F4F4)),
       ),
       child: Row(
         children: [
@@ -914,7 +937,7 @@ class _StepCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Color(0xFFE5E7EB)),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

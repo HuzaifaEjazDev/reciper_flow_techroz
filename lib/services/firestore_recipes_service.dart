@@ -351,6 +351,72 @@ class FirestoreRecipesService {
     }
   }
 
+  /// Fetch a single planned meal document by its document id for current user
+  Future<Map<String, dynamic>?> fetchPlannedMealById(String mealId) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('PlannedMeals')
+          .doc(mealId)
+          .get();
+      if (!doc.exists) return null;
+      final Map<String, dynamic>? data = doc.data();
+      if (data == null) return null;
+      return {...data, 'id': doc.id};
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Fetch a single bookmarked recipe document by recipeId (doc id equals recipeId)
+  Future<Map<String, dynamic>?> fetchBookmarkedRecipeById(String recipeId) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('BookMarkedRecipes')
+          .doc(recipeId)
+          .get();
+      if (!doc.exists) return null;
+      final data = doc.data();
+      if (data == null) return null;
+      return {...data, 'id': doc.id};
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Fetch a single grocery recipe document by its doc id
+  Future<Map<String, dynamic>?> fetchGroceryRecipeById(String groceryId) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('GroceryRecipes')
+          .doc(groceryId)
+          .get();
+      if (!doc.exists) return null;
+      final data = doc.data();
+      if (data == null) return null;
+      return {...data, 'id': doc.id};
+    } catch (e) {
+      return null;
+    }
+  }
+
   // Delete a planned meal
   Future<void> deletePlannedMeal(String mealId) async {
     final User? user = FirebaseAuth.instance.currentUser;

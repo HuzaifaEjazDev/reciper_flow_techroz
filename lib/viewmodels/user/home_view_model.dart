@@ -8,28 +8,38 @@ class HomeViewModel extends ChangeNotifier {
   List<Dish> _recommendedRecipes = const <Dish>[];
   List<Dish> _easyMakeSnacks = const <Dish>[];
   List<Dish> _quickWeeknightMeals = const <Dish>[];
+  final Map<String, List<Dish>> _cuisineToDishes = <String, List<Dish>>{};
   List<String> _userCuisinePreferences = [];
   String? _userDietPreference;
   double _userRandomValue = 0.0; // Random value between 0-0.4
+  bool _initialized = false; // ensure recommended loads only once per app session
 
   List<Dish> get recommendedRecipes => _recommendedRecipes;
   List<Dish> get easyMakeSnacks => _easyMakeSnacks;
   List<Dish> get quickWeeknightMeals => _quickWeeknightMeals;
+  Map<String, List<Dish>> get cuisineToDishes => _cuisineToDishes;
 
   // Method to refresh recommended recipes with a new random value
   Future<void> refreshRecommendedRecipes({double? forcedRandomValue}) async {
-    // Use the forced random value if provided, otherwise generate a new one
+    // If we've already initialized recommended recipes for this app session
+    // and no explicit override is requested, do nothing.
+    if (_initialized && forcedRandomValue == null) {
+      print('Recommended recipes already initialized for this session; skipping refresh.');
+      return;
+    }
+
+    // Use the forced random value if provided, otherwise generate only if not initialized
     if (forcedRandomValue != null) {
       _userRandomValue = forcedRandomValue;
       print('Using forced user random value: $_userRandomValue');
-    } else {
-      // Generate a new random value between 0 and 0.4
+    } else if (!_initialized) {
       _userRandomValue = Random().nextDouble() * 0.4;
-      print('Generated new user random value: $_userRandomValue');
+      print('Generated user random value (first init): $_userRandomValue');
     }
-    
+
     // Fetch recommended recipes based on the new random value
     await _fetchRecommendedRecipes();
+    _initialized = true;
   }
 
   // Public method to refresh all data except recommended recipes
@@ -40,22 +50,30 @@ class HomeViewModel extends ChangeNotifier {
     // Fetch dishes for Easy Make Snack and Quick Weeknight Meals sections
     await _fetchEasyMakeSnacks();
     await _fetchQuickWeeknightMeals();
+    await _fetchCuisineSections();
   }
 
   Future<void> loadInitial() async {
-    // Generate random value between 0 and 0.4
+    if (_initialized) {
+      // Already initialized this session; do nothing
+      return;
+    }
+
+    // Generate random value between 0 and 0.4 (once per app session)
     _userRandomValue = Random().nextDouble() * 0.4;
-    print('Generated user random value: $_userRandomValue');
+    print('Generated user random value (initial load): $_userRandomValue');
     
     // Fetch user preferences first
     await _fetchUserPreferences();
     
     // Fetch recommended recipes based on random value algorithm
     await _fetchRecommendedRecipes();
+    _initialized = true;
     
     // Fetch dishes for Easy Make Snack and Quick Weeknight Meals sections
     await _fetchEasyMakeSnacks();
     await _fetchQuickWeeknightMeals();
+    await _fetchCuisineSections();
   }
 
   Future<void> _fetchUserPreferences() async {
@@ -392,6 +410,48 @@ class HomeViewModel extends ChangeNotifier {
       ];
     }
     
+    notifyListeners();
+  }
+
+  Future<void> _fetchCuisineSections() async {
+    _cuisineToDishes.clear();
+    if (_userCuisinePreferences.isEmpty) {
+      notifyListeners();
+      return;
+    }
+    try {
+      // For each preferred cuisine, fetch a handful of recipes
+      for (final String cuisine in _userCuisinePreferences) {
+        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+            .collection('recipes')
+            .where('cuisine', isEqualTo: cuisine)
+            .limit(6);
+
+        // Optionally apply diet filter
+        if (_userDietPreference != null && _userDietPreference!.isNotEmpty) {
+          query = query.where('diet', isEqualTo: _userDietPreference);
+        }
+
+        final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
+        if (snapshot.docs.isNotEmpty) {
+          final List<Dish> dishes = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return Dish(
+              id: doc.id,
+              title: data['title'] as String? ?? 'Untitled Recipe',
+              subtitle: data['description'] as String? ?? 'Recipe',
+              imageAssetPath: data['imageUrl'] as String? ?? 'assets/images/dish/dish1.jpg',
+              minutes: (data['totalMinutes'] as num?)?.toInt() ?? 0,
+            );
+          }).toList();
+          if (dishes.isNotEmpty) {
+            _cuisineToDishes[cuisine] = dishes;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching cuisine sections: $e');
+    }
     notifyListeners();
   }
 }

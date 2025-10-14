@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/viewmodels/user/admin_recipes_view_model.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
@@ -9,7 +10,8 @@ class RecipeByAdminScreen extends StatelessWidget {
   final bool autoApplyFilter;
   final bool allowMealPlanSelection; // true when launched from Meal Planner
   final String? initialSearchQuery; // optional initial search from Home
-  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false, this.allowMealPlanSelection = false, this.initialSearchQuery});
+  final String? initialCuisine; // optional cuisine pre-filter
+  const RecipeByAdminScreen({super.key, this.filterMealType, this.autoApplyFilter = false, this.allowMealPlanSelection = false, this.initialSearchQuery, this.initialCuisine});
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +21,10 @@ class RecipeByAdminScreen extends StatelessWidget {
         ..loadInitial()
         ..loadSortOptions()
         ..setFilterMealType(filterMealType, autoApply: autoApplyFilter)
+        ..setSelectedCuisine(initialCuisine)
         ..setQueryTemp(initialSearchQuery ?? '')
-        ..setSearchQuery(initialSearchQuery),
+        ..setSearchQuery(initialSearchQuery)
+        ..applyFilters(),
       child: _RecipeByAdminView(filterMealType: filterMealType, allowMealPlanSelection: allowMealPlanSelection),
     );
   }
@@ -140,9 +144,20 @@ class _RecipeByAdminView extends StatelessWidget {
                   child: Column(
                     children: [
                       if (vm.loading && items.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: CircularProgressIndicator()),
+                        Skeletonizer(
+                          enabled: true,
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: 4,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.68,
+                            ),
+                            itemBuilder: (context, index) => const _AdminRecipeCardSkeleton(),
+                          ),
                         ),
                       if (vm.error != null)
                         Padding(
@@ -232,8 +247,12 @@ class _AdminRecipeCard extends StatelessWidget {
           SizedBox(
             height: 120,
             child: data.imageUrl.startsWith('http')
-                ? Image.network(data.imageUrl, fit: BoxFit.cover)
-                : Image.asset(data.imageUrl.isEmpty ? 'assets/images/easymakesnack1.jpg' : data.imageUrl, fit: BoxFit.cover),
+                ? Image.network(
+                    data.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
+                  )
+                : Image.asset(data.imageUrl.isEmpty ? 'assets/images/dish/dish1.jpg' : data.imageUrl, fit: BoxFit.cover),
           ),
           Expanded(
             child: Padding(
@@ -283,6 +302,46 @@ class _AdminRecipeCard extends StatelessWidget {
         ],
       ),
     ),
+    );
+  }
+}
+
+class _AdminRecipeCardSkeleton extends StatelessWidget {
+  const _AdminRecipeCardSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: 120, child: Container(color: Colors.white)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                // title (2 lines possible)
+                SizedBox(height: 16, width: 140, child: ColoredBox(color: Colors.white)),
+                SizedBox(height: 8),
+                // time row
+                SizedBox(height: 12, width: 90, child: ColoredBox(color: Colors.white)),
+                SizedBox(height: 6),
+                // ingredients row
+                SizedBox(height: 12, width: 120, child: ColoredBox(color: Colors.white)),
+                SizedBox(height: 6),
+                // steps row
+                SizedBox(height: 12, width: 100, child: ColoredBox(color: Colors.white)),
+              ],
+            ),
+          ),
+          const Spacer(),
+        ],
+      ),
     );
   }
 }

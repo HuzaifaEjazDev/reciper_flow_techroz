@@ -533,13 +533,24 @@ class AdminRecipesViewModel extends ChangeNotifier {
             if (e is Map) {
               final text = e['text'] ?? e['name'] ?? e['title'];
               final qty = e['quantity'];
+              final unit = e['unit']; // Add unit field
               final emoji = e['emoji'] ?? e['icon'] ?? e['em'] ?? e['symbol'];
               if (text != null) {
-                final String base = qty != null ? '$qty $text' : text.toString();
-                final String withEmoji = (emoji != null && emoji.toString().isNotEmpty)
-                    ? '${emoji.toString()} $base'
-                    : base;
-                out.add(withEmoji);
+                // Build the ingredient string with quantity, unit, and name
+                final List<String> parts = <String>[];
+                if (emoji != null && emoji.toString().isNotEmpty) {
+                  parts.add(emoji.toString());
+                }
+                if (qty != null) {
+                  parts.add(qty.toString());
+                }
+                // Add unit if it exists and is not empty
+                if (unit != null && unit.toString().isNotEmpty) {
+                  parts.add(unit.toString());
+                }
+                parts.add(text.toString());
+                final String ingredientString = parts.join(' ');
+                out.add(ingredientString);
               }
             }
           }

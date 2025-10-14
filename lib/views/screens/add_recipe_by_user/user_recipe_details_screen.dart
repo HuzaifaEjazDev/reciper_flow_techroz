@@ -276,9 +276,12 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                             final service = FirestoreRecipesService();
                             final String dateKey = service.formatDateKey(selectedDate);
                             
-                            // Convert ingredients to list of strings
-                            final List<String> ingredientList = recipe.ingredients
-                                .map((e) => '${e['quantity']} ${e['name']}')
+                            // Convert ingredients to list of Ingredient objects
+                            final List<Ingredient> ingredientList = recipe.ingredients
+                                .map((e) => Ingredient(
+                                  name: e['name'].toString(),
+                                  quantity: e['quantity']?.toString(),
+                                ))
                                 .toList();
                             
                             final plannedMeal = PlannedMeal(
@@ -422,11 +425,25 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                           final service = FirestoreRecipesService();
                           final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
                           for (final ingredient in recipe.ingredients) {
-                            ingMaps.add({
-                              'name': '${ingredient['quantity']} ${ingredient['name']}',
-                              'quantity': ingredient['quantity'],
+                            // Extract all fields from the ingredient map
+                            final Map<String, dynamic> parsedIngredient = <String, dynamic>{
+                              'name': ingredient['name']?.toString() ?? '',
+                              'quantity': ingredient['quantity']?.toString() ?? '',
                               'isChecked': false,
-                            });
+                            };
+                            
+                            // Add unit field if it exists
+                            if (ingredient['unit'] != null) {
+                              parsedIngredient['unit'] = ingredient['unit'].toString();
+                            }
+                            
+                            // Add emoji field if it exists
+                            if (ingredient['emoji'] != null) {
+                              parsedIngredient['emoji'] = ingredient['emoji'].toString();
+                            }
+                            
+                            // Add the parsed ingredient with isChecked set to false
+                            ingMaps.add(parsedIngredient);
                           }
                           
                           await service.saveGroceryRecipe(
@@ -467,6 +484,61 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
         );
       },
     );
+  }
+
+  Map<String, dynamic> _parseIngredientToMap(String s) {
+    final String trimmed = s.trim();
+    if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
+    
+    // Split the string into parts
+    final List<String> parts = trimmed.split(' ');
+    if (parts.isEmpty) return {'name': '', 'quantity': ''};
+    
+    // Check if first part is an emoji
+    final String firstPart = parts[0];
+    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final int startIndex = hasEmoji ? 1 : 0;
+    
+    // If we have enough parts, try to parse quantity and unit
+    if (parts.length > startIndex + 1) {
+      final String quantity = parts[startIndex];
+      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
+      final String name = parts.length > startIndex + 2 
+          ? parts.sublist(startIndex + 2).join(' ') 
+          : parts.sublist(startIndex + 1).join(' ');
+      
+      final Map<String, dynamic> result = {
+        'name': name,
+        'quantity': quantity,
+        'isChecked': false,
+      };
+      
+      // Add emoji and unit if they exist
+      if (hasEmoji) {
+        result['emoji'] = firstPart;
+      }
+      if (unit.isNotEmpty) {
+        result['unit'] = unit;
+      }
+      
+      return result;
+    } else {
+      // Just name and possibly emoji
+      final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
+      
+      final Map<String, dynamic> result = {
+        'name': name,
+        'quantity': '',
+        'isChecked': false,
+      };
+      
+      // Add emoji if it exists
+      if (hasEmoji) {
+        result['emoji'] = firstPart;
+      }
+      
+      return result;
+    }
   }
 
   @override

@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
-import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/views/screens/recipe_details_screen.dart';
-import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class GroceriesScreen extends StatefulWidget {
   const GroceriesScreen({super.key});
@@ -219,26 +217,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     );
   }
 
-  String _weekdayShort(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'Mon';
-      case DateTime.tuesday:
-        return 'Tue';
-      case DateTime.wednesday:
-        return 'Wed';
-      case DateTime.thursday:
-        return 'Thu';
-      case DateTime.friday:
-        return 'Fri';
-      case DateTime.saturday:
-        return 'Sat';
-      case DateTime.sunday:
-        return 'Sun';
-      default:
-        return '';
-    }
-  }
+  // Removed unused _weekdayShort helper
 
   /// Scales ingredient quantity based on servings
   /// If quantity is a number, multiply it by servings
@@ -306,58 +285,107 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     return null;
   }
 
-  /// Parse ingredient name that contains emoji, quantity, and name
-  /// Format: "emoji quantity name" (split only on first 2 spaces)
-  /// Returns a map with 'emoji', 'quantity', and 'name' keys
+  /// Parse ingredient name to extract emoji, unit, and actual name
+  /// Format: "emoji name" or "name" -> returns map with 'emoji', 'actualName'
   static Map<String, String> _parseIngredientName(String fullName) {
-    // Split only on first 2 spaces
-    final List<String> parts = fullName.split(' ');
-    if (parts.length < 3) {
-      // If we don't have enough parts, return as is
-      return {'emoji': '', 'quantity': '', 'name': fullName};
+    final String trimmed = fullName.trim();
+    if (trimmed.isEmpty) return {'emoji': '', 'actualName': ''};
+    
+    // Split the string into parts
+    final List<String> parts = trimmed.split(' ');
+    if (parts.isEmpty) return {'emoji': '', 'actualName': ''};
+    
+    // Check if first part is an emoji
+    final String firstPart = parts[0];
+    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    
+    String emoji = '';
+    String nameWithUnit = '';
+    
+    if (hasEmoji && parts.length > 1) {
+      // Has emoji and more parts - emoji is first part, rest is name with potential unit
+      emoji = firstPart;
+      nameWithUnit = parts.sublist(1).join(' ');
+    } else if (hasEmoji) {
+      // Only has emoji
+      emoji = firstPart;
+      nameWithUnit = '';
+    } else {
+      // No emoji, just name with potential unit
+      nameWithUnit = trimmed;
     }
     
-    // First part is emoji, second part is quantity, rest is name
-    final String emoji = parts[0];
-    final String quantity = parts[1];
-    final String name = parts.sublist(2).join(' ');
+    // Split nameWithUnit from the first space and show the remaining text after the space
+    String actualName = nameWithUnit;
+    if (nameWithUnit.isNotEmpty) {
+      final List<String> nameParts = nameWithUnit.split(' ');
+      if (nameParts.length > 1) {
+        // Show the remaining text after the first space
+        actualName = nameParts.sublist(1).join(' ');
+      } else {
+        // No space found, so the whole thing is the name
+        actualName = nameWithUnit;
+      }
+    }
     
-    return {'emoji': emoji, 'quantity': quantity, 'name': name};
+    return {'emoji': emoji, 'actualName': actualName};
   }
 
-  /// Build a row with emoji+name at start and quantity at end
-  static Widget _buildIngredientRow(String fullName, String scaledQty, bool checked) {
-    final Map<String, String> parsed = _GroceriesScreenState._parseIngredientName(fullName);
-    final String emoji = parsed['emoji'] ?? '';
-    final String quantity = parsed['quantity'] ?? '';
-    final String name = parsed['name'] ?? fullName;
+  /// Build a row with emoji, name, quantity, and unit in the correct order
+  /// Format: [name] Qty: [quantity] [emoji] [unit]
+  static Widget _buildIngredientRow(String fullName, String scaledQty, String unit, bool checked) {
+    // Parse the full name to extract emoji and actual name
+    final Map<String, String> parsedName = _parseIngredientName(fullName);
+    final String emoji = parsedName['emoji'] ?? '';
+    final String actualName = parsedName['actualName'] ?? '';
     
-    // Use scaled quantity if provided and not empty, otherwise use parsed quantity
-    final String displayQuantity = scaledQty.isNotEmpty ? scaledQty : quantity;
+    // Format the quantity display
+    String quantityDisplay = '';
+    if (scaledQty.isNotEmpty) {
+      quantityDisplay = scaledQty;
+    }
     
     return Row(
       children: [
-        // Emoji and name at start
+        // Show the actual name first
         Text(
-          '$emoji $name',
+          actualName,
           style: TextStyle(
             color: Colors.black87,
             decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
           ),
         ),
-        // Spacer to push quantity to the end
         const Spacer(),
-        // Quantity at end (if exists)
-        if (displayQuantity.isNotEmpty)
+        // Show quantity 
+        if (quantityDisplay.isNotEmpty)
           Text(
-            displayQuantity,
+            'Qty: $quantityDisplay',
             style: TextStyle(
               color: Colors.black87,
               decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(width: 16),
+        // Show emoji after quantity
+        if (emoji.isNotEmpty)
+          Text(
+            ' $emoji',
+            style: TextStyle(
+              color: Colors.black87,
+              decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+            ),
+          ),
+        // Show unit at the end
+        if (unit.isNotEmpty)
+          Text(
+            ' $unit',
+            style: TextStyle(
+              color: Colors.black87,
+              decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        const SizedBox(width: 16),
       ],
     );
   }
@@ -369,7 +397,13 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           future: viewModel.fetchAllGroceryRecipes(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              // Show a simple loading indicator instead of skeleton
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
             }
             if (snapshot.hasError) {
               return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
@@ -408,8 +442,25 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                               recipeId: r['id']?.toString() ?? '',
                               fromAdminScreen: false,
                               fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
-                              // We don't have ingredients and steps here, they'll need to be fetched
-                              ingredients: const [],
+                              // Pass ingredients in "qty unit name" format if available to use as fallback
+                              ingredients: ((r['ingredients'] as List<dynamic>?) ?? <dynamic>[])
+                                  .map((item) {
+                                    if (item is Map<String, dynamic>) {
+                                      final String qty = (item['quantity'] ?? '').toString();
+                                      final String unit = (item['unit'] ?? '').toString();
+                                      final String name = (item['name'] ?? '').toString();
+                                      final String emoji = (item['emoji'] ?? '').toString();
+                                      final List<String> parts = <String>[];
+                                      if (emoji.isNotEmpty) parts.add(emoji);
+                                      if (qty.isNotEmpty) parts.add(qty);
+                                      if (unit.isNotEmpty) parts.add(unit);
+                                      if (name.isNotEmpty) parts.add(name);
+                                      return parts.join(' ');
+                                    }
+                                    return item.toString();
+                                  })
+                                  .cast<String>()
+                                  .toList(),
                               steps: const [],
                             ),
                           ),
@@ -457,9 +508,9 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                         ],
                       ),
                     ),
-                  ),
-                );
-                }
+                    )
+                  );
+                },
               ),
             );
           },
@@ -475,7 +526,12 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           future: viewModel.fetchAllGroceryRecipes(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
             }
             if (snapshot.hasError) {
               return Center(child: Text('Error: ${snapshot.error}'));
@@ -597,14 +653,27 @@ class _GroceryItemsListState extends State<_GroceryItemsList> {
                   children: [
                     ...List<Widget>.generate(ingredients.length, (i) {
                       final dynamic item = ingredients[i];
-                      final String name = (item is Map && item['name'] != null) ? item['name'].toString() : '';
-                      final String qty = (item is Map && item['quantity'] != null) ? item['quantity'].toString() : '';
+                      String fullName = ''; // Changed from separate name to fullName
+                      String qty = '';
+                      String unit = '';
+                      
+                      if (item is Map) {
+                        final String name = (item['name'] ?? '').toString();
+                        final String emoji = (item['emoji'] ?? '').toString();
+                        qty = (item['quantity'] ?? '').toString();
+                        unit = (item['unit'] ?? '').toString();
+                        
+                        // Construct full name with emoji
+                        fullName = emoji.isNotEmpty ? '$emoji $name' : name;
+                      }
+                      
                       final String scaledQty = _GroceriesScreenState._scaleIngredientQuantity(qty, servings);
                       return _IngredientItem(
                         recipeId: recipeId,
                         ingredientIndex: i,
-                        name: name,
+                        fullName: fullName, // Pass fullName instead of separate name
                         scaledQty: scaledQty,
+                        unit: unit,
                       );
                     }),
                     const SizedBox(height: 4),
@@ -624,15 +693,17 @@ class _GroceryItemsListState extends State<_GroceryItemsList> {
 class _IngredientItem extends StatefulWidget {
   final String recipeId;
   final int ingredientIndex;
-  final String name;
+  final String fullName; // Changed from 'name' to 'fullName'
   final String scaledQty;
+  final String unit;
 
   const _IngredientItem({
     Key? key,
     required this.recipeId,
     required this.ingredientIndex,
-    required this.name,
+    required this.fullName, // Changed from 'name' to 'fullName'
     required this.scaledQty,
+    required this.unit,
   }) : super(key: key);
 
   @override
@@ -688,7 +759,7 @@ class _IngredientItemState extends State<_IngredientItem> {
                   activeColor: Colors.green,
                 ),
                 Expanded(
-                  child: _GroceriesScreenState._buildIngredientRow(widget.name, widget.scaledQty, _checked ?? false),
+                  child: _GroceriesScreenState._buildIngredientRow(widget.fullName, widget.scaledQty, widget.unit, _checked ?? false),
                 ),
               ],
             ),

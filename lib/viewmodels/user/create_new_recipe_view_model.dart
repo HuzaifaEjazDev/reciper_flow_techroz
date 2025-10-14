@@ -122,6 +122,20 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
 
   // Save the recipe to Firestore
   Future<bool> saveRecipeToFirestore() async {
+    // Validate title
+    final String title = titleController.text.trim();
+    if (title.isEmpty) {
+      debugPrint('Validation failed: empty title');
+      throw Exception('Please enter recipe name');
+    }
+
+    // Validate at least one ingredient name
+    final bool hasAtLeastOneIngredient = nameControllers.any((c) => c.text.trim().isNotEmpty);
+    if (!hasAtLeastOneIngredient) {
+      debugPrint('Validation failed: no ingredients');
+      throw Exception('Please add at least 1 ingredient');
+    }
+
     try {
       // Prepare ingredients as list of maps, filtering out empty entries
       final List<Map<String, dynamic>> ingredients = [];
@@ -178,7 +192,7 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('Error saving recipe to Firestore: $e');
-      return false;
+      rethrow;
     }
   }
 

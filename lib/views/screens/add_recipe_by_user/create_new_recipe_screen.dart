@@ -1,12 +1,9 @@
 import 'dart:ui' as ui;
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recipe_app/core/constants/app_colors.dart';
 import 'package:recipe_app/viewmodels/user/create_new_recipe_view_model.dart';
-import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/models/user_recipe.dart';
-import 'package:recipe_app/models/user_created_recipe.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -243,19 +240,18 @@ class _CreateRecipeView extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () async {
-                      // Save to Firestore
-                      final bool success = await vm.saveRecipeToFirestore();
-                      if (success) {
-                        // Show success message
+                      try {
+                        final bool success = await vm.saveRecipeToFirestore();
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Recipe saved successfully!')),
+                          );
+                          Navigator.of(context).maybePop();
+                        }
+                      } catch (e) {
+                        final String msg = e.toString().replaceFirst('Exception: ', '');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Recipe saved successfully!')),
-                        );
-                        // Navigate back
-                        Navigator.of(context).maybePop();
-                      } else {
-                        // Show error message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Failed to save recipe. Please try again.')),
+                          SnackBar(content: Text(msg.isEmpty ? 'Failed to save recipe. Please try again.' : msg)),
                         );
                       }
                     },
