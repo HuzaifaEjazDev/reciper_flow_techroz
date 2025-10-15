@@ -11,6 +11,8 @@ import 'package:recipe_app/views/screens/dietary_preferences_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../subscription_screen.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -52,15 +54,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
 
             // Fetch diet preferences (now as array)
-            if (onboardingData.containsKey('dietPreferences') && 
+            if (onboardingData.containsKey('dietPreferences') &&
                 onboardingData['dietPreferences'] is List) {
               setState(() {
                 _dietPreferences = List<String>.from(onboardingData['dietPreferences']);
               });
             }
-            
+
             // Fetch cuisine preferences (now as array)
-            if (onboardingData.containsKey('cuisinePreferences') && 
+            if (onboardingData.containsKey('cuisinePreferences') &&
                 onboardingData['cuisinePreferences'] is List) {
               setState(() {
                 _cuisinePreferences = List<String>.from(onboardingData['cuisinePreferences']);
@@ -118,7 +120,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.subscriptions_outlined,
               title: 'Subscriptions',
               subtitle: 'Manage plan and billing',
-              onTap: () {},
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context)=>SubscriptionScreen()));
+              },
             ),
             _NavTile(
               icon: Icons.tune_outlined,
@@ -175,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 );
-                
+
                 // If user confirmed, proceed with logout
                 if (confirmed == true) {
                   await context.read<AuthViewModel>().signOut();
@@ -726,12 +730,12 @@ class _SectionTitle extends StatelessWidget {
 class _UserPreferencesCard extends StatelessWidget {
   final List<String> dietPreferences;
   final List<String> cuisinePreferences;
-  
+
   const _UserPreferencesCard({
     required this.dietPreferences,
     required this.cuisinePreferences,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:recipe_app/models/meal_plan.dart'; // Make sure this import is correct
 import 'package:recipe_app/viewmodels/user/planned_meals_view_model.dart';
 import 'package:recipe_app/views/screens/add_recipe_by_user/my_recipes_screen.dart';
+import 'package:recipe_app/views/screens/recipe_details_screen.dart';
+import 'package:recipe_app/services/firestore_recipes_service.dart';
 
 class PlannedMealsScreen extends StatelessWidget {
   const PlannedMealsScreen({super.key});
@@ -154,106 +156,145 @@ class _PlannedMealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Recipe image
-          SizedBox(
-            height: 105,
-            child: meal.recipeImage.startsWith('http')
-                ? Image.network(
-                    meal.recipeImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => 
-                        const ColoredBox(color: Color(0xFFE5E7EB)),
-                  )
-                : Image.asset(
-                    meal.recipeImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => 
-                        const ColoredBox(color: Color(0xFFE5E7EB)),
-                  ),
-          ),
-          // Recipe details
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Recipe title
-                  Text(
-                    meal.recipeTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  // Meal type
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.deepOrange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      meal.mealType,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.deepOrange,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  // Time and persons
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16, color: Colors.black54),
-                      const SizedBox(width: 4),
-                      Text(
-                        meal.timeForRecipe,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.person, size: 16, color: Colors.black54),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${meal.persons}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+    return GestureDetector(
+      onTap: () async {
+        // Navigate to recipe details screen on card tap
+        final service = FirestoreRecipesService();
+        final recipeData = await service.fetchPlannedMealById(meal.uniqueId);
+        if (!context.mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RecipeDetailsScreen(
+              title: meal.recipeTitle,
+              imageAssetPath: meal.recipeImage,
+              minutes: meal.minutes,
+              ingredients: _extractIngredientsStrings(meal.ingredients),
+              steps: meal.instructions,
+              recipeId: meal.uniqueId,
             ),
           ),
-        ],
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Recipe image
+            SizedBox(
+              height: 105,
+              child: meal.recipeImage.startsWith('http')
+                  ? Image.network(
+                      meal.recipeImage,
+                      fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => 
+                      const ColoredBox(color: Color(0xFFE5E7EB)),
+                  )
+                  : Image.asset(
+                      meal.recipeImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => 
+                          const ColoredBox(color: Color(0xFFE5E7EB)),
+                  ),
+            ),
+            // Recipe details
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Recipe title
+                    Text(
+                      meal.recipeTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    // Meal type
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        meal.mealType,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    // Time and persons
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 16, color: Colors.black54),
+                        const SizedBox(width: 4),
+                        Text(
+                          meal.timeForRecipe,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.person, size: 16, color: Colors.black54),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${meal.persons}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+  
+  List<String> _extractIngredientsStrings(List<Ingredient> ingredients) {
+    return ingredients.map((ingredient) {
+      final List<String> parts = <String>[];
+      if (ingredient.emoji != null && ingredient.emoji!.isNotEmpty) {
+        parts.add(ingredient.emoji!);
+      }
+      if (ingredient.quantity != null && ingredient.quantity!.isNotEmpty) {
+        parts.add(ingredient.quantity!);
+      }
+      if (ingredient.unit != null && ingredient.unit!.isNotEmpty) {
+        parts.add(ingredient.unit!);
+      }
+      if (ingredient.name.isNotEmpty) {
+        parts.add(ingredient.name);
+      }
+      return parts.join(' ');
+    }).toList();
   }
 }
