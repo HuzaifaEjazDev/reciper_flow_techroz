@@ -732,7 +732,46 @@ class _HeroImage extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(imageAssetPath, fit: BoxFit.cover),
+                // Check if the imageAssetPath is a URL (starts with http) or a local asset
+                if (imageAssetPath.startsWith('http'))
+                  // It's a URL from imgbb, use Image.network
+                  Image.network(
+                    imageAssetPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to a default image if the network image fails to load
+                      return Image.asset(
+                        'assets/images/vegitables.jpg',
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
+                else if (imageAssetPath.startsWith('assets/'))
+                  // It's a local asset, use Image.asset
+                  Image.asset(
+                    imageAssetPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to a default image if the asset fails to load
+                      return Image.asset(
+                        'assets/images/vegitables.jpg',
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
+                else
+                  // For any other case (including empty), use the default image
+                  Image.asset(
+                    'assets/images/vegitables.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to a default image if the asset fails to load
+                      return Image.asset(
+                        'assets/images/easymakesnack1.jpg',
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  ),
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: const BoxDecoration(

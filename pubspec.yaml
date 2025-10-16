@@ -43,6 +43,7 @@ dependencies:
   shared_preferences: ^2.2.2
   # skeletonizer temporarily removed due to Canvas API incompatibility with current Flutter SDK
   skeletonizer: ^2.1.0+1
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

@@ -317,18 +317,47 @@ class _RecipeImage extends StatelessWidget {
   const _RecipeImage({required this.pathOrUrl});
   @override
   Widget build(BuildContext context) {
-    // Use the asset image since all user recipes use the same static image
-    return Image.asset(
-      'assets/images/vegitables.jpg',
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        // Fallback to a default image if the asset fails to load
-        return Image.asset(
-          'assets/images/easymakesnack1.jpg',
-          fit: BoxFit.cover,
-        );
-      },
-    );
+    // Check if the pathOrUrl is a URL (starts with http) or a local asset
+    if (pathOrUrl.startsWith('http')) {
+      // It's a URL from imgbb, use Image.network
+      return Image.network(
+        pathOrUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to a default image if the network image fails to load
+          return Image.asset(
+            'assets/images/vegitables.jpg',
+            fit: BoxFit.cover,
+          );
+        },
+      );
+    } else if (pathOrUrl.startsWith('assets/')) {
+      // It's a local asset, use Image.asset
+      return Image.asset(
+        pathOrUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to a default image if the asset fails to load
+          return Image.asset(
+            'assets/images/easymakesnack1.jpg',
+            fit: BoxFit.cover,
+          );
+        },
+      );
+    } else {
+      // For any other case (including empty), use the default image
+      return Image.asset(
+        'assets/images/vegitables.jpg',
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to a default image if the asset fails to load
+          return Image.asset(
+            'assets/images/easymakesnack1.jpg',
+            fit: BoxFit.cover,
+          );
+        },
+      );
+    }
   }
 }
 

@@ -493,6 +493,7 @@ class FirestoreRecipesService {
     required List<Map<String, dynamic>> ingredients,
     required List<String> steps,
     int minutes = 0, // Add minutes parameter
+    String imageUrl = 'assets/images/vegitables.jpg', // Add imageUrl parameter with default value
   }) async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -506,7 +507,7 @@ class FirestoreRecipesService {
       // Create the recipe data
       final Map<String, dynamic> recipeData = {
         'title': title,
-        'imageUrl': 'assets/images/vegitables.jpg',
+        'imageUrl': imageUrl, // Use the provided imageUrl or default
         'ingredients': ingredients,
         'steps': steps,
         'minutes': minutes, // Add minutes to recipe data
@@ -553,6 +554,7 @@ class FirestoreRecipesService {
     required List<Map<String, dynamic>> ingredients,
     required List<String> steps,
     required int minutes,
+    String imageUrl = 'assets/images/vegitables.jpg', // Add imageUrl parameter with default value
   }) async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -571,6 +573,7 @@ class FirestoreRecipesService {
         'ingredients': ingredients,
         'steps': steps,
         'minutes': minutes,
+        'imageUrl': imageUrl, // Add imageUrl to update
         'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
     } catch (e) {

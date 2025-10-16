@@ -5,9 +5,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:recipe_app/services/imgbb_service.dart';
 
 class CreateNewRecipeViewModel extends ChangeNotifier {
   String? imagePath;
+  String? _imageUrl; // To store the uploaded image URL
+  String? _editingImageUrl; // To store the image URL when editing
   final TextEditingController titleController = TextEditingController();
   final TextEditingController minutesController = TextEditingController(); // Add minutes controller
   String? _recipeId;
@@ -28,6 +31,12 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
     _recipeId = recipeId;
   }
 
+  // Method to set image URL when editing
+  void setImageUrlForEditing(String imageUrl) {
+    _editingImageUrl = imageUrl;
+    notifyListeners();
+  }
+
   final ImagePicker _picker = ImagePicker();
 
   Future<void> pickImage() async {
@@ -35,6 +44,8 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
       final XFile? picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
       if (picked != null) {
         imagePath = picked.path;
+        // Clear the editing image URL when a new image is picked
+        _editingImageUrl = null;
         notifyListeners();
       }
     } catch (e) {
@@ -120,6 +131,9 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
     );
   }
 
+  // Get the image URL to display (either the editing URL or the uploaded URL)
+  String? get displayImageUrl => _editingImageUrl ?? _imageUrl;
+
   // Save the recipe to Firestore
   Future<bool> saveRecipeToFirestore() async {
     // Validate title
@@ -137,6 +151,24 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
     }
 
     try {
+      // Upload image to imgbb if an image was selected
+      if (imagePath != null && imagePath!.isNotEmpty) {
+        try {
+          _imageUrl = await ImgbbService.uploadImage(imagePath!);
+          debugPrint('Image uploaded successfully. URL: $_imageUrl');
+        } catch (e) {
+          debugPrint('Error uploading image: $e');
+          // If image upload fails, we'll use the default image
+          _imageUrl = 'assets/images/vegitables.jpg';
+        }
+      } else if (_editingImageUrl != null) {
+        // If we're editing and no new image was selected, keep the existing image URL
+        _imageUrl = _editingImageUrl;
+      } else {
+        // If no image was selected, use the default image
+        _imageUrl = 'assets/images/vegitables.jpg';
+      }
+
       // Prepare ingredients as list of maps, filtering out empty entries
       final List<Map<String, dynamic>> ingredients = [];
       for (int i = 0; i < qtyControllers.length; i++) {
@@ -168,17 +200,14 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
       // If we have a recipe ID, we're updating an existing recipe
       if (_recipeId != null) {
         // Update existing recipe
-        final CollectionReference<Map<String, dynamic>> userRecipesRef =
-            FirebaseFirestore.instance.collection('users').doc(user.uid).collection('RecipesCreatedByUser');
-        
-        await userRecipesRef.doc(_recipeId).update({
-          'title': titleController.text.trim(),
-          'imageUrl': 'assets/images/vegitables.jpg',
-          'ingredients': ingredients,
-          'steps': steps,
-          'minutes': minutes, // Add minutes to update
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _firestoreService.updateUserCreatedRecipe(
+          recipeId: _recipeId!,
+          title: titleController.text.trim(),
+          ingredients: ingredients,
+          steps: steps,
+          minutes: minutes,
+          imageUrl: _imageUrl!, // Use the uploaded image URL or default
+        );
       } else {
         // Create new recipe
         await _firestoreService.saveUserCreatedRecipe(
@@ -186,6 +215,7 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
           ingredients: ingredients,
           steps: steps,
           minutes: minutes, // Add minutes to create
+          imageUrl: _imageUrl!, // Pass the image URL
         );
       }
       

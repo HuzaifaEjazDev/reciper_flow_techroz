@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -53,6 +54,11 @@ class CreateNewRecipeScreen extends StatelessWidget {
         vm.titleController.text = data['title'] ?? '';
         // Load minutes
         vm.minutesController.text = (data['minutes'] is int ? data['minutes'] : 0).toString();
+        
+        // Load image URL (for editing existing recipes with uploaded images)
+        final String imageUrl = (data['imageUrl'] ?? 'assets/images/vegitables.jpg').toString();
+        // Set the image URL in the view model
+        vm.setImageUrlForEditing(imageUrl);
         
         // Clear existing controllers
         for (final controller in vm.qtyControllers) controller.dispose();
@@ -295,25 +301,60 @@ class _ImagePickerCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12)
             ),
             clipBehavior: Clip.antiAlias,
-            child: vm.imagePath == null
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.image_outlined, size: 40, color: Colors.black38),
-                      SizedBox(height: 10),
-                      Text('Upload Recipe Image', style: TextStyle(fontSize: 18, color: Colors.black54, fontWeight: FontWeight.w600)),
-                      SizedBox(height: 4),
-                      Text('Tap to select an image', style: TextStyle(color: Colors.black38)),
-                    ],
-                  )
-                : Stack(
+            child: 
+                // Check if we have an image to display (either selected locally or editing existing)
+                (vm.imagePath != null || vm.displayImageUrl != null)
+                ? Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Even if user selects an image, we'll use the static image for all recipes
-                      Image.asset(
-                        'assets/images/vegitables.jpg',
-                        fit: BoxFit.cover,
-                      ),
+                      // Display the actual selected image or the existing image when editing
+                      if (vm.imagePath != null)
+                        // Display locally selected image
+                        Image.file(
+                          File(vm.imagePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to default image if there's an error loading the selected image
+                            return Image.asset(
+                              'assets/images/vegitables.jpg',
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                      else if (vm.displayImageUrl != null)
+                        // Display existing image when editing
+                        if (vm.displayImageUrl!.startsWith('http'))
+                          // It's a URL from imgbb, use Image.network
+                          Image.network(
+                            vm.displayImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback to default image if the network image fails to load
+                              return Image.asset(
+                                'assets/images/vegitables.jpg',
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          )
+                        else
+                          // It's a local asset, use Image.asset
+                          Image.asset(
+                            vm.displayImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback to default image if the asset fails to load
+                              return Image.asset(
+                                'assets/images/vegitables.jpg',
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          )
+                      else
+                        // Fallback to default image
+                        Image.asset(
+                          'assets/images/vegitables.jpg',
+                          fit: BoxFit.cover,
+                        ),
                       Positioned(
                         right: 8,
                         bottom: 8,
@@ -323,6 +364,16 @@ class _ImagePickerCard extends StatelessWidget {
                           child: const Text('Change', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                         ),
                       ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.image_outlined, size: 40, color: Colors.black38),
+                      SizedBox(height: 10),
+                      Text('Upload Recipe Image', style: TextStyle(fontSize: 18, color: Colors.black54, fontWeight: FontWeight.w600)),
+                      SizedBox(height: 4),
+                      Text('Tap to select an image', style: TextStyle(color: Colors.black38)),
                     ],
                   ),
           ),

@@ -213,6 +213,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           if (unit.isNotEmpty) parts.add(unit);
           if (name.isNotEmpty) parts.add(name);
           if (parts.isNotEmpty) out.add(parts.join(' '));
+        } else if (e is Ingredient) {
+          // Handle Ingredient objects by using their toString() method
+          out.add(e.toString());
         }
       }
     }
@@ -420,10 +423,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                             // Use widget.ingredients if available, otherwise fetch from Firestore
                             List<String>? ingredientsToUse = widget.ingredients;
                             if (ingredientsToUse == null || ingredientsToUse.isEmpty) {
-                              // Fetch recipe data from Firestore to get ingredients
-                              final Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
+                              // Try to fetch recipe data from different sources
+                              // First try recipes collection
+                              Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
                               if (recipeData != null) {
                                 ingredientsToUse = _extractIngredientsStrings(recipeData['ingredients']);
+                              } else {
+                                // If not found in recipes collection, try PlannedMeals sub-collection
+                                final Map<String, dynamic>? plannedMealData = await service.fetchPlannedMealById(widget.recipeId);
+                                if (plannedMealData != null) {
+                                  ingredientsToUse = _extractIngredientsStrings(plannedMealData['ingredients']);
+                                }
                               }
                             }
                             
@@ -524,10 +534,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                             // Use widget.ingredients if available, otherwise fetch from Firestore
                             List<String>? ingredientsToUse = widget.ingredients;
                             if (ingredientsToUse == null || ingredientsToUse.isEmpty) {
-                              // Fetch recipe data from Firestore to get ingredients
-                              final Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
+                              // Try to fetch recipe data from different sources
+                              // First try recipes collection
+                              Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
                               if (recipeData != null) {
                                 ingredientsToUse = _extractIngredientsStrings(recipeData['ingredients']);
+                              } else {
+                                // If not found in recipes collection, try PlannedMeals sub-collection
+                                final Map<String, dynamic>? plannedMealData = await service.fetchPlannedMealById(widget.recipeId);
+                                if (plannedMealData != null) {
+                                  ingredientsToUse = _extractIngredientsStrings(plannedMealData['ingredients']);
+                                }
                               }
                             }
                             
@@ -572,63 +589,51 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
+// parse to ingredient map for groceres
   Map<String, dynamic> _parseIngredientToMap(String s) {
     final String trimmed = s.trim();
-    if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
+    if (trimmed.isEmpty) return {'name': '', 'emoji': ''};
     
     // Split the string into parts
     final List<String> parts = trimmed.split(' ');
-    if (parts.isEmpty) return {'name': '', 'quantity': ''};
+    if (parts.isEmpty) return {'name': '', 'emoji': ''};
     
     // Check if first part is an emoji
     final String firstPart = parts[0];
     final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
     final int startIndex = hasEmoji ? 1 : 0;
     
-    // If we have enough parts, try to parse quantity and unit
+    // If we have enough parts, try to parse quantity, unit, and name
     if (parts.length > startIndex + 1) {
-      final String quantity = parts[startIndex];
-      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
+      final String emoji = parts[startIndex];
+      final String quantity = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
       final String name = parts.length > startIndex + 2 
           ? parts.sublist(startIndex + 2).join(' ') 
           : parts.sublist(startIndex + 1).join(' ');
       
       final Map<String, dynamic> result = {
         'name': name,
-        'quantity': quantity,
+        'emoji': emoji,
         'isChecked': false,
       };
       
-      // Add emoji if it exists
+      // Add emoji and unit if they exist
       if (hasEmoji) {
         result['emoji'] = firstPart;
       }
-      // Add unit if it exists
-      if (unit.isNotEmpty) {
-        result['unit'] = unit;
+      if (quantity.isNotEmpty) {
+        result['quantity'] = quantity;
       }
       
       return result;
     } else {
       // Just name and possibly emoji
-      final String fullName = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
-      
-      // Split the full name from the first space: first part is unit, rest is name
-      String unit = '';
-      String name = fullName;
-      if (fullName.isNotEmpty) {
-        final List<String> nameParts = fullName.split(' ');
-        if (nameParts.length > 1) {
-          unit = nameParts[0];
-          name = nameParts.sublist(1).join(' ');
-        }
-      }
+      final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
       
       final Map<String, dynamic> result = {
         'name': name,
         'quantity': '',
         'isChecked': false,
-        if (unit.isNotEmpty) 'unit': unit,
       };
       
       // Add emoji if it exists
@@ -641,6 +646,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
   
   /// Parse an ingredient string into an Ingredient object
+  ///recipe to db from home screen
   Ingredient _parseIngredientString(String ingredientString) {
     final String trimmed = ingredientString.trim();
     if (trimmed.isEmpty) {
@@ -658,7 +664,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
     final int startIndex = hasEmoji ? 1 : 0;
     
-    // If we have enough parts, try to parse quantity and unit
+    // If we have enough parts, try to parse quantity, unit, and name
     if (parts.length > startIndex + 1) {
       final String quantity = parts[startIndex];
       final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';

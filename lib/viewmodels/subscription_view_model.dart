@@ -147,6 +147,11 @@ class SubscriptionViewModel extends ChangeNotifier {
   // Select a plan
   void selectPlan(SubscriptionPlanModel plan) {
     _subscriptionPlan = plan;
-    notifyListeners();
+    notifyListeners(); // This ensures UI updates immediately
+  }
+
+  // Check if a plan is currently selected
+  bool isPlanSelected(SubscriptionPlanModel plan) {
+    return _subscriptionPlan?.name == plan.name;
   }
 }
