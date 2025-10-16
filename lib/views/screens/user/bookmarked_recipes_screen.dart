@@ -645,7 +645,7 @@ class _PageControls extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           vm.totalCount > 0
-              ? 'Page ${vm.currentPage} of $totalPages  •  ${vm.totalCount} total BookMarked Recipes'
+              ? 'Page ${vm.currentPage} of $totalPages'
               : 'Loading pages…',
           style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
           textAlign: TextAlign.center,

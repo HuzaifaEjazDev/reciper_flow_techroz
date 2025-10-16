@@ -390,7 +390,7 @@ class _PageControls extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           vm.totalCount > 0
-              ? 'Page ${vm.currentPage} of ${totalPages > 0 ? totalPages : vm.totalKnownPages}  •  ${vm.totalCount} total recipes'
+              ? 'Page ${vm.currentPage} of ${totalPages > 0 ? totalPages : vm.totalKnownPages} '
               : 'Loading pages…',
           style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
           textAlign: TextAlign.center,
@@ -409,7 +409,7 @@ class _SortBottomSheet extends StatelessWidget {
       builder: (context, vm, child) {
         return Container(
           color: Colors.white,
-          height: MediaQuery.of(context).size.height * 0.65, // 65% of screen height
+          // height: MediaQuery.of(context).size.height * 0.65, // 65% of screen height
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -496,9 +496,8 @@ class _SortBottomSheet extends StatelessWidget {
                                 vm.setSelectedCuisine(null);
                                 vm.setSelectedTag(null);
                                 // Don't call clearFilters here, just close the sheet
-                                Navigator.of(context).pop();
                               },
-                              child: const Text('Cancel'),
+                              child: const Text('Cancel', style: TextStyle(color: Colors.black),),
                             ),
                           ),
                           const SizedBox(width: 12),

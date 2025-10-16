@@ -143,6 +143,12 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
       throw Exception('Please enter recipe name');
     }
 
+    // Validate image (required for new recipes, optional for editing)
+    if (_recipeId == null && (imagePath == null || imagePath!.isEmpty)) {
+      debugPrint('Validation failed: no image selected');
+      throw Exception('Please select a recipe image');
+    }
+
     // Validate at least one ingredient name
     final bool hasAtLeastOneIngredient = nameControllers.any((c) => c.text.trim().isNotEmpty);
     if (!hasAtLeastOneIngredient) {

@@ -315,17 +315,17 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       nameWithUnit = trimmed;
     }
     
-    // Split nameWithUnit to get both the first part and the rest
+    // For backward compatibility, we'll keep the same return structure
+    // but the new _splitNameByFirstSpace method is used for the display format
     String actualName = nameWithUnit;
     String firstNamePart = '';
+    
     if (nameWithUnit.isNotEmpty) {
       final List<String> nameParts = nameWithUnit.split(' ');
-      firstNamePart = nameParts[0]; // Text before the first space
+      firstNamePart = nameParts.isNotEmpty ? nameParts[0] : '';
       if (nameParts.length > 1) {
-        // Show the remaining text after the first space
         actualName = nameParts.sublist(1).join(' ');
       } else {
-        // No space found, so the whole thing is the name
         actualName = nameWithUnit;
       }
     }
@@ -333,72 +333,95 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     return {'emoji': emoji, 'actualName': actualName, 'firstNamePart': firstNamePart};
   }
 
-  /// Build a row with emoji, name, quantity, and unit in the correct order
-  /// Format: Qty: [quantity] [emoji] [unit] [firstNamePart]
-  static Widget _buildIngredientRow(String fullName, String scaledQty, String unit, bool checked) {
-    // Parse the full name to extract emoji, actual name, and first name part
-    final Map<String, String> parsedName = _parseIngredientName(fullName);
-    final String emoji = parsedName['emoji'] ?? '';
-    final String actualName = parsedName['actualName'] ?? '';
-    final String firstNamePart = parsedName['firstNamePart'] ?? ''; // Text before first space
+  /// Parse ingredient name to extract the part before and after the first space
+  /// Returns a map with 'beforeFirstSpace' and 'afterFirstSpace' keys
+  static Map<String, String> _splitNameByFirstSpace(String name) {
+    final String trimmed = name.trim();
+    if (trimmed.isEmpty) return {'beforeFirstSpace': '', 'afterFirstSpace': ''};
     
-    // Format the quantity display
-    String quantityDisplay = '';
-    if (scaledQty.isNotEmpty) {
-      quantityDisplay = scaledQty;
+    final List<String> parts = trimmed.split(' ');
+    if (parts.length <= 1) {
+      // Only one part or empty, return it as beforeFirstSpace
+      return {'beforeFirstSpace': trimmed, 'afterFirstSpace': ''};
+    }
+    
+    // First part is before the first space
+    final String beforeFirstSpace = parts[0];
+    // Rest is after the first space
+    final String afterFirstSpace = parts.sublist(1).join(' ');
+    
+    return {'beforeFirstSpace': beforeFirstSpace, 'afterFirstSpace': afterFirstSpace};
+  }
+
+  /// Build a row with ingredient formatted as per requirements:
+  /// {name after first space} Spacer() Qty: {quantity from db} {unit from name field}
+  static Widget _buildIngredientRow(String fullName, String scaledQty, String unit, bool checked) {
+    // The fullName contains emoji + name (e.g., "2 kg Rice")
+    // We need to parse this to extract:
+    // - Name after first space ("Rice")
+    // - Quantity from DB (scaledQty) ("2")
+    // - Unit from name field ("kg")
+    
+    String displayName = ''; // Text after first space (e.g., "Rice")
+    String displayUnit = ''; // Unit from name field (e.g., "kg")
+    
+    // Remove emoji if present
+    String nameWithoutEmoji = fullName.trim();
+    if (nameWithoutEmoji.isNotEmpty) {
+      final String firstChar = nameWithoutEmoji.substring(0, 1);
+      final bool hasEmoji = firstChar.runes.length == 1 && firstChar.codeUnitAt(0) > 0x1F600;
+      if (hasEmoji && nameWithoutEmoji.length > 1) {
+        nameWithoutEmoji = nameWithoutEmoji.substring(1).trim();
+      }
+    }
+    
+    // Split the name by spaces to extract parts
+    final List<String> parts = nameWithoutEmoji.split(' ');
+    
+    if (parts.length >= 2) {
+      // First part is the quantity in the name (e.g., "2")
+      // Second part is the unit in the name (e.g., "kg")
+      // Remaining parts are the actual name (e.g., "Rice")
+      displayUnit = parts[1];
+      displayName = parts.length > 2 ? parts.sublist(2).join(' ') : parts[1];
+      
+      // If we only have two parts, the second part is the name
+      if (parts.length == 2) {
+        displayName = parts[1];
+        displayUnit = '';
+      }
+    } else if (parts.length == 1) {
+      // Only one part, treat it as the name
+      displayName = parts[0];
+    }
+    
+    // Build the full quantity display
+    String quantityDisplay = scaledQty; // Quantity from DB
+    if (displayUnit.isNotEmpty) {
+      quantityDisplay = '$scaledQty $displayUnit'; // e.g., "2 kg"
     }
     
     return Row(
       children: [
-            Text(
-            '$actualName',
-            style: TextStyle(
-              color: Colors.black87,
-              decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-              fontWeight: FontWeight.w500,
-            ),
+        // Show the name (text after the first space)
+        Text(
+          displayName,
+          style: TextStyle(
+            color: Colors.black87,
+            decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+            fontWeight: FontWeight.w500,
           ),
-        
+        ),
         Spacer(),
-        // Show quantity first
-        if (quantityDisplay.isNotEmpty)
-          Text(
-            'Qty: $unit',
-            style: TextStyle(
-              color: Colors.black87,
-              decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-              fontWeight: FontWeight.w500,
-            ),
+        // Show "Qty: " followed by the quantity and unit from DB
+        Text(
+          'Qty: $quantityDisplay',
+          style: TextStyle(
+            color: Colors.black87,
+            decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+            fontWeight: FontWeight.w500,
           ),
-        // Show emoji after quantity
-        // if (emoji.isNotEmpty)
-        //   Text(
-        //     ' $emoji',
-        //     style: TextStyle(
-        //       color: Colors.black87,
-        //       decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-        //     ),
-        //   ),
-        // Show unit after emoji
-        // if (unit.isNotEmpty)
-        //   Text(
-        //     ' $unit',
-        //     style: TextStyle(
-        //       color: Colors.black87,
-        //       decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-        //       fontWeight: FontWeight.w500,
-        //     ),
-        //   ),
-        // Show the first name part (text before first space)
-        if (firstNamePart.isNotEmpty)
-          Text(
-            ' $firstNamePart',
-            style: TextStyle(
-              color: Colors.black87,
-              decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+        ),
         const SizedBox(width: 8),
       ],
     );

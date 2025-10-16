@@ -413,6 +413,7 @@ class _IngredientRow extends StatelessWidget {
             ),
             child: TextField(
               controller: vm.qtyControllers[index],
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 border: InputBorder.none, 
                 hintText: 'Qty', 

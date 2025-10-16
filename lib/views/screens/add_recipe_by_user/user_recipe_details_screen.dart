@@ -280,7 +280,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                             final List<Ingredient> ingredientList = recipe.ingredients
                                 .map((e) => Ingredient(
                                   name: e['name'].toString(),
-                                  quantity: e['quantity']?.toString(),
+                                  emoji: e['quantity']?.toString(), // Changed from quantity to emoji
                                 ))
                                 .toList();
                             

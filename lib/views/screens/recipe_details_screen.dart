@@ -674,16 +674,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       
       return Ingredient(
         name: name,
-        quantity: quantity,
-        unit: unit.isNotEmpty ? unit : null,
-        emoji: hasEmoji ? firstPart : null,
+        emoji: quantity, // Changed from quantity to emoji
+        quantity: unit.isNotEmpty ? unit : null, // Changed from unit to quantity
       );
     } else {
       // Just name and possibly emoji
       final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
       return Ingredient(
         name: name,
-        emoji: hasEmoji ? firstPart : null,
+        emoji: hasEmoji ? firstPart : null, // Keep emoji field
       );
     }
   }

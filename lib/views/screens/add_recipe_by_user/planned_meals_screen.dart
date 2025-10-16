@@ -288,8 +288,8 @@ class _PlannedMealCard extends StatelessWidget {
       if (ingredient.quantity != null && ingredient.quantity!.isNotEmpty) {
         parts.add(ingredient.quantity!);
       }
-      if (ingredient.unit != null && ingredient.unit!.isNotEmpty) {
-        parts.add(ingredient.unit!);
+      if (ingredient.quantity != null && ingredient.quantity!.isNotEmpty) {
+        parts.add(ingredient.quantity!);
       }
       if (ingredient.name.isNotEmpty) {
         parts.add(ingredient.name);

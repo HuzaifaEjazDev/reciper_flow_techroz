@@ -75,32 +75,28 @@ class RecipeData {
 @immutable
 class Ingredient {
   final String name;
-  final String? quantity;
-  final String? unit;
   final String? emoji;
+  final String? quantity;
 
   const Ingredient({
     required this.name,
-    this.quantity,
-    this.unit,
     this.emoji,
+    this.quantity,
   });
 
   factory Ingredient.fromMap(Map<String, dynamic> data) {
     return Ingredient(
       name: data['name']?.toString() ?? '',
-      quantity: data['quantity']?.toString(),
-      unit: data['unit']?.toString(),
       emoji: data['emoji']?.toString(),
+      quantity: data['quantity']?.toString(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      if (quantity != null) 'quantity': quantity,
-      if (unit != null) 'unit': unit,
       if (emoji != null) 'emoji': emoji,
+      if (quantity != null) 'quantity': quantity,
     };
   }
 
@@ -109,7 +105,6 @@ class Ingredient {
     final List<String> parts = <String>[];
     if (emoji != null && emoji!.isNotEmpty) parts.add(emoji!);
     if (quantity != null && quantity!.isNotEmpty) parts.add(quantity!);
-    if (unit != null && unit!.isNotEmpty) parts.add(unit!);
     parts.add(name);
     return parts.join(' ');
   }
