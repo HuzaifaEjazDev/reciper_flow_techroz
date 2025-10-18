@@ -47,28 +47,30 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDQIj_zg349hkceXJuxDa_I03cQXZIiXGI',
-    appId: '1:1072525701664:web:9626f22ea80835d1f34245',
-    messagingSenderId: '1072525701664',
-    projectId: 'recipeflow-dev',
-    authDomain: 'recipeflow-dev.firebaseapp.com',
-    storageBucket: 'recipeflow-dev.firebasestorage.app',
+    apiKey: 'AIzaSyAx_OJQ1M8SM909WV_YEDaEDT_NIyuePNM',
+    appId: '1:744938288137:web:477e4b67d7f60c846eb4d8',
+    messagingSenderId: '744938288137',
+    projectId: 'recipeflow-7212a',
+    authDomain: 'recipeflow-7212a.firebaseapp.com',
+    storageBucket: 'recipeflow-7212a.firebasestorage.app',
+    measurementId: 'G-MMNGRS9Z0S',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAhBEjv4N2KqCOG81hOisNtLlWaDXX-mkA',
-    appId: '1:1072525701664:android:2c001a233a056f49f34245',
-    messagingSenderId: '1072525701664',
-    projectId: 'recipeflow-dev',
-    storageBucket: 'recipeflow-dev.firebasestorage.app',
+    apiKey: 'AIzaSyDkEXxjIl93jEV5D5OBDh8rmZnH2Yj_jN8',
+    appId: '1:744938288137:android:b63f0385138791cf6eb4d8',
+    messagingSenderId: '744938288137',
+    projectId: 'recipeflow-7212a',
+    storageBucket: 'recipeflow-7212a.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCePDqCSNslkcC7BKtFF9CTDFbiZl1pZmk',
-    appId: '1:1072525701664:ios:518aedf057666c6df34245',
-    messagingSenderId: '1072525701664',
-    projectId: 'recipeflow-dev',
-    storageBucket: 'recipeflow-dev.firebasestorage.app',
+    apiKey: 'AIzaSyC6O15CQBzfbacWoVKQGazKgFO7rDQb4kU',
+    appId: '1:744938288137:ios:73d82e79fffaa3306eb4d8',
+    messagingSenderId: '744938288137',
+    projectId: 'recipeflow-7212a',
+    storageBucket: 'recipeflow-7212a.firebasestorage.app',
+    iosClientId: '744938288137-ou1p6oon38lpppngk0gm3smg9sp4blmn.apps.googleusercontent.com',
     iosBundleId: 'com.example.recipeApp',
   );
 }

@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "744938288137",
+    "project_id": "recipeflow-7212a",
+    "storage_bucket": "recipeflow-7212a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744938288137:android:91df9b40a001fcaa6eb4d8",
+        "android_client_info": {
+          "package_name": "com.example.admin_recipe_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744938288137-9rmg4oi2rl8rk7ggv8rmci96m0on7e5f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkEXxjIl93jEV5D5OBDh8rmZnH2Yj_jN8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744938288137-9rmg4oi2rl8rk7ggv8rmci96m0on7e5f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "744938288137-fl16s19aadi92sk1j9er08q06mmfcp8l.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.adminRecipeApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744938288137:android:b63f0385138791cf6eb4d8",
+        "android_client_info": {
+          "package_name": "com.example.recipe_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744938288137-9rmg4oi2rl8rk7ggv8rmci96m0on7e5f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkEXxjIl93jEV5D5OBDh8rmZnH2Yj_jN8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744938288137-9rmg4oi2rl8rk7ggv8rmci96m0on7e5f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "744938288137-fl16s19aadi92sk1j9er08q06mmfcp8l.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.adminRecipeApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

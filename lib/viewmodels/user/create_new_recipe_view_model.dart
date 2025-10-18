@@ -5,7 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:recipe_app/services/imgbb_service.dart';
+// Remove imgbb service import
+import 'package:recipe_app/services/firebase_storage_service.dart'; // Add Firebase Storage service
 
 class CreateNewRecipeViewModel extends ChangeNotifier {
   String? imagePath;
@@ -132,7 +133,9 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
   }
 
   // Get the image URL to display (either the editing URL or the uploaded URL)
-  String? get displayImageUrl => _editingImageUrl ?? _imageUrl;
+  String? get displayImageUrl => (_editingImageUrl != null && _editingImageUrl!.isNotEmpty) 
+      ? _editingImageUrl 
+      : (_imageUrl != null && _imageUrl!.isNotEmpty ? _imageUrl : null);
 
   // Save the recipe to Firestore
   Future<bool> saveRecipeToFirestore() async {
@@ -157,10 +160,10 @@ class CreateNewRecipeViewModel extends ChangeNotifier {
     }
 
     try {
-      // Upload image to imgbb if an image was selected
+      // Upload image to Firebase Storage if an image was selected
       if (imagePath != null && imagePath!.isNotEmpty) {
         try {
-          _imageUrl = await ImgbbService.uploadImage(imagePath!);
+          _imageUrl = await FirebaseStorageService.uploadImage(imagePath!);
           debugPrint('Image uploaded successfully. URL: $_imageUrl');
         } catch (e) {
           debugPrint('Error uploading image: $e');

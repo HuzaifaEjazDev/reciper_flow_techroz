@@ -36,14 +36,16 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   image_picker: ^1.0.7
-  firebase_core:
-  cloud_firestore:
-  firebase_auth:
+  firebase_core: ^4.1.1
+  cloud_firestore: ^6.0.2
+  firebase_auth: ^6.1.0
   google_fonts: ^6.1.0
   shared_preferences: ^2.2.2
   # skeletonizer temporarily removed due to Canvas API incompatibility with current Flutter SDK
   skeletonizer: ^2.1.0+1
   http: ^1.2.2
+  firebase_storage: ^13.0.3
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

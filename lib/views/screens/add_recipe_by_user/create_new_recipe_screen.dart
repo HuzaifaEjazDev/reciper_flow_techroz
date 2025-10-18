@@ -321,7 +321,7 @@ class _ImagePickerCard extends StatelessWidget {
                             );
                           },
                         )
-                      else if (vm.displayImageUrl != null)
+                      else if (vm.displayImageUrl != null && vm.displayImageUrl!.isNotEmpty)
                         // Display existing image when editing
                         if (vm.displayImageUrl!.startsWith('http'))
                           // It's a URL from imgbb, use Image.network

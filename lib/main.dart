@@ -2,8 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:recipe_app/viewmodels/subscription_view_model.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
-import 'firebase_options.dart';
-import 'package:recipe_app/viewmodels/user/home_view_model.dart';
+  import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
@@ -12,9 +11,9 @@ import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
   // Reset the random value for recommended recipes when app starts
   // HomeViewModel.resetRandomValue();
   runApp(const MyApp());

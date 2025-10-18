@@ -203,7 +203,7 @@ class _PlannedMealCard extends StatelessWidget {
                       const ColoredBox(color: Color(0xFFE5E7EB)),
                   )
                   : Image.asset(
-                      meal.recipeImage,
+                      meal.recipeImage.isEmpty ? 'assets/images/easymakesnack1.jpg' : meal.recipeImage,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => 
                           const ColoredBox(color: Color(0xFFE5E7EB)),

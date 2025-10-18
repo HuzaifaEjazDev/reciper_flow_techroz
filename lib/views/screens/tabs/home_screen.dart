@@ -439,13 +439,13 @@ class _SmallDishCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: imageAssetPath.startsWith('http')
+            child: dish != null && dish!.imageAssetPath.startsWith('http')
                 ? Image.network(
-                    imageAssetPath,
+                    dish!.imageAssetPath,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
                   )
-                : Image.asset(imageAssetPath, fit: BoxFit.cover),
+                : Image.asset(dish != null && dish!.imageAssetPath.isNotEmpty ? dish!.imageAssetPath : 'assets/images/dish/dish1.jpg', fit: BoxFit.cover),
           ),
           Positioned.fill(child: Container(color: Colors.black.withOpacity(0.12))),
           // Title just above the bottom info bar
