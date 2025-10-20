@@ -1,10 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:recipe_app/models/meal_plan.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -47,6 +49,50 @@ class AuthService {
       
       return result.user;
     } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Sign in with Google
+  Future<User?> signInWithGoogle() async {
+    try {
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
+      // Obtain the auth details from the request
+      if (googleUser == null) {
+        // User canceled the sign-in
+        return null;
+      }
+      
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      
+      // Sign in to Firebase with the Google credential
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      
+      final User? user = userCredential.user;
+      
+      // If this is a new user, create their document in Firestore
+      if (userCredential.additionalUserInfo?.isNewUser == true && user != null) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': user.email,
+          'name': user.displayName,
+          'photoUrl': user.photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'onBoardingDone': false,
+        });
+      }
+      
+      return user;
+    } catch (e) {
+      print('Google Sign-In Error: $e');
       rethrow;
     }
   }
@@ -120,6 +166,7 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     await _auth.signOut();
+    await _googleSignIn.signOut();
   }
 
   // Send password reset email
@@ -168,6 +215,8 @@ class AuthService {
       await _firestore.collection('users').doc(user.uid).delete().catchError((_) {});
       // Delete auth user (may require recent login)
       await user.delete();
+      // Sign out from Google as well
+      await _googleSignIn.signOut();
     } on FirebaseAuthException catch (e) {
       // Propagate to caller for UX handling (e.g., re-auth required)
       rethrow;

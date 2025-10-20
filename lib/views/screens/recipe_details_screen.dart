@@ -5,6 +5,7 @@ import 'package:recipe_app/models/meal_plan.dart';
 import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
+import 'package:share_plus/share_plus.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final String title;
@@ -128,6 +129,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                           onGroceriesTap: () => _showGroceryDialog(context),
                           fromGroceriesScreen: widget.fromGroceriesScreen,
                           fromBookmarksScreen: widget.fromBookmarksScreen,
+                          onShareTap: () => _shareRecipe(
+                            context,
+                            title.isEmpty ? widget.title : title,
+                            minutes,
+                            ingredients,
+                            steps,
+                            imageUrl.isEmpty ? (widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath) : imageUrl,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Padding(
@@ -589,6 +598,64 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
+/// share functon of recipies
+  Future<void> _shareRecipe(BuildContext context, String title, int minutes, List<String> ingredients, List<String> steps, String imageUrl) async {
+    // Format the recipe data as text
+    final StringBuffer buffer = StringBuffer();
+    
+    // Add title
+    buffer.writeln('Recipe: $title');
+    buffer.writeln('');
+    
+    // Add time
+    if (minutes > 0) {
+      buffer.writeln('Estimated Time: $minutes minutes');
+      buffer.writeln('');
+    }
+    
+    // Add ingredients section
+    buffer.writeln('Ingredients:');
+    buffer.writeln('-------------');
+    if (ingredients.isEmpty) {
+      buffer.writeln('No ingredients available');
+    } else {
+      for (int i = 0; i < ingredients.length; i++) {
+        buffer.writeln('${i + 1}. ${ingredients[i]}');
+      }
+    }
+    buffer.writeln('');
+    
+    // Add steps section
+    buffer.writeln('Cooking Steps:');
+    buffer.writeln('--------------');
+    if (steps.isEmpty) {
+      buffer.writeln('No steps available');
+    } else {
+      for (int i = 0; i < steps.length; i++) {
+        buffer.writeln('${i + 1}. ${steps[i]}');
+      }
+    }
+    
+    // Add image URL at the end
+    if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
+      buffer.writeln('');
+      buffer.writeln('Image: $imageUrl');
+    }
+    
+    // Share the text
+    try {
+      await Share.share(buffer.toString());
+    } catch (e) {
+      // Handle MissingPluginException or other errors
+      debugPrint('Error sharing recipe: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to share recipe. Please try again.')),
+        );
+      }
+    }
+  }
+
 // parse to ingredient map for groceres
   Map<String, dynamic> _parseIngredientToMap(String s) {
     final String trimmed = s.trim();
@@ -762,6 +829,8 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback? onGroceriesTap;
   final bool fromGroceriesScreen;
   final bool fromBookmarksScreen;
+  final VoidCallback onShareTap;
+
   const _ActionRow({
     required this.onMealPlanTap,
     required this.recipeId,
@@ -771,6 +840,7 @@ class _ActionRow extends StatelessWidget {
     this.onGroceriesTap,
     this.fromGroceriesScreen = false,
     this.fromBookmarksScreen = false,
+    required this.onShareTap,
   });
 
   @override
@@ -785,7 +855,7 @@ class _ActionRow extends StatelessWidget {
           fromGroceriesScreen
               ? const _DisabledActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries')
               : _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries', onTap: onGroceriesTap),
-          const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
+          _ActionItem(icon: Icons.ios_share_outlined, label: 'Share', onTap: onShareTap),
         ],
       ),
     );

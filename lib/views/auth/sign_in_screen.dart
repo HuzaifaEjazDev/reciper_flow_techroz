@@ -86,6 +86,33 @@ class _SignInScreenState extends State<SignInScreen> {
     return false;
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    final success = await context.read<AuthViewModel>().signInWithGoogle();
+    if (success) {
+      // Check if user has completed onboarding
+      final hasCompletedOnboarding = await _hasCompletedOnboarding();
+      
+      if (hasCompletedOnboarding) {
+        // Skip onboarding and go directly to main screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+          (route) => false,
+        );
+      } else {
+        // User hasn't completed onboarding, start from goals screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const GoalsScreen()),
+          (route) => false,
+        );
+      }
+    } else {
+      final msg = context.read<AuthViewModel>().errorMessage ?? 'Google Sign-In failed';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(duration: const Duration(seconds: 3), content: Text(msg)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
@@ -238,7 +265,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     },
                     child: const Text('Sign Up'),
                 style: TextButton.styleFrom(
-                      foregroundColor: Colors.blue, // Explicitly set text color to black
+                      foregroundColor: Colors.deepOrange, // Explicitly set text color to black
                     ),
                   ),
                 ],
@@ -249,14 +276,13 @@ class _SignInScreenState extends State<SignInScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: authViewModel.isLoading ? null : _handleGoogleSignIn,
                       icon: const Icon(Icons.g_mobiledata, color: Colors.red),
-                      label: const Text('Google', style: TextStyle(color: Colors.black),),
+                      label: Text(authViewModel.isLoading ? 'Signing in with Google...' : 'Google'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: Color(0xFFD1D5DB)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        // foregroundColor: Colors.black, // Set text color to black
                       ),
                     ),
                   ),

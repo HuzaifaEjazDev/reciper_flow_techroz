@@ -7,6 +7,7 @@ import 'package:recipe_app/services/firestore_recipes_service.dart';
 import 'package:recipe_app/viewmodels/groceries_viewmodel.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/models/meal_plan.dart';
+import 'package:share_plus/share_plus.dart';
 
 class UserRecipeDetailsScreen extends StatelessWidget {
   final String recipeId;
@@ -355,8 +356,6 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
     if (vm.recipe == null) return;
     
     int servings = 1;
-    
-    // Show bottom sheet instead of dialog
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -372,7 +371,6 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with drag handle
                   Container(
                     height: 4,
                     width: 40,
@@ -397,12 +395,22 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: () => setModalState(() { if (servings > 1) servings--; }),
+                        onPressed: () => setModalState(() {
+                          if (servings > 1) servings--;
+                        }),
                       ),
-                      Text('$servings', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                      Text(
+                        '$servings',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () => setModalState(() { servings++; }),
+                        onPressed: () => setModalState(() {
+                          servings++;
+                        }),
                       ),
                     ],
                   ),
@@ -419,58 +427,49 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                       ),
                       ElevatedButton(
                         onPressed: () async {
-                          // Pass the recipe data directly instead of trying to access through Provider
-                          final recipe = vm.recipe!;
-                          
-                          final service = FirestoreRecipesService();
-                          final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
-                          for (final ingredient in recipe.ingredients) {
-                            // Extract all fields from the ingredient map
-                            final Map<String, dynamic> parsedIngredient = <String, dynamic>{
-                              'name': ingredient['name']?.toString() ?? '',
-                              'quantity': ingredient['quantity']?.toString() ?? '',
-                              'isChecked': false,
-                            };
-                            
-                            // Add unit field if it exists
-                            if (ingredient['unit'] != null) {
-                              parsedIngredient['unit'] = ingredient['unit'].toString();
-                            }
-                            
-                            // Add emoji field if it exists
-                            if (ingredient['emoji'] != null) {
-                              parsedIngredient['emoji'] = ingredient['emoji'].toString();
-                            }
-                            
-                            // Add the parsed ingredient with isChecked set to false
-                            ingMaps.add(parsedIngredient);
-                          }
-                          
-                          await service.saveGroceryRecipe(
-                            title: recipe.title,
-                            imageUrl: recipe.imageUrl,
-                            minutes: recipe.minutes,
-                            servings: servings,
-                            ingredients: ingMaps,
-                          );
-                          
-                          // Refresh the groceries screen data
                           try {
+                            final service = FirestoreRecipesService();
+                            final List<Map<String, dynamic>> ingMaps = [];
+                            
+                            // Convert ingredients to the format expected by saveGroceryRecipe
+                            for (final ingredient in vm.recipe!.ingredients) {
+                              ingMaps.add({
+                                'name': ingredient['name'],
+                                'quantity': ingredient['quantity'],
+                                'unit': ingredient['unit'] ?? '',
+                                'isChecked': false,
+                              });
+                            }
+                            
+                            await service.saveGroceryRecipe(
+                              title: vm.recipe!.title,
+                              imageUrl: vm.recipe!.imageUrl,
+                              minutes: vm.recipe!.minutes,
+                              servings: servings,
+                              ingredients: ingMaps,
+                            );
+                            
                             final groceriesViewModel = Provider.of<GroceriesViewModel>(context, listen: false);
                             await groceriesViewModel.refreshRecipes();
+                            
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Added to Groceries')),
+                              );
+                            }
                           } catch (e) {
-                            // If we can't refresh the groceries, it's not critical
-                            debugPrint('Could not refresh groceries: $e');
-                          }
-                          
-                          if (context.mounted) {
-                            Navigator.of(context).pop(); // Close bottom sheet
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Error adding to Groceries')),
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF7F00), // Teal orange color
-                          foregroundColor: Colors.white, // White text color
+                          backgroundColor: AppColors.primary500,
+                          foregroundColor: Colors.white,
                         ),
                         child: const Text('Save'),
                       ),
@@ -484,6 +483,62 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
         );
       },
     );
+  }
+
+  // Add share functionality
+  Future<void> _shareRecipe(String title, int minutes, List<Map<String, dynamic>> ingredients, List<String> steps, String imageUrl) async {
+    // Format the recipe data as text
+    final StringBuffer buffer = StringBuffer();
+    
+    // Add title
+    buffer.writeln('Recipe: $title');
+    buffer.writeln('');
+    
+    // Add time
+    if (minutes > 0) {
+      buffer.writeln('Estimated Time: $minutes minutes');
+      buffer.writeln('');
+    }
+    
+    // Add ingredients section
+    buffer.writeln('Ingredients:');
+    buffer.writeln('-------------');
+    if (ingredients.isEmpty) {
+      buffer.writeln('No ingredients available');
+    } else {
+      for (int i = 0; i < ingredients.length; i++) {
+        final ingredient = ingredients[i];
+        final quantity = ingredient['quantity'] ?? '';
+        final unit = ingredient['unit'] ?? '';
+        final name = ingredient['name'] ?? '';
+        buffer.writeln('${i + 1}. $quantity $unit $name'.trim());
+      }
+    }
+    buffer.writeln('');
+    
+    // Add steps section
+    buffer.writeln('Cooking Steps:');
+    buffer.writeln('--------------');
+    if (steps.isEmpty) {
+      buffer.writeln('No steps available');
+    } else {
+      for (int i = 0; i < steps.length; i++) {
+        buffer.writeln('${i + 1}. ${steps[i]}');
+      }
+    }
+    
+    // Share the text
+    try {
+      await Share.share(buffer.toString());
+    } catch (e) {
+      // Handle MissingPluginException or other errors
+      debugPrint('Error sharing recipe: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to share recipe. Please try again.')),
+        );
+      }
+    }
   }
 
   Map<String, dynamic> _parseIngredientToMap(String s) {
@@ -642,6 +697,13 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                     minutes: recipe.minutes,
                     onMealPlanTap: _showMealPlanDialog,
                     onGroceriesTap: _showGroceryDialog,
+                    onShareTap: () => _shareRecipe(
+                      recipe.title,
+                      recipe.minutes,
+                      recipe.ingredients,
+                      recipe.steps,
+                      recipe.imageUrl,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Padding(
@@ -681,10 +743,21 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                           : recipe.ingredients
                               .asMap()
                               .entries
-                              .map((entry) => _IngredientTile(
-                                    name: '${entry.key + 1}. ${entry.value['quantity']} ${entry.value['name']}',
-                                    note: '',
-                                  ))
+                              .map((entry) {
+                                // Build the ingredient string with all components
+                                final quantity = entry.value['quantity'] ?? '';
+                                final unit = entry.value['unit'] ?? '';
+                                final name = entry.value['name'] ?? '';
+                                
+                                // Combine components, avoiding extra spaces
+                                final parts = [quantity, unit, name].where((s) => s.toString().isNotEmpty).toList();
+                                final ingredientText = parts.join(' ');
+                                
+                                return _IngredientTile(
+                                  name: ingredientText,
+                                  note: '',
+                                );
+                              })
                               .toList(),
                     ),
                   ),
@@ -817,6 +890,7 @@ class _ActionRow extends StatelessWidget {
   final int minutes;
   final VoidCallback onMealPlanTap;
   final VoidCallback onGroceriesTap;
+  final VoidCallback onShareTap; // Add this line
   
   const _ActionRow({
     required this.recipeId,
@@ -825,6 +899,7 @@ class _ActionRow extends StatelessWidget {
     required this.minutes,
     required this.onMealPlanTap,
     required this.onGroceriesTap,
+    required this.onShareTap, // Add this line
   });
 
   @override
@@ -845,8 +920,8 @@ class _ActionRow extends StatelessWidget {
             label: 'Groceries',
             onTap: onGroceriesTap,
           ),
-          const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
-          const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
+          _ActionItem(icon: Icons.ios_share_outlined, label: 'Share', onTap: onShareTap), // Update this line
+          // Removed Nutrition button
         ],
       ),
     );

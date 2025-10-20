@@ -51,6 +51,25 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  // Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final user = await _authService.signInWithGoogle();
+      _isLoading = false;
+      notifyListeners();
+      return user != null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Save a meal plan for the current user under PlannedMeals subcollection
   Future<bool> saveMealPlan(DayPlan dayPlan) async {
     _isLoading = true;

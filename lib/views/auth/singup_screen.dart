@@ -29,6 +29,22 @@ class _SingUpState extends State<SingUp> {
     super.dispose();
   }
 
+  Future<void> _handleGoogleSignUp() async {
+    final success = await context.read<AuthViewModel>().signInWithGoogle();
+    if (success) {
+      // For new users, navigate to goals screen for onboarding
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const GoalsScreen()),
+        (route) => false,
+      );
+    } else {
+      final msg = context.read<AuthViewModel>().errorMessage ?? 'Google Sign-Up failed';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(duration: const Duration(seconds: 3), content: Text(msg)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
@@ -55,7 +71,7 @@ class _SingUpState extends State<SingUp> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Join RecipeApp to discover and share amazing recipes.',
+                  'Join RecipeFlow to discover and share amazing recipes.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -222,7 +238,7 @@ class _SingUpState extends State<SingUp> {
                       },
                       child: const Text('Sign In'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.black, // Explicitly set text color to black
+                        foregroundColor: Colors.deepOrange, // Explicitly set text color to black
                       ),
                     ),
                   ],
@@ -233,9 +249,9 @@ class _SingUpState extends State<SingUp> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: authViewModel.isLoading ? null : _handleGoogleSignUp,
                         icon: const Icon(Icons.g_mobiledata, color: Colors.red),
-                        label: const Text('Google'),
+                        label: Text(authViewModel.isLoading ? 'Signing...' : 'Google'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Color(0xFFD1D5DB)),
