@@ -439,12 +439,12 @@ class _SortBottomSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     
-                    // Debug info
-                    Text(
-                      'Meal Types: ${vm.mealTypes.length}, Diets: ${vm.diets.length}, Cuisines: ${vm.cuisines.length}, Tags: ${vm.tags.length}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 8),
+                    // // Debug info
+                    // Text(
+                    //   'Meal Types: ${vm.mealTypes.length}, Diets: ${vm.diets.length}, Cuisines: ${vm.cuisines.length}, Tags: ${vm.tags.length}',
+                    //   style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    // ),
+                    // const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -567,7 +567,7 @@ class _ChipsExpansionTile extends StatelessWidget {
             Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
             const SizedBox(height: 2),
             Text(
-              selected ?? (options.isEmpty ? 'No options available' : 'Select'), 
+              selected ?? (options.isEmpty ? 'Loading...' : 'Select'), 
               style: TextStyle(
                 color: options.isEmpty ? Colors.red : Colors.black54,
               ),
@@ -579,7 +579,7 @@ class _ChipsExpansionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: const Text(
-                'Wait for options to load.../ Check Firestore configuration.',
+                'Wait for options to load...',
                 style: TextStyle(color: Colors.orange, fontStyle: FontStyle.italic),
               ),
             )

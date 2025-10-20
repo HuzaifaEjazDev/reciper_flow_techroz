@@ -786,7 +786,6 @@ class _ActionRow extends StatelessWidget {
               ? const _DisabledActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries')
               : _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries', onTap: onGroceriesTap),
           const _ActionItem(icon: Icons.ios_share_outlined, label: 'Share'),
-          const _ActionItem(icon: Icons.restaurant_menu_outlined, label: 'Nutrition'),
         ],
       ),
     );
