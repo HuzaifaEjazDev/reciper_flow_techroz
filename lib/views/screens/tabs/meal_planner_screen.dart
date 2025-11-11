@@ -143,8 +143,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                             children: [
                               // test button removed
                               
-                              // Dynamically generate sections for all meal types
-                              ...vm.mealTypes.map((mealType) {
+                              // Display only Breakfast, Lunch, and Dinner meal types
+                              ...['Breakfast', 'Lunch', 'Dinner'].map((mealType) {
                                 // Get all meal entries for this meal type on the selected day
                                 final List<MealEntry> entries = vm.selectedDay?.mealsOfType(mealType) ?? const <MealEntry>[];
 

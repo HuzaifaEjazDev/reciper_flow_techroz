@@ -234,7 +234,7 @@ class _AdminRecipeCard extends StatelessWidget {
           Navigator.of(context).pop(result);
         }
       },
-      child: Container(
+    child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
