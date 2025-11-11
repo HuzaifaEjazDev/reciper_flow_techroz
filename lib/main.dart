@@ -1,8 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:recipe_app/firebase_options.dart';
 import 'package:recipe_app/viewmodels/subscription_view_model.dart';
 import 'package:recipe_app/views/screens/auth_wrapper.dart';
-  import 'package:recipe_app/viewmodels/user/home_view_model.dart';
+import 'package:recipe_app/viewmodels/user/home_view_model.dart';
 import 'package:recipe_app/viewmodels/user/meal_planner_view_model.dart';
 import 'package:recipe_app/viewmodels/user/my_recipes_view_model.dart';
 import 'package:recipe_app/viewmodels/auth_view_model.dart';
@@ -11,9 +12,9 @@ import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp();
-  }
+  // if (Firebase.apps.isEmpty) {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // }
   // Reset the random value for recommended recipes when app starts
   // HomeViewModel.resetRandomValue();
   runApp(const MyApp());
@@ -28,10 +29,18 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<AuthViewModel>(create: (_) => AuthViewModel()),
         ChangeNotifierProvider<HomeViewModel>(create: (_) => HomeViewModel()),
-        ChangeNotifierProvider<MealPlannerViewModel>(create: (_) => MealPlannerViewModel()),
-        ChangeNotifierProvider<MyRecipesViewModel>(create: (_) => MyRecipesViewModel()),
-        ChangeNotifierProvider<GroceriesViewModel>(create: (_) => GroceriesViewModel()),
-        ChangeNotifierProvider<SubscriptionViewModel>(create: (_) => SubscriptionViewModel()),
+        ChangeNotifierProvider<MealPlannerViewModel>(
+          create: (_) => MealPlannerViewModel(),
+        ),
+        ChangeNotifierProvider<MyRecipesViewModel>(
+          create: (_) => MyRecipesViewModel(),
+        ),
+        ChangeNotifierProvider<GroceriesViewModel>(
+          create: (_) => GroceriesViewModel(),
+        ),
+        ChangeNotifierProvider<SubscriptionViewModel>(
+          create: (_) => SubscriptionViewModel(),
+        ),
       ],
       child: MaterialApp(
         title: 'Recipe App',

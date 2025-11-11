@@ -11,7 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 class UserRecipeDetailsScreen extends StatelessWidget {
   final String recipeId;
-  
+
   const UserRecipeDetailsScreen({super.key, required this.recipeId});
 
   @override
@@ -32,7 +32,7 @@ class _UserRecipeDetailsView extends StatefulWidget {
 
 class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
   String? _selectedTime;
-  
+
   // Show delete confirmation dialog
   void _showDeleteConfirmationDialog(UserRecipeDetailsViewModel vm) {
     showDialog(
@@ -41,16 +41,16 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
         return AlertDialog(
           backgroundColor: Colors.white,
           title: const Text('Delete Recipe'),
-          content: const Text('Are you sure you want to delete this recipe? This action cannot be undone.'),
+          content: const Text(
+            'Are you sure you want to delete this recipe? This action cannot be undone.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
               },
               child: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.black,
-              ),
+              style: TextButton.styleFrom(foregroundColor: Colors.black),
             ),
             TextButton(
               onPressed: () async {
@@ -58,9 +58,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                 await _deleteRecipe(vm); // Delete the recipe
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
             ),
           ],
         );
@@ -72,7 +70,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
   Future<void> _deleteRecipe(UserRecipeDetailsViewModel vm) async {
     try {
       final bool success = await vm.deleteRecipe();
-      
+
       if (success) {
         // Show success message
         if (mounted) {
@@ -85,18 +83,24 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
       // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to delete recipe. Please try again.')),
+          const SnackBar(
+            content: Text('Failed to delete recipe. Please try again.'),
+          ),
         );
       }
     }
   }
 
   Future<void> _showMealPlanDialog() async {
-    final UserRecipeDetailsViewModel vm = Provider.of<UserRecipeDetailsViewModel>(context, listen: false);
+    final UserRecipeDetailsViewModel vm =
+        Provider.of<UserRecipeDetailsViewModel>(context, listen: false);
     if (vm.recipe == null) return;
-    
+
     TimeOfDay _parseTimeOfDay(String s) {
-      final RegExp re = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false);
+      final RegExp re = RegExp(
+        r'^(\d{1,2}):(\d{2})\s*(AM|PM)$',
+        caseSensitive: false,
+      );
       final Match? m = re.firstMatch(s.trim());
       if (m == null) return TimeOfDay.now();
       int hour = int.tryParse(m.group(1) ?? '') ?? 0;
@@ -107,17 +111,20 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
       return TimeOfDay(hour: hour, minute: minute);
     }
 
-    final TimeOfDay initialTime = _selectedTime != null ? _parseTimeOfDay(_selectedTime!) : TimeOfDay.now();
+    final TimeOfDay initialTime = _selectedTime != null
+        ? _parseTimeOfDay(_selectedTime!)
+        : TimeOfDay.now();
     TimeOfDay selectedTime = initialTime;
-    String? selectedTimeText = _selectedTime; // Pre-fill from previously selected time
-    
+    String? selectedTimeText =
+        _selectedTime; // Pre-fill from previously selected time
+
     // Date selection - today to next 6 days
     DateTime selectedDate = DateTime.now();
-    
+
     // Meal types - to be fetched from Firestore
     List<String> mealTypes = [];
     String? selectedMealType;
-    
+
     // Fetch meal types from Firestore
     try {
       final service = FirestoreRecipesService();
@@ -166,10 +173,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                   const SizedBox(height: 16),
                   const Text(
                     'Meal Plan',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
                   // Date selection
@@ -196,7 +200,9 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                   // Time selection
                   ListTile(
                     title: const Text('Set Time'),
-                    subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
+                    subtitle: Text(
+                      selectedTimeText ?? selectedTime.format(context),
+                    ),
                     trailing: const Icon(Icons.access_time),
                     onTap: () async {
                       final TimeOfDay? picked = await showTimePicker(
@@ -223,24 +229,33 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                           spacing: 8,
                           runSpacing: 8,
                           children: mealTypes.map((mealType) {
-                            final bool isSelected = mealType == selectedMealType;
+                            final bool isSelected =
+                                mealType == selectedMealType;
                             return ChoiceChip(
                               label: Text(mealType),
                               selected: isSelected,
                               onSelected: (_) {
                                 setModalState(() {
-                                  selectedMealType = isSelected ? null : mealType;
+                                  selectedMealType = isSelected
+                                      ? null
+                                      : mealType;
                                 });
                               },
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                                side: const BorderSide(
+                                  color: Color(0xFFE5E7EB),
+                                ),
                               ),
                               backgroundColor: Colors.white,
                               selectedColor: const Color(0xFFFF7F00),
                               labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black87,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
                               ),
                             );
                           }).toList(),
@@ -264,32 +279,42 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                           // Validate that all required fields are selected
                           if (selectedMealType == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please select a meal type')),
+                              const SnackBar(
+                                content: Text('Please select a meal type'),
+                              ),
                             );
                             return;
                           }
-                          
+
                           // Pass the recipe data directly instead of trying to access through Provider
                           final recipe = vm.recipe!;
-                          
+
                           try {
                             // Save the planned meal to Firestore
                             final service = FirestoreRecipesService();
-                            final String dateKey = service.formatDateKey(selectedDate);
-                            
+                            final String dateKey = service.formatDateKey(
+                              selectedDate,
+                            );
+
                             // Convert ingredients to list of Ingredient objects
-                            final List<Ingredient> ingredientList = recipe.ingredients
-                                .map((e) => Ingredient(
-                                  name: e['name'].toString(),
-                                  emoji: e['quantity']?.toString(), // Changed from quantity to emoji
-                                ))
+                            final List<Ingredient> ingredientList = recipe
+                                .ingredients
+                                .map(
+                                  (e) => Ingredient(
+                                    name: e['name'].toString(),
+                                    emoji: e['quantity']
+                                        ?.toString(), // Changed from quantity to emoji
+                                  ),
+                                )
                                 .toList();
-                            
+
                             final plannedMeal = PlannedMeal(
                               uniqueId: '', // Will be generated by Firestore
                               recipeTitle: recipe.title,
                               dateForRecipe: dateKey,
-                              timeForRecipe: selectedTimeText ?? selectedTime.format(context),
+                              timeForRecipe:
+                                  selectedTimeText ??
+                                  selectedTime.format(context),
                               persons: 1, // Default to 1 person
                               ingredients: ingredientList,
                               instructions: recipe.steps,
@@ -298,35 +323,47 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                               createdAt: DateTime.now(),
                               minutes: recipe.minutes,
                             );
-                            
+
                             await service.savePlannedMeal(plannedMeal);
-                            
+
                             if (context.mounted) {
                               Navigator.of(context).pop(); // Close bottom sheet
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Meal planned successfully')),
+                                const SnackBar(
+                                  content: Text('Meal planned successfully'),
+                                ),
                               );
-                              
+
                               // Notify the MealPlannerViewModel to refresh its data
                               try {
-                                final mealPlannerVM = Provider.of<MealPlannerViewModel>(context, listen: false);
+                                final mealPlannerVM =
+                                    Provider.of<MealPlannerViewModel>(
+                                      context,
+                                      listen: false,
+                                    );
                                 await mealPlannerVM.refreshMeals();
                               } catch (e) {
                                 // If we can't refresh the meal planner, it's not critical
-                                debugPrint('Could not refresh meal planner: $e');
+                                debugPrint(
+                                  'Could not refresh meal planner: $e',
+                                );
                               }
                             }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Error saving meal plan')),
+                                const SnackBar(
+                                  content: Text('Error saving meal plan'),
+                                ),
                               );
                             }
                             debugPrint('Error saving meal plan: $e');
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF7F00), // Teal orange color
+                          backgroundColor: const Color(
+                            0xFFFF7F00,
+                          ), // Teal orange color
                           foregroundColor: Colors.white, // White text color
                         ),
                         child: const Text('Save'),
@@ -342,19 +379,30 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
       },
     );
   }
-  
+
   String _formatDate(DateTime date) {
     const List<String> months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Future<void> _showGroceryDialog() async {
-    final UserRecipeDetailsViewModel vm = Provider.of<UserRecipeDetailsViewModel>(context, listen: false);
+    final UserRecipeDetailsViewModel vm =
+        Provider.of<UserRecipeDetailsViewModel>(context, listen: false);
     if (vm.recipe == null) return;
-    
+
     int servings = 1;
     await showModalBottomSheet(
       context: context,
@@ -382,10 +430,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                   const SizedBox(height: 16),
                   const Text(
                     'Add to Groceries',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
                   const Text('Servings'),
@@ -430,7 +475,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                           try {
                             final service = FirestoreRecipesService();
                             final List<Map<String, dynamic>> ingMaps = [];
-                            
+
                             // Convert ingredients to the format expected by saveGroceryRecipe
                             for (final ingredient in vm.recipe!.ingredients) {
                               ingMaps.add({
@@ -440,7 +485,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                                 'isChecked': false,
                               });
                             }
-                            
+
                             await service.saveGroceryRecipe(
                               title: vm.recipe!.title,
                               imageUrl: vm.recipe!.imageUrl,
@@ -448,21 +493,29 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                               servings: servings,
                               ingredients: ingMaps,
                             );
-                            
-                            final groceriesViewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+
+                            final groceriesViewModel =
+                                Provider.of<GroceriesViewModel>(
+                                  context,
+                                  listen: false,
+                                );
                             await groceriesViewModel.refreshRecipes();
-                            
+
                             if (context.mounted) {
                               Navigator.of(context).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Added to Groceries')),
+                                const SnackBar(
+                                  content: Text('Added to Groceries'),
+                                ),
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
                               Navigator.of(context).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Error adding to Groceries')),
+                                const SnackBar(
+                                  content: Text('Error adding to Groceries'),
+                                ),
                               );
                             }
                           }
@@ -486,20 +539,26 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
   }
 
   // Add share functionality
-  Future<void> _shareRecipe(String title, int minutes, List<Map<String, dynamic>> ingredients, List<String> steps, String imageUrl) async {
+  Future<void> _shareRecipe(
+    String title,
+    int minutes,
+    List<Map<String, dynamic>> ingredients,
+    List<String> steps,
+    String imageUrl,
+  ) async {
     // Format the recipe data as text
     final StringBuffer buffer = StringBuffer();
-    
+
     // Add title
     buffer.writeln('Recipe: $title');
     buffer.writeln('');
-    
+
     // Add time
     if (minutes > 0) {
       buffer.writeln('Estimated Time: $minutes minutes');
       buffer.writeln('');
     }
-    
+
     // Add ingredients section
     buffer.writeln('Ingredients:');
     buffer.writeln('-------------');
@@ -515,7 +574,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
       }
     }
     buffer.writeln('');
-    
+
     // Add steps section
     buffer.writeln('Cooking Steps:');
     buffer.writeln('--------------');
@@ -526,16 +585,21 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
         buffer.writeln('${i + 1}. ${steps[i]}');
       }
     }
-    
+
     // Share the text
     try {
-      await Share.share(buffer.toString());
+      await Share.share(
+        buffer.toString(),
+        sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
+      );
     } catch (e) {
       // Handle MissingPluginException or other errors
       debugPrint('Error sharing recipe: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to share recipe. Please try again.')),
+          const SnackBar(
+            content: Text('Unable to share recipe. Please try again.'),
+          ),
         );
       }
     }
@@ -544,30 +608,33 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
   Map<String, dynamic> _parseIngredientToMap(String s) {
     final String trimmed = s.trim();
     if (trimmed.isEmpty) return {'name': '', 'quantity': ''};
-    
+
     // Split the string into parts
     final List<String> parts = trimmed.split(' ');
     if (parts.isEmpty) return {'name': '', 'quantity': ''};
-    
+
     // Check if first part is an emoji
     final String firstPart = parts[0];
-    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final bool hasEmoji =
+        firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
     final int startIndex = hasEmoji ? 1 : 0;
-    
+
     // If we have enough parts, try to parse quantity and unit
     if (parts.length > startIndex + 1) {
       final String quantity = parts[startIndex];
-      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
-      final String name = parts.length > startIndex + 2 
-          ? parts.sublist(startIndex + 2).join(' ') 
+      final String unit = parts.length > startIndex + 2
+          ? parts[startIndex + 1]
+          : '';
+      final String name = parts.length > startIndex + 2
+          ? parts.sublist(startIndex + 2).join(' ')
           : parts.sublist(startIndex + 1).join(' ');
-      
+
       final Map<String, dynamic> result = {
         'name': name,
         'quantity': quantity,
         'isChecked': false,
       };
-      
+
       // Add emoji and unit if they exist
       if (hasEmoji) {
         result['emoji'] = firstPart;
@@ -575,23 +642,23 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
       if (unit.isNotEmpty) {
         result['unit'] = unit;
       }
-      
+
       return result;
     } else {
       // Just name and possibly emoji
       final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
-      
+
       final Map<String, dynamic> result = {
         'name': name,
         'quantity': '',
         'isChecked': false,
       };
-      
+
       // Add emoji if it exists
       if (hasEmoji) {
         result['emoji'] = firstPart;
       }
-      
+
       return result;
     }
   }
@@ -608,7 +675,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
               Navigator.of(context).pop();
             }
           });
-          
+
           // Show a temporary message while popping
           return const Scaffold(
             backgroundColor: Colors.white,
@@ -628,9 +695,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
         if (vm.error != null && vm.recipe == null) {
           return Scaffold(
             backgroundColor: Colors.white,
-            body: Center(
-              child: Text('Error loading recipe: ${vm.error}'),
-            ),
+            body: Center(child: Text('Error loading recipe: ${vm.error}')),
           );
         }
 
@@ -638,9 +703,7 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
         if (vm.recipe == null) {
           return const Scaffold(
             backgroundColor: Colors.white,
-            body: Center(
-              child: Text('Recipe not found'),
-            ),
+            body: Center(child: Text('Recipe not found')),
           );
         }
 
@@ -653,7 +716,14 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
             surfaceTintColor: Colors.white,
             elevation: 0,
             centerTitle: false,
-            title: const Text('Your Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 20)),
+            title: const Text(
+              'Your Recipe Details',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+              ),
+            ),
             iconTheme: const IconThemeData(color: Colors.black87),
             actions: [
               IconButton(
@@ -688,7 +758,10 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _HeroImage(title: recipe.title, imageAssetPath: recipe.imageUrl),
+                  _HeroImage(
+                    title: recipe.title,
+                    imageAssetPath: recipe.imageUrl,
+                  ),
                   const SizedBox(height: 16),
                   _ActionRow(
                     recipeId: vm.recipeId,
@@ -719,12 +792,23 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                         children: [
                           const Icon(Icons.access_time, color: Colors.black87),
                           const SizedBox(width: 10),
-                          const Text('Estimate Time:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
+                          const Text(
+                            'Estimate Time:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black87,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           // Display cooking time
                           Text(
-                            recipe.minutes > 0 ? '${recipe.minutes} min' : 'Not available',
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54),
+                            recipe.minutes > 0
+                                ? '${recipe.minutes} min'
+                                : 'Not available',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black54,
+                            ),
                           ),
                         ],
                       ),
@@ -738,27 +822,30 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                     child: Column(
                       children: recipe.ingredients.isEmpty
                           ? [
-                              const _IngredientTile(name: 'No ingredients available', note: ''),
+                              const _IngredientTile(
+                                name: 'No ingredients available',
+                                note: '',
+                              ),
                             ]
-                          : recipe.ingredients
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                                // Build the ingredient string with all components
-                                final quantity = entry.value['quantity'] ?? '';
-                                final unit = entry.value['unit'] ?? '';
-                                final name = entry.value['name'] ?? '';
-                                
-                                // Combine components, avoiding extra spaces
-                                final parts = [quantity, unit, name].where((s) => s.toString().isNotEmpty).toList();
-                                final ingredientText = parts.join(' ');
-                                
-                                return _IngredientTile(
-                                  name: ingredientText,
-                                  note: '',
-                                );
-                              })
-                              .toList(),
+                          : recipe.ingredients.asMap().entries.map((entry) {
+                              // Build the ingredient string with all components
+                              final quantity = entry.value['quantity'] ?? '';
+                              final unit = entry.value['unit'] ?? '';
+                              final name = entry.value['name'] ?? '';
+
+                              // Combine components, avoiding extra spaces
+                              final parts = [
+                                quantity,
+                                unit,
+                                name,
+                              ].where((s) => s.toString().isNotEmpty).toList();
+                              final ingredientText = parts.join(' ');
+
+                              return _IngredientTile(
+                                name: ingredientText,
+                                note: '',
+                              );
+                            }).toList(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -769,11 +856,15 @@ class _UserRecipeDetailsViewState extends State<_UserRecipeDetailsView> {
                     child: Column(
                       children: recipe.steps.isEmpty
                           ? [
-                              const _StepCard(step: 1, text: 'No steps available'),
+                              const _StepCard(
+                                step: 1,
+                                text: 'No steps available',
+                              ),
                             ]
                           : List<Widget>.generate(
                               recipe.steps.length,
-                              (i) => _StepCard(step: i + 1, text: recipe.steps[i]),
+                              (i) =>
+                                  _StepCard(step: i + 1, text: recipe.steps[i]),
                             ),
                     ),
                   ),
@@ -891,7 +982,7 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onMealPlanTap;
   final VoidCallback onGroceriesTap;
   final VoidCallback onShareTap; // Add this line
-  
+
   const _ActionRow({
     required this.recipeId,
     required this.title,
@@ -909,7 +1000,12 @@ class _ActionRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes),
+          _BookmarkButton(
+            recipeId: recipeId,
+            title: title,
+            imageUrl: imageUrl,
+            minutes: minutes,
+          ),
           _ActionItem(
             icon: Icons.calendar_today_outlined,
             label: 'Meal Plan',
@@ -920,7 +1016,11 @@ class _ActionRow extends StatelessWidget {
             label: 'Groceries',
             onTap: onGroceriesTap,
           ),
-          _ActionItem(icon: Icons.ios_share_outlined, label: 'Share', onTap: onShareTap), // Update this line
+          _ActionItem(
+            icon: Icons.ios_share_outlined,
+            label: 'Share',
+            onTap: onShareTap,
+          ), // Update this line
           // Removed Nutrition button
         ],
       ),
@@ -944,7 +1044,11 @@ class _ActionItem extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
@@ -957,7 +1061,12 @@ class _BookmarkButton extends StatelessWidget {
   final String title;
   final String imageUrl;
   final int minutes;
-  const _BookmarkButton({required this.recipeId, required this.title, required this.imageUrl, required this.minutes});
+  const _BookmarkButton({
+    required this.recipeId,
+    required this.title,
+    required this.imageUrl,
+    required this.minutes,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -968,15 +1077,27 @@ class _BookmarkButton extends StatelessWidget {
         final bool isBookmarked = snapshot.data == true;
         return InkWell(
           onTap: () async {
-            await service.toggleBookmark(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes);
+            await service.toggleBookmark(
+              recipeId: recipeId,
+              title: title,
+              imageUrl: imageUrl,
+              minutes: minutes,
+            );
           },
           child: Column(
             children: [
-              Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: isBookmarked ? Colors.black : Colors.black87),
+              Icon(
+                isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                color: isBookmarked ? Colors.black : Colors.black87,
+              ),
               const SizedBox(height: 4),
               const Text(
                 'Bookmark',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
               ),
             ],
           ),
@@ -996,7 +1117,11 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87),
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+        ),
       ),
     );
   }
@@ -1022,13 +1147,21 @@ class _IngredientTile extends StatelessWidget {
           Expanded(
             child: Text(
               name,
-              style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600, height: 1.35),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
             ),
           ),
           const SizedBox(width: 8),
           Text(
             note,
-            style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+            ),
             textAlign: TextAlign.right,
           ),
         ],
@@ -1065,7 +1198,10 @@ class _StepCard extends StatelessWidget {
             ),
             child: Text(
               '$step',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 12),

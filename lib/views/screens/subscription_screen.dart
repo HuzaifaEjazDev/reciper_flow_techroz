@@ -83,11 +83,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
         child: GestureDetector(
           onTap: () => Navigator.of(context).pop(),
-          child: const Icon(
-            Icons.close,
-            color: Color(0xFF9E9E9E),
-            size: 24,
-          ),
+          child: const Icon(Icons.close, color: Color(0xFF9E9E9E), size: 24),
         ),
       ),
     );
@@ -102,25 +98,31 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             text: const TextSpan(
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               children: [
-                TextSpan(text: 'Get ', style: TextStyle(color: Color(0xFF37474F))),
-                TextSpan(text: 'Unlimited Imports', style: TextStyle(color: Color(0xFFFF6B1A))),
+                TextSpan(
+                  text: 'Get ',
+                  style: TextStyle(color: Color(0xFF37474F)),
+                ),
+                TextSpan(
+                  text: 'Unlimited Recipes',
+                  style: TextStyle(color: Color(0xFFFF6B1A)),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 12),
-        const Center(
-          child: Text(
-            'from Instagram, TikTok & more',
-            style: TextStyle(
-              fontSize: 18,
-              color: Color(0xFF37474F),
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ]
+        // const Center(
+        //   child: Text(
+        //     'from various sources & more',
+        //     style: TextStyle(
+        //       fontSize: 18,
+        //       color: Color(0xFF37474F),
+        //       fontWeight: FontWeight.w600,
+        //     ),
+        //     textAlign: TextAlign.center,
+        //   ),
+        // ),
+      ],
     );
   }
 
@@ -128,7 +130,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildTrialSection(SubscriptionViewModel viewModel) {
     return Container(
       padding: const EdgeInsets.all(20),
-      
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -164,6 +166,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         return Icons.lock_open_rounded;
       case 'notifications_rounded':
         return Icons.notifications_rounded;
+      case 'info_rounded':
+        return Icons.info_rounded;
       case 'star_rounded':
         return Icons.star_rounded;
       default:
@@ -188,7 +192,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: isCompleted ? const Color(0xFFFF6B1A) : const Color(0xFFF1D1D6),
+                color: isCompleted
+                    ? const Color(0xFFFF6B1A)
+                    : const Color(0xFFF1D1D6),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -203,7 +209,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 width: 4,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: isCompleted ? const Color(0xFFFF6B1A) : const Color(0xFFF1D1D6),
+                  color: isCompleted
+                      ? const Color(0xFFFF6B1A)
+                      : const Color(0xFFF1D1D6),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -221,7 +229,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isCompleted ? FontWeight.bold : FontWeight.w600,
-                    color: isCompleted ? const Color(0xFF37474F) : const Color(0xFF616161),
+                    color: isCompleted
+                        ? const Color(0xFF37474F)
+                        : const Color(0xFF616161),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -264,35 +274,44 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         children: [
           Column(
             children: [
-              Text(stats.happyCooks,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF37474F),
-                  )),
-              const Text('Happy Cooks',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF616161),
-                  )),
+              Text(
+                stats.happyCooks,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF37474F),
+                ),
+              ),
+              const Text(
+                'Happy Cooks',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF616161),
+                ),
+              ),
             ],
           ),
-          Container(
-            height: 40,
-            width: 1,
-            color: const Color(0xFFE0E0E0),
-          ),
+          Container(height: 40, width: 1, color: const Color(0xFFE0E0E0)),
           Column(
             children: [
-              Text('${stats.starRating} STAR RATING',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF37474F),
-                  )),
+              Text(
+                '${stats.starRating} STAR RATING',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF37474F),
+                ),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) => const Icon(Icons.star, color: Color(0xFFFFB900), size: 22)),
+                children: List.generate(
+                  5,
+                  (index) => const Icon(
+                    Icons.star,
+                    color: Color(0xFFFFB900),
+                    size: 22,
+                  ),
+                ),
               ),
             ],
           ),
@@ -356,11 +375,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           Row(
             children: List.generate(
               5,
-              (index) => const Icon(
-                Icons.star,
-                color: Color(0xFFFFB900),
-                size: 20,
-              ),
+              (index) =>
+                  const Icon(Icons.star, color: Color(0xFFFFB900), size: 20),
             ),
           ),
           const SizedBox(height: 12),
@@ -410,9 +426,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        
-        child: Column(
 
+        child: Column(
           children: [
             const SizedBox(height: 3),
             const Text(
@@ -449,7 +464,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   elevation: 2,
                 ),
                 child: viewModel.isLoading
-                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                    ? const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      )
                     : const Text(
                         'Start Your FREE Week',
                         style: TextStyle(
@@ -463,6 +481,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 12),
             Center(
               child: RichText(
+                textAlign: TextAlign.center,
                 text: TextSpan(
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
@@ -470,11 +489,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     fontSize: 14,
                   ),
                   children: [
-                    TextSpan(text: 'Free for ',
+                    TextSpan(
+                      text: 'Free for ',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF37474F),
-                      ),),
+                      ),
+                    ),
                     TextSpan(
                       text: '7 days',
                       style: TextStyle(
@@ -482,11 +503,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         color: Color(0xFF37474F),
                       ),
                     ),
-                    TextSpan(text: ' then,\n',
+                    TextSpan(
+                      text: ' then,\n',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF37474F),
-                      ),),
+                      ),
+                    ),
                     TextSpan(
                       text: 'Rs 9,900',
                       style: TextStyle(
@@ -494,11 +517,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         color: Color(0xFF37474F),
                       ),
                     ),
-                    TextSpan(text: '/year (',
+                    TextSpan(
+                      text: '/year (',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF37474F),
-                      ),),
+                      ),
+                    ),
                     TextSpan(
                       text: 'Rs 825',
                       style: TextStyle(
@@ -506,11 +531,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         color: Color(0xFF37474F),
                       ),
                     ),
-                    TextSpan(text: '/month)',
+                    TextSpan(
+                      text: '/month)',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF37474F),
-                      ),),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -533,323 +560,344 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   // --- Bottom Sheet for Plans ---
- void _showPlansBottomSheet(BuildContext context, SubscriptionViewModel viewModel) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) {
-      return Consumer<SubscriptionViewModel>(
-        builder: (context, viewModel, child) {
-          final plans = viewModel.allPlans;
-          return Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Drag handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Title
-                const Center(
-                  child: Text(
-                    'Choose a plan',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF37474F),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Annual Plan
-                GestureDetector(
-                  onTap: () {
-                    // Select annual plan logic
-                    if (plans.isNotEmpty) {
-                      viewModel.selectPlan(plans.first);
-                    }
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: viewModel.isPlanSelected(plans.first) 
-                          ? const Color.fromARGB(255, 255, 217, 194) 
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: viewModel.isPlanSelected(plans.first) 
-                            ? Colors.deepOrange 
-                            : Colors.black,
-                        width: viewModel.isPlanSelected(plans.first) 
-                            ? 2 
-                            : 1,
+  void _showPlansBottomSheet(
+    BuildContext context,
+    SubscriptionViewModel viewModel,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Consumer<SubscriptionViewModel>(
+          builder: (context, viewModel, child) {
+            final plans = viewModel.allPlans;
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0E0E0),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Row(
-                          children: [
-                            // Plan details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Annual',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF37474F),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Rs 9,900 / year',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF616161),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Price
-                            const Text(
-                              'Rs 825 / month',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF37474F),
-                              ),
-                            ),
-                          ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Title
+                  const Center(
+                    child: Text(
+                      'Choose a plan',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF37474F),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Annual Plan
+                  GestureDetector(
+                    onTap: () {
+                      // Select annual plan logic
+                      if (plans.isNotEmpty) {
+                        viewModel.selectPlan(plans.first);
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: viewModel.isPlanSelected(plans.first)
+                            ? const Color.fromARGB(255, 255, 217, 194)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: viewModel.isPlanSelected(plans.first)
+                              ? Colors.deepOrange
+                              : Colors.black,
+                          width: viewModel.isPlanSelected(plans.first) ? 2 : 1,
                         ),
-                        // 7-Day Free Trial badge - positioned on the border line
-                        Positioned(
-                          top: -27,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF6B1A),
-                                borderRadius: BorderRadius.circular(12),
-                                // boxShadow: [
-                                //   BoxShadow(
-                                //     color: Colors.black.withOpacity(0.1),
-                                //     blurRadius: 4,
-                                //     offset: const Offset(0, 2),
-                                //   ),
-                                // ],
-                              ),
-                              child: const Text(
-                                '7-Day Free Trial',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Row(
+                            children: [
+                              // Plan details
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Annual',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF37474F),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Rs 9,900 / year',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF616161),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Monthly Plan
-                GestureDetector(
-                  onTap: () {
-                    // Select monthly plan logic
-                    if (plans.length > 1) {
-                      viewModel.selectPlan(plans[1]);
-                    }
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: viewModel.isPlanSelected(plans.length > 1 ? plans[1] : plans.first) 
-                          ? const Color.fromARGB(255, 255, 217, 194) 
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: viewModel.isPlanSelected(plans.length > 1 ? plans[1] : plans.first) 
-                            ? Colors.deepOrange 
-                            : Colors.black,
-                        width: viewModel.isPlanSelected(plans.length > 1 ? plans[1] : plans.first) 
-                            ? 2 
-                            : 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        // Plan details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Column(
-                                children: [
-                                  const Text(
-                                    'Monthly',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF37474F),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'No Free Trail',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF37474F),
-                                    ),
-                                  ),
-                                ],
+                              // Price
+                              const Text(
+                                'Rs 825 / month',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF37474F),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        // Price
-                        const Text(
-                          'Rs 1,900 / month',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Start button
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: viewModel.isLoading
-                        ? null
-                        : () async {
-                            Navigator.pop(context);
-                            final success = await viewModel.startFreeTrial();
-                            if (success && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Free trial started successfully!'),
-                                  backgroundColor: Color(0xFFFF6B1A),
+                          // 7-Day Free Trial badge - positioned on the border line
+                          Positioned(
+                            top: -27,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
                                 ),
-                              );
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B1A),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: viewModel.isLoading
-                        ? const CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          )
-                        : const Text(
-                            'Start Your FREE Week',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontSize: 16,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF6B1A),
+                                  borderRadius: BorderRadius.circular(12),
+                                  // boxShadow: [
+                                  //   BoxShadow(
+                                  //     color: Colors.black.withOpacity(0.1),
+                                  //     blurRadius: 4,
+                                  //     offset: const Offset(0, 2),
+                                  //   ),
+                                  // ],
+                                ),
+                                child: const Text(
+                                  '7-Day Free Trial',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Pricing info
-                Center(
-                  child: RichText(
-                    textAlign: TextAlign.center,
-                    text: const TextSpan(
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF616161),
-                        height: 1.4,
+                        ],
                       ),
-                      children: [
-                        TextSpan(text: 'Free for ', 
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),),
-                        TextSpan(
-                          text: '7 days',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),
-                        ),
-                        TextSpan(text: ' then,\n',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),),
-                        TextSpan(
-                          text: 'Rs 9,900',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),
-                        ),
-                        TextSpan(text: '/year (',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),),
-                        TextSpan(
-                          text: 'Rs 825',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),
-                        ),
-                        TextSpan(text: '/month)',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF37474F),
-                          ),),
-                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+                  // Monthly Plan
+                  GestureDetector(
+                    onTap: () {
+                      // Select monthly plan logic
+                      if (plans.length > 1) {
+                        viewModel.selectPlan(plans[1]);
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color:
+                            viewModel.isPlanSelected(
+                              plans.length > 1 ? plans[1] : plans.first,
+                            )
+                            ? const Color.fromARGB(255, 255, 217, 194)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              viewModel.isPlanSelected(
+                                plans.length > 1 ? plans[1] : plans.first,
+                              )
+                              ? Colors.deepOrange
+                              : Colors.black,
+                          width:
+                              viewModel.isPlanSelected(
+                                plans.length > 1 ? plans[1] : plans.first,
+                              )
+                              ? 2
+                              : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Plan details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text(
+                                      'Monthly',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF37474F),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'No Free Trial',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF37474F),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Price
+                          const Text(
+                            'Rs 1,900 / month',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Start button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: viewModel.isLoading
+                          ? null
+                          : () async {
+                              Navigator.pop(context);
+                              final success = await viewModel.startFreeTrial();
+                              if (success && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Free trial started successfully!',
+                                    ),
+                                    backgroundColor: Color(0xFFFF6B1A),
+                                  ),
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF6B1A),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: viewModel.isLoading
+                          ? const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            )
+                          : const Text(
+                              'Start Your FREE Week',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Pricing info
+                  Center(
+                    child: RichText(
+                      textAlign: TextAlign.center,
+                      text: const TextSpan(
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF616161),
+                          height: 1.4,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: 'Free for ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                          TextSpan(
+                            text: '7 days',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' then,\n',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'Rs 9,900',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                          TextSpan(
+                            text: '/year (',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'Rs 825',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                          TextSpan(
+                            text: '/month)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF37474F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }

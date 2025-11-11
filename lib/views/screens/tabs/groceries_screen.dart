@@ -15,14 +15,14 @@ class GroceriesScreen extends StatefulWidget {
 class _GroceriesScreenState extends State<GroceriesScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounceTimer; // Add debounce timer for search
-  
+
   @override
   void initState() {
     super.initState();
     // Add listener to handle search when text changes
     _searchController.addListener(_onSearchChanged);
   }
-  
+
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
@@ -30,7 +30,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
     _debounceTimer?.cancel(); // Cancel timer on dispose
     super.dispose();
   }
-  
+
   void _onSearchChanged() {
     // Debounce search to avoid too many requests
     if (_debounceTimer?.isActive ?? false) {
@@ -40,7 +40,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       _performSearch();
     });
   }
-  
+
   void _performSearch() {
     final viewModel = context.read<GroceriesViewModel>();
     viewModel.setSearchQuery(_searchController.text.trim());
@@ -75,11 +75,16 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                                 isDense: true,
                                 border: InputBorder.none,
                                 hintText: 'Search groceries...',
-                                hintStyle: TextStyle(color: Colors.black54, fontSize: 15),
+                                hintStyle: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 15,
+                                ),
                               ),
                               onChanged: (v) {
                                 // Update search query as user types
-                                context.read<GroceriesViewModel>().setSearchQueryTemp(v);
+                                context
+                                    .read<GroceriesViewModel>()
+                                    .setSearchQueryTemp(v);
                               },
                             ),
                           ),
@@ -99,7 +104,11 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                         border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: const Center(
-                        child: Icon(Icons.search, color: Colors.white, size: 20),
+                        child: Icon(
+                          Icons.search,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
@@ -114,6 +123,7 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                   const SizedBox(height: 10),
                   _buildAllRecipeCardsRow(context),
                   const SizedBox(height: 20),
+
                   _buildSortAndClearRow(context), // Add this line
                   const SizedBox(height: 10),
                   _buildAllGroceryItems(context),
@@ -133,7 +143,11 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
         const Expanded(
           child: Text(
             'Recipes',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
         ),
       ],
@@ -152,14 +166,22 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             foregroundColor: Colors.red,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
-          child: const Text('Clear All', style: TextStyle(fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Clear All',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
         // Spacer to push sort button to the end
         const Spacer(),
-        const Text('Sort by: ', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+        const Text(
+          'Sort by: ',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(width: 8),
         PopupMenuButton<String>(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           color: Colors.white,
           onSelected: (value) {
             // Set the sort option in the view model
@@ -168,11 +190,17 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           itemBuilder: (ctx) => const [
             PopupMenuItem<String>(
               value: 'newest',
-              child: Text('Newest', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                'Newest',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
             PopupMenuItem<String>(
               value: 'oldest',
-              child: Text('Oldest', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                'Oldest',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
             PopupMenuItem<String>(
               value: 'a-z',
@@ -204,7 +232,13 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                         sortText = 'A-Z';
                         break;
                     }
-                    return Text(sortText, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700));
+                    return Text(
+                      sortText,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(width: 6),
@@ -224,14 +258,14 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   /// If quantity contains fractions or mixed numbers, parse and scale accordingly
   static String _scaleIngredientQuantity(String quantity, int servings) {
     if (quantity.isEmpty || servings <= 1) return quantity;
-    
+
     // Try to parse the quantity as a number
     final double? qty = _GroceriesScreenState._parseQuantity(quantity);
     if (qty == null) return quantity;
-    
+
     // Scale the quantity
     final double scaled = qty * servings;
-    
+
     // Format the result nicely
     if (scaled == scaled.toInt()) {
       return scaled.toInt().toString();
@@ -245,17 +279,17 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       return result;
     }
   }
-  
+
   /// Parses quantity string to extract numeric value
   /// Handles simple numbers, fractions, and mixed numbers
   static double? _parseQuantity(String quantity) {
     final String trimmed = quantity.trim();
     if (trimmed.isEmpty) return null;
-    
+
     // Handle simple decimal or integer
     final double? simple = double.tryParse(trimmed);
     if (simple != null) return simple;
-    
+
     // Handle fractions (e.g., "1/2")
     if (trimmed.contains('/')) {
       final List<String> parts = trimmed.split('/');
@@ -267,21 +301,23 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
         }
       }
     }
-    
+
     // Handle mixed numbers (e.g., "1 1/2")
     if (trimmed.contains(' ')) {
       final List<String> parts = trimmed.split(' ');
       if (parts.length == 2) {
         final double? whole = double.tryParse(parts[0]);
         if (whole != null) {
-          final double? fraction = _GroceriesScreenState._parseQuantity(parts[1]);
+          final double? fraction = _GroceriesScreenState._parseQuantity(
+            parts[1],
+          );
           if (fraction != null) {
             return whole + fraction;
           }
         }
       }
     }
-    
+
     return null;
   }
 
@@ -289,19 +325,22 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   /// Format: "emoji name" or "name" -> returns map with 'emoji', 'actualName', 'firstNamePart'
   static Map<String, String> _parseIngredientName(String fullName) {
     final String trimmed = fullName.trim();
-    if (trimmed.isEmpty) return {'emoji': '', 'actualName': '', 'firstNamePart': ''};
-    
+    if (trimmed.isEmpty)
+      return {'emoji': '', 'actualName': '', 'firstNamePart': ''};
+
     // Split the string into parts
     final List<String> parts = trimmed.split(' ');
-    if (parts.isEmpty) return {'emoji': '', 'actualName': '', 'firstNamePart': ''};
-    
+    if (parts.isEmpty)
+      return {'emoji': '', 'actualName': '', 'firstNamePart': ''};
+
     // Check if first part is an emoji
     final String firstPart = parts[0];
-    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
-    
+    final bool hasEmoji =
+        firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+
     String emoji = '';
     String nameWithUnit = '';
-    
+
     if (hasEmoji && parts.length > 1) {
       // Has emoji and more parts - emoji is first part, rest is name with potential unit
       emoji = firstPart;
@@ -314,12 +353,12 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       // No emoji, just name with potential unit
       nameWithUnit = trimmed;
     }
-    
+
     // For backward compatibility, we'll keep the same return structure
     // but the new _splitNameByFirstSpace method is used for the display format
     String actualName = nameWithUnit;
     String firstNamePart = '';
-    
+
     if (nameWithUnit.isNotEmpty) {
       final List<String> nameParts = nameWithUnit.split(' ');
       firstNamePart = nameParts.isNotEmpty ? nameParts[0] : '';
@@ -329,8 +368,12 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
         actualName = nameWithUnit;
       }
     }
-    
-    return {'emoji': emoji, 'actualName': actualName, 'firstNamePart': firstNamePart};
+
+    return {
+      'emoji': emoji,
+      'actualName': actualName,
+      'firstNamePart': firstNamePart,
+    };
   }
 
   /// Parse ingredient name to extract the part before and after the first space
@@ -338,53 +381,62 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
   static Map<String, String> _splitNameByFirstSpace(String name) {
     final String trimmed = name.trim();
     if (trimmed.isEmpty) return {'beforeFirstSpace': '', 'afterFirstSpace': ''};
-    
+
     final List<String> parts = trimmed.split(' ');
     if (parts.length <= 1) {
       // Only one part or empty, return it as beforeFirstSpace
       return {'beforeFirstSpace': trimmed, 'afterFirstSpace': ''};
     }
-    
+
     // First part is before the first space
     final String beforeFirstSpace = parts[0];
     // Rest is after the first space
     final String afterFirstSpace = parts.sublist(1).join(' ');
-    
-    return {'beforeFirstSpace': beforeFirstSpace, 'afterFirstSpace': afterFirstSpace};
+
+    return {
+      'beforeFirstSpace': beforeFirstSpace,
+      'afterFirstSpace': afterFirstSpace,
+    };
   }
 
   /// Build a row with ingredient formatted as per requirements:
   /// {name after first space} Spacer() Qty: {quantity from db} {unit from name field}
-  static Widget _buildIngredientRow(String fullName, String scaledQty, String unit, bool checked) {
+  static Widget _buildIngredientRow(
+    String fullName,
+    String scaledQty,
+    String unit,
+    bool checked,
+  ) {
     // The fullName contains emoji + name (e.g., "2 kg Rice")
     // We need to parse this to extract:
     // - Name after first space ("Rice")
     // - Quantity from DB (scaledQty) ("2")
     // - Unit from name field ("kg")
-    
+
     String displayName = ''; // Text after first space (e.g., "Rice")
     String displayUnit = ''; // Unit from name field (e.g., "kg")
-    
+
     // Remove emoji if present
     String nameWithoutEmoji = fullName.trim();
     if (nameWithoutEmoji.isNotEmpty) {
       final String firstChar = nameWithoutEmoji.substring(0, 1);
-      final bool hasEmoji = firstChar.runes.length == 1 && firstChar.codeUnitAt(0) > 0x1F600;
+      final bool hasEmoji =
+          firstChar.runes.length == 1 && firstChar.codeUnitAt(0) > 0x1F600;
       if (hasEmoji && nameWithoutEmoji.length > 1) {
         nameWithoutEmoji = nameWithoutEmoji.substring(1).trim();
       }
     }
-    
+
     // Split the name by spaces to extract parts
     final List<String> parts = nameWithoutEmoji.split(' ');
-    
+
     if (parts.length >= 2) {
       // First part is the quantity in the name (e.g., "2")
       // Second part is the unit in the name (e.g., "kg")
       // Remaining parts are the actual name (e.g., "Rice")
       displayUnit = parts[1];
       displayName = parts.length > 2 ? parts.sublist(2).join(' ') : parts[1];
-      
+
       // If we only have two parts, the second part is the name
       if (parts.length == 2) {
         displayName = parts[1];
@@ -394,13 +446,13 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       // Only one part, treat it as the name
       displayName = parts[0];
     }
-    
+
     // Build the full quantity display
     String quantityDisplay = scaledQty; // Quantity from DB
     if (displayUnit.isNotEmpty) {
       quantityDisplay = '$scaledQty $displayUnit'; // e.g., "2 kg"
     }
-    
+
     return Row(
       children: [
         // Show the name (text after the first space)
@@ -408,7 +460,9 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           displayName,
           style: TextStyle(
             color: Colors.black87,
-            decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+            decoration: checked
+                ? TextDecoration.lineThrough
+                : TextDecoration.none,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -418,7 +472,9 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
           'Qty: $quantityDisplay',
           style: TextStyle(
             color: Colors.black87,
-            decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
+            decoration: checked
+                ? TextDecoration.lineThrough
+                : TextDecoration.none,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -443,13 +499,31 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
               );
             }
             if (snapshot.hasError) {
-              return Row(children: [Expanded(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)))]);
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              );
             }
-            final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
+            final List<Map<String, dynamic>> recipes =
+                snapshot.data ?? const [];
             if (recipes.isEmpty) {
               return const Row(
                 children: [
-                  Expanded(child: Text('No groceries yet', style: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
+                  Expanded(
+                    child: Text(
+                      'No groceries yet',
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
                 ],
               );
             }
@@ -463,8 +537,12 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                   final r = recipes[i];
                   final String title = (r['title'] ?? '').toString();
                   final String image = (r['imageUrl'] ?? '').toString();
-                  final int minutes = r['minutes'] is int ? r['minutes'] as int : 0;
-                  final int servings = r['servings'] is int ? r['servings'] as int : 1;
+                  final int minutes = r['minutes'] is int
+                      ? r['minutes'] as int
+                      : 0;
+                  final int servings = r['servings'] is int
+                      ? r['servings'] as int
+                      : 1;
                   return SizedBox(
                     width: 160,
                     child: GestureDetector(
@@ -478,74 +556,124 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
                               minutes: minutes,
                               recipeId: r['id']?.toString() ?? '',
                               fromAdminScreen: false,
-                              fromGroceriesScreen: true, // Set this to true when navigating from groceries screen
+                              fromGroceriesScreen:
+                                  true, // Set this to true when navigating from groceries screen
                               // Pass ingredients in "qty unit name" format if available to use as fallback
-                              ingredients: ((r['ingredients'] as List<dynamic>?) ?? <dynamic>[])
-                                  .map((item) {
-                                    if (item is Map<String, dynamic>) {
-                                      final String qty = (item['quantity'] ?? '').toString();
-                                      final String unit = (item['unit'] ?? '').toString();
-                                      final String name = (item['name'] ?? '').toString();
-                                      final String emoji = (item['emoji'] ?? '').toString();
-                                      final List<String> parts = <String>[];
-                                      if (emoji.isNotEmpty) parts.add(emoji);
-                                      if (qty.isNotEmpty) parts.add(qty);
-                                      if (unit.isNotEmpty) parts.add(unit);
-                                      if (name.isNotEmpty) parts.add(name);
-                                      return parts.join(' ');
-                                    }
-                                    return item.toString();
-                                  })
-                                  .cast<String>()
-                                  .toList(),
+                              ingredients:
+                                  ((r['ingredients'] as List<dynamic>?) ??
+                                          <dynamic>[])
+                                      .map((item) {
+                                        if (item is Map<String, dynamic>) {
+                                          final String qty =
+                                              (item['quantity'] ?? '')
+                                                  .toString();
+                                          final String unit =
+                                              (item['unit'] ?? '').toString();
+                                          final String name =
+                                              (item['name'] ?? '').toString();
+                                          final String emoji =
+                                              (item['emoji'] ?? '').toString();
+                                          final List<String> parts = <String>[];
+                                          if (emoji.isNotEmpty)
+                                            parts.add(emoji);
+                                          if (qty.isNotEmpty) parts.add(qty);
+                                          if (unit.isNotEmpty) parts.add(unit);
+                                          if (name.isNotEmpty) parts.add(name);
+                                          return parts.join(' ');
+                                        }
+                                        return item.toString();
+                                      })
+                                      .cast<String>()
+                                      .toList(),
                               steps: const [],
                             ),
                           ),
                         );
                       },
                       child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(
-                            height: 108,
-                            child: image.startsWith('http')
-                                ? Image.network(image, fit: BoxFit.cover)
-                                : Image.asset(image.isEmpty ? 'assets/images/easymakesnack1.jpg' : image, fit: BoxFit.cover),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 6),
-                                  Row(children: [
-                                    const Icon(Icons.access_time, size: 14, color: Colors.black54),
-                                    const SizedBox(width: 6),
-                                    Text(minutes == 0 ? '—' : '$minutes min', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                                  ]),
-                                  const SizedBox(height: 4),
-                                  Row(children: [
-                                    const Icon(Icons.person, size: 14, color: Colors.black54),
-                                    const SizedBox(width: 6),
-                                    Text('$servings', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-                                  ]),
-                                ],
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: 108,
+                              child: image.startsWith('http')
+                                  ? Image.network(image, fit: BoxFit.cover)
+                                  : Image.asset(
+                                      image.isEmpty
+                                          ? 'assets/images/easymakesnack1.jpg'
+                                          : image,
+                                      fit: BoxFit.cover,
+                                    ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  10,
+                                  8,
+                                  10,
+                                  8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.access_time,
+                                          size: 14,
+                                          color: Colors.black54,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          minutes == 0 ? '—' : '$minutes min',
+                                          style: const TextStyle(
+                                            color: Colors.black54,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.person,
+                                          size: 14,
+                                          color: Colors.black54,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '$servings',
+                                          style: const TextStyle(
+                                            color: Colors.black54,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                    )
                   );
                 },
               ),
@@ -573,13 +701,13 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
             if (snapshot.hasError) {
               return Center(child: Text('Error: ${snapshot.error}'));
             }
-            final List<Map<String, dynamic>> recipes = snapshot.data ?? const [];
-            if (recipes.isEmpty) {
-              return const Center(
-                child: Text('No groceries yet. Use the Groceries feature (separate from Meal Planner).', style: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic)),
-              );
+            final List<Map<String, dynamic>> recipes =
+                snapshot.data ?? const [];
+
+            if (recipes.isNotEmpty) {
+              return _GroceryItemsList(recipes: recipes);
             }
-            return _GroceryItemsList(recipes: recipes);
+            return const SizedBox();
           },
         );
       },
@@ -593,42 +721,52 @@ class _GroceriesScreenState extends State<GroceriesScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Clear All Ingredients'),
-          content: const Text('Are you sure you want to clear all checked ingredients? This action cannot be undone.'),
+          content: const Text(
+            'Are you sure you want to clear all checked ingredients? This action cannot be undone.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
               },
               child: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.black,
-              ),
+              style: TextButton.styleFrom(foregroundColor: Colors.black),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
-                final viewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                final viewModel = Provider.of<GroceriesViewModel>(
+                  context,
+                  listen: false,
+                );
                 try {
                   await viewModel.clearAllCheckedIngredients();
                   // Force a rebuild of the widget tree
                   setState(() {});
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('All checked ingredients have been removed')),
+                      const SnackBar(
+                        content: Text(
+                          'All checked ingredients have been removed',
+                        ),
+                      ),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Error removing ingredients')),
+                      const SnackBar(
+                        content: Text('Error removing ingredients'),
+                      ),
                     );
                   }
                 }
               },
-              child: const Text('Clear All', style: TextStyle(color: Colors.red)),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
+              child: const Text(
+                'Clear All',
+                style: TextStyle(color: Colors.red),
               ),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
             ),
           ],
         );
@@ -669,9 +807,10 @@ class _GroceryItemsListState extends State<_GroceryItemsList> {
         ...widget.recipes.map((r) {
           final String recipeId = (r['id'] ?? '').toString();
           final String title = (r['title'] ?? '').toString();
-          final List<dynamic> ingredients = (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
+          final List<dynamic> ingredients =
+              (r['ingredients'] as List<dynamic>? ?? <dynamic>[]);
           final int servings = r['servings'] is int ? r['servings'] as int : 1;
-          
+
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
@@ -682,7 +821,10 @@ class _GroceryItemsListState extends State<_GroceryItemsList> {
             child: Consumer<GroceriesViewModel>(
               builder: (context, viewModel, child) {
                 return ExpansionTile(
-                  title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   initiallyExpanded: viewModel.getExpansionState(recipeId),
                   onExpansionChanged: (isExpanded) {
                     viewModel.toggleExpansionState(recipeId, isExpanded);
@@ -690,25 +832,31 @@ class _GroceryItemsListState extends State<_GroceryItemsList> {
                   children: [
                     ...List<Widget>.generate(ingredients.length, (i) {
                       final dynamic item = ingredients[i];
-                      String fullName = ''; // Changed from separate name to fullName
+                      String fullName =
+                          ''; // Changed from separate name to fullName
                       String qty = '';
                       String unit = '';
-                      
+
                       if (item is Map) {
                         final String name = (item['name'] ?? '').toString();
                         final String emoji = (item['emoji'] ?? '').toString();
                         qty = (item['quantity'] ?? '').toString();
                         unit = (item['unit'] ?? '').toString();
-                        
+
                         // Construct full name with emoji
                         fullName = emoji.isNotEmpty ? '$emoji $name' : name;
                       }
-                      
-                      final String scaledQty = _GroceriesScreenState._scaleIngredientQuantity(qty, servings);
+
+                      final String scaledQty =
+                          _GroceriesScreenState._scaleIngredientQuantity(
+                            qty,
+                            servings,
+                          );
                       return _IngredientItem(
                         recipeId: recipeId,
                         ingredientIndex: i,
-                        fullName: fullName, // Pass fullName instead of separate name
+                        fullName:
+                            fullName, // Pass fullName instead of separate name
                         scaledQty: scaledQty,
                         unit: unit,
                       );
@@ -755,8 +903,13 @@ class _IngredientItemState extends State<_IngredientItem> {
     return Consumer<GroceriesViewModel>(
       builder: (context, viewModel, child) {
         // Initialize checked state from view model if not already set
-        _checked ??= viewModel.getCheckboxState(widget.recipeId, widget.ingredientIndex) ?? false;
-        
+        _checked ??=
+            viewModel.getCheckboxState(
+              widget.recipeId,
+              widget.ingredientIndex,
+            ) ??
+            false;
+
         return InkWell(
           onTap: () async {
             final newValue = !(_checked ?? false);
@@ -764,12 +917,16 @@ class _IngredientItemState extends State<_IngredientItem> {
               _checked = newValue;
             });
             // Update view model silently
-            viewModel.updateCheckboxStateSilently(widget.recipeId, widget.ingredientIndex, newValue);
+            viewModel.updateCheckboxStateSilently(
+              widget.recipeId,
+              widget.ingredientIndex,
+              newValue,
+            );
             // Update database in background
             await viewModel.toggleGroceryIngredientChecked(
-              groceryId: widget.recipeId, 
-              ingredientIndex: widget.ingredientIndex, 
-              isChecked: newValue
+              groceryId: widget.recipeId,
+              ingredientIndex: widget.ingredientIndex,
+              isChecked: newValue,
             );
           },
           child: Container(
@@ -785,18 +942,27 @@ class _IngredientItemState extends State<_IngredientItem> {
                       _checked = newValue;
                     });
                     // Update view model silently
-                    viewModel.updateCheckboxStateSilently(widget.recipeId, widget.ingredientIndex, newValue);
+                    viewModel.updateCheckboxStateSilently(
+                      widget.recipeId,
+                      widget.ingredientIndex,
+                      newValue,
+                    );
                     // Update database in background
                     await viewModel.toggleGroceryIngredientChecked(
-                      groceryId: widget.recipeId, 
-                      ingredientIndex: widget.ingredientIndex, 
-                      isChecked: newValue
+                      groceryId: widget.recipeId,
+                      ingredientIndex: widget.ingredientIndex,
+                      isChecked: newValue,
                     );
                   },
                   activeColor: Colors.green,
                 ),
                 Expanded(
-                  child: _GroceriesScreenState._buildIngredientRow(widget.fullName, widget.scaledQty, widget.unit, _checked ?? false),
+                  child: _GroceriesScreenState._buildIngredientRow(
+                    widget.fullName,
+                    widget.scaledQty,
+                    widget.unit,
+                    _checked ?? false,
+                  ),
                 ),
               ],
             ),

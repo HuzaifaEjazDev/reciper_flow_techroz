@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/subscription_plan.dart';
 
-
 class SubscriptionViewModel extends ChangeNotifier {
   List<TrialStepModel> _trialSteps = [];
   List<ReviewModel> _reviews = [];
@@ -23,7 +22,6 @@ class SubscriptionViewModel extends ChangeNotifier {
   String get selectedPlan => _selectedPlan;
   int get currentStepIndex => _currentStepIndex;
 
-
   // Initialize data
   Future<void> initializeData() async {
     _isLoading = true;
@@ -36,16 +34,16 @@ class SubscriptionViewModel extends ChangeNotifier {
         icon: 'lock_open_rounded',
         iconBgColor: '0xFF8B4513',
         iconColor: '0xFFFFFFFF',
-        title: 'Today: Unlock ReciMe',
+        title: 'Today: Unlock Recipeflow',
         description: 'Get instant access and start organizing your recipes.',
         hasLine: true,
       ),
       TrialStepModel(
-        icon: 'notifications_rounded',
+        icon: 'info_rounded',
         iconBgColor: '0xFFFFE4CC',
         iconColor: '0xFF8B4513',
-        title: 'Day 5: Trial Reminder',
-        description: 'We\'ll remind you that your trial is ending.',
+        title: 'Day 1-6: Try for free',
+        description: 'Decide if you want to continue.',
         hasLine: true,
       ),
       TrialStepModel(
@@ -53,7 +51,8 @@ class SubscriptionViewModel extends ChangeNotifier {
         iconBgColor: '0xFFFFE4CC',
         iconColor: '0xFF8B4513',
         title: 'Day 7: Trial Ends',
-        description: 'Your subscription will start 22-Oct-2025. Cancel anytime before.',
+        description:
+            'Your subscription will start 22-Oct-2025. Cancel anytime before.',
         hasLine: true,
       ),
     ];
@@ -61,12 +60,13 @@ class SubscriptionViewModel extends ChangeNotifier {
     _reviews = [
       ReviewModel(
         rating: 5,
-        reviewText: 'Changed my life - now I can import Instagram recipes effortlessly!',
+        reviewText:
+            'Changed my life - now I can ogranize recipes effortlessly!',
         reviewerName: 'Sarah M.',
       ),
       ReviewModel(
         rating: 5,
-        reviewText: 'ReciMe organizes my recipes perfectly. Love it!',
+        reviewText: 'RecipeFlow organizes my recipes perfectly. Love it!',
         reviewerName: 'John D.',
       ),
     ];
@@ -98,10 +98,7 @@ class SubscriptionViewModel extends ChangeNotifier {
       ),
     ];
 
-    _stats = StatsModel(
-      happyCooks: '5M+',
-      starRating: 4.8,
-    );
+    _stats = StatsModel(happyCooks: '5M+', starRating: 4.8);
 
     _isLoading = false;
     notifyListeners();

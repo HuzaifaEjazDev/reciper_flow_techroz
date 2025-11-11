@@ -50,7 +50,10 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         surfaceTintColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        title: const Text('Recipe Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Recipe Details',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+        ),
         iconTheme: const IconThemeData(color: Colors.black87),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
@@ -61,11 +64,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         child: FutureBuilder<Map<String, dynamic>?>(
           // If recipeId looks like a recipes doc id, fetch from 'recipes';
           // otherwise attempt PlannedMeals fallback to extract embedded fields
-          future: service.fetchRecipeById(widget.recipeId).then((recipesDoc) async {
-            if (recipesDoc != null) return recipesDoc; // Case 1 (Home) / Case 3 (Grocery references using recipeId)
+          future: service.fetchRecipeById(widget.recipeId).then((
+            recipesDoc,
+          ) async {
+            if (recipesDoc != null)
+              return recipesDoc; // Case 1 (Home) / Case 3 (Grocery references using recipeId)
 
             // Case 2: Bookmarked sub-collection (doc id == recipeId)
-            final Map<String, dynamic>? bookmarked = await service.fetchBookmarkedRecipeById(widget.recipeId);
+            final Map<String, dynamic>? bookmarked = await service
+                .fetchBookmarkedRecipeById(widget.recipeId);
             if (bookmarked != null) {
               return <String, dynamic>{
                 'title': bookmarked['title'],
@@ -78,7 +85,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             }
 
             // Case 4: PlannedMeals sub-collection (doc id == mealId)
-            final Map<String, dynamic>? planned = await service.fetchPlannedMealById(widget.recipeId);
+            final Map<String, dynamic>? planned = await service
+                .fetchPlannedMealById(widget.recipeId);
             if (planned != null) {
               return <String, dynamic>{
                 'title': planned['recipeTitle'],
@@ -98,13 +106,21 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             final String imageUrl = widget.imageAssetPath.isNotEmpty
                 ? widget.imageAssetPath
                 : (data != null ? (data['imageUrl']?.toString() ?? '') : '');
-            final int minutes = widget.minutes ?? ((data?['totalMinutes'] as num?)?.toInt() ?? (data?['minutes'] as num?)?.toInt() ?? 0);
-            final List<String> ingredients = (widget.ingredients != null && widget.ingredients!.isNotEmpty)
+            final int minutes =
+                widget.minutes ??
+                ((data?['totalMinutes'] as num?)?.toInt() ??
+                    (data?['minutes'] as num?)?.toInt() ??
+                    0);
+            final List<String> ingredients =
+                (widget.ingredients != null && widget.ingredients!.isNotEmpty)
                 ? widget.ingredients!
                 : _extractIngredientsStrings(data?['ingredients']);
-            final List<String> steps = (widget.steps != null && widget.steps!.isNotEmpty)
+            final List<String> steps =
+                (widget.steps != null && widget.steps!.isNotEmpty)
                 ? widget.steps!
-                : _extractStepsStrings(data?['steps']) ?? _extractStepsStrings(data?['instructions']) ?? <String>[];
+                : _extractStepsStrings(data?['steps']) ??
+                      _extractStepsStrings(data?['instructions']) ??
+                      <String>[];
 
             if (snap.connectionState == ConnectionState.waiting) {
               // Show minimal header while loading details
@@ -118,13 +134,24 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _HeroImage(title: title.isEmpty ? widget.title : title, imageAssetPath: imageUrl.isEmpty ? (widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath) : imageUrl),
+                        _HeroImage(
+                          title: title.isEmpty ? widget.title : title,
+                          imageAssetPath: imageUrl.isEmpty
+                              ? (widget.imageAssetPath.isEmpty
+                                    ? 'assets/images/dish/dish1.jpg'
+                                    : widget.imageAssetPath)
+                              : imageUrl,
+                        ),
                         const SizedBox(height: 16),
                         _ActionRow(
                           onMealPlanTap: () => _showMealPlanDialog(context),
                           recipeId: widget.recipeId,
                           title: title.isEmpty ? widget.title : title,
-                          imageUrl: imageUrl.isEmpty ? (widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath) : imageUrl,
+                          imageUrl: imageUrl.isEmpty
+                              ? (widget.imageAssetPath.isEmpty
+                                    ? 'assets/images/dish/dish1.jpg'
+                                    : widget.imageAssetPath)
+                              : imageUrl,
                           minutes: minutes,
                           onGroceriesTap: () => _showGroceryDialog(context),
                           fromGroceriesScreen: widget.fromGroceriesScreen,
@@ -135,7 +162,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                             minutes,
                             ingredients,
                             steps,
-                            imageUrl.isEmpty ? (widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath) : imageUrl,
+                            imageUrl.isEmpty
+                                ? (widget.imageAssetPath.isEmpty
+                                      ? 'assets/images/dish/dish1.jpg'
+                                      : widget.imageAssetPath)
+                                : imageUrl,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -146,17 +177,33 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time, color: Colors.black87),
+                                const Icon(
+                                  Icons.access_time,
+                                  color: Colors.black87,
+                                ),
                                 const SizedBox(width: 10),
-                                const Text('Estimate Time:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
+                                const Text(
+                                  'Estimate Time:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black87,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  minutes > 0 ? '$minutes min' : 'Not available',
-                                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54),
+                                  minutes > 0
+                                      ? '$minutes min'
+                                      : 'Not available',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                               ],
                             ),
@@ -170,9 +217,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                           child: Column(
                             children: ingredients.isEmpty
                                 ? const [
-                                    _IngredientTile(name: 'No ingredients available', note: ''),
+                                    _IngredientTile(
+                                      name: 'No ingredients available',
+                                      note: '',
+                                    ),
                                   ]
-                                : ingredients.map((e) => _IngredientTile(name: e, note: '')).toList(),
+                                : ingredients
+                                      .map(
+                                        (e) =>
+                                            _IngredientTile(name: e, note: ''),
+                                      )
+                                      .toList(),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -183,11 +238,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                           child: Column(
                             children: steps.isEmpty
                                 ? const [
-                                    _StepCard(step: 1, text: 'No steps available'),
+                                    _StepCard(
+                                      step: 1,
+                                      text: 'No steps available',
+                                    ),
                                   ]
                                 : List<Widget>.generate(
                                     steps.length,
-                                    (i) => _StepCard(step: i + 1, text: steps[i]),
+                                    (i) =>
+                                        _StepCard(step: i + 1, text: steps[i]),
                                   ),
                           ),
                         ),
@@ -213,8 +272,10 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         } else if (e is Map) {
           final String qty = (e['quantity'] ?? e['qty'] ?? '').toString();
           final String unit = (e['unit'] ?? e['u'] ?? '').toString();
-          final String emoji = (e['emoji'] ?? e['icon'] ?? e['em'] ?? '').toString();
-          final String name = (e['name'] ?? e['text'] ?? e['title'] ?? '').toString();
+          final String emoji = (e['emoji'] ?? e['icon'] ?? e['em'] ?? '')
+              .toString();
+          final String name = (e['name'] ?? e['text'] ?? e['title'] ?? '')
+              .toString();
           final List<String> parts = <String>[];
           if (emoji.isNotEmpty) parts.add(emoji);
           if (qty.isNotEmpty) parts.add(qty);
@@ -242,7 +303,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     // Admin flow: only pick time and return to caller
     // This flow is ONLY for when the meal planner screen directly opens the recipe admin screen
     // to select a recipe (indicated by allowMealPlanSelection being true)
-    if (widget.fromAdminScreen && (widget.mealType != null && widget.mealType!.isNotEmpty)) {
+    if (widget.fromAdminScreen &&
+        (widget.mealType != null && widget.mealType!.isNotEmpty)) {
       TimeOfDay selectedTime = TimeOfDay.now();
       String? selectedTimeText;
       await showModalBottomSheet(
@@ -260,16 +322,34 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(height: 4, width: 40, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                    Container(
+                      height: 4,
+                      width: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                     const SizedBox(height: 16),
-                    const Text('Set Time', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Set Time',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     ListTile(
                       title: const Text('Pick time'),
-                      subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
+                      subtitle: Text(
+                        selectedTimeText ?? selectedTime.format(context),
+                      ),
                       trailing: const Icon(Icons.access_time),
                       onTap: () async {
-                        final TimeOfDay? picked = await showTimePicker(context: context, initialTime: selectedTime);
+                        final TimeOfDay? picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
                         if (picked != null) {
                           setModalState(() {
                             selectedTime = picked;
@@ -282,7 +362,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'), style: TextButton.styleFrom(foregroundColor: Colors.black)),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black,
+                          ),
+                        ),
                         ElevatedButton(
                           onPressed: () {
                             // Create a MealEntry with ingredients and instructions for proper saving
@@ -291,19 +377,34 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                               type: widget.mealType!,
                               title: widget.title,
                               minutes: widget.minutes ?? 0,
-                              imageAssetPath: widget.imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : widget.imageAssetPath,
-                              time: selectedTimeText ?? selectedTime.format(context),
+                              imageAssetPath: widget.imageAssetPath.isEmpty
+                                  ? 'assets/images/dish/dish1.jpg'
+                                  : widget.imageAssetPath,
+                              time:
+                                  selectedTimeText ??
+                                  selectedTime.format(context),
                               ingredients: widget.ingredients,
                               instructions: widget.steps,
                             );
-                            debugPrint('Creating MealEntry with ingredients: ${widget.ingredients}');
-                            debugPrint('Creating MealEntry with steps: ${widget.steps}');
-                            debugPrint('MealEntry ingredients: ${entry.ingredients}');
-                            debugPrint('MealEntry instructions: ${entry.instructions}');
+                            debugPrint(
+                              'Creating MealEntry with ingredients: ${widget.ingredients}',
+                            );
+                            debugPrint(
+                              'Creating MealEntry with steps: ${widget.steps}',
+                            );
+                            debugPrint(
+                              'MealEntry ingredients: ${entry.ingredients}',
+                            );
+                            debugPrint(
+                              'MealEntry instructions: ${entry.instructions}',
+                            );
                             Navigator.of(context).pop();
                             Navigator.of(context).pop(entry);
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary500, foregroundColor: Colors.white),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary500,
+                            foregroundColor: Colors.white,
+                          ),
                           child: const Text('Save'),
                         ),
                       ],
@@ -352,9 +453,19 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(height: 4, width: 40, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                  Container(
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Meal Plan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Meal Plan',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 24),
                   ListTile(
                     title: const Text('Select Date'),
@@ -367,16 +478,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                         firstDate: DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 6)),
                       );
-                      if (picked != null) setModalState(() => selectedDate = picked);
+                      if (picked != null)
+                        setModalState(() => selectedDate = picked);
                     },
                   ),
                   const SizedBox(height: 16),
                   ListTile(
                     title: const Text('Set Time'),
-                    subtitle: Text(selectedTimeText ?? selectedTime.format(context)),
+                    subtitle: Text(
+                      selectedTimeText ?? selectedTime.format(context),
+                    ),
                     trailing: const Icon(Icons.access_time),
                     onTap: () async {
-                      final TimeOfDay? picked = await showTimePicker(context: context, initialTime: selectedTime);
+                      final TimeOfDay? picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                      );
                       if (picked != null) {
                         setModalState(() {
                           selectedTime = picked;
@@ -400,11 +517,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                             return ChoiceChip(
                               label: Text(m),
                               selected: isSelected,
-                              onSelected: (_) => setModalState(() => selectedMealType = isSelected ? null : m),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE5E7EB))),
+                              onSelected: (_) => setModalState(
+                                () => selectedMealType = isSelected ? null : m,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                side: const BorderSide(
+                                  color: Color(0xFFE5E7EB),
+                                ),
+                              ),
                               backgroundColor: Colors.white,
                               selectedColor: AppColors.primary500,
-                              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
                             );
                           }).toList(),
                         ),
@@ -415,50 +546,75 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'), style: TextButton.styleFrom(foregroundColor: Colors.black)),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
                       ElevatedButton(
                         onPressed: () async {
                           if (selectedMealType == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a meal type')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select a meal type'),
+                              ),
+                            );
                             return;
                           }
                           try {
                             final service = FirestoreRecipesService();
-                            final String dateKey = service.formatDateKey(selectedDate);
-                            
+                            final String dateKey = service.formatDateKey(
+                              selectedDate,
+                            );
+
                             // Convert string ingredients to Ingredient objects with unit information
-                            final List<Ingredient> ingredientObjects = <Ingredient>[];
-                            
+                            final List<Ingredient> ingredientObjects =
+                                <Ingredient>[];
+
                             // Use widget.ingredients if available, otherwise fetch from Firestore
                             List<String>? ingredientsToUse = widget.ingredients;
-                            if (ingredientsToUse == null || ingredientsToUse.isEmpty) {
+                            if (ingredientsToUse == null ||
+                                ingredientsToUse.isEmpty) {
                               // Try to fetch recipe data from different sources
                               // First try recipes collection
-                              Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
+                              Map<String, dynamic>? recipeData = await service
+                                  .fetchRecipeById(widget.recipeId);
                               if (recipeData != null) {
-                                ingredientsToUse = _extractIngredientsStrings(recipeData['ingredients']);
+                                ingredientsToUse = _extractIngredientsStrings(
+                                  recipeData['ingredients'],
+                                );
                               } else {
                                 // If not found in recipes collection, try PlannedMeals sub-collection
-                                final Map<String, dynamic>? plannedMealData = await service.fetchPlannedMealById(widget.recipeId);
+                                final Map<String, dynamic>? plannedMealData =
+                                    await service.fetchPlannedMealById(
+                                      widget.recipeId,
+                                    );
                                 if (plannedMealData != null) {
-                                  ingredientsToUse = _extractIngredientsStrings(plannedMealData['ingredients']);
+                                  ingredientsToUse = _extractIngredientsStrings(
+                                    plannedMealData['ingredients'],
+                                  );
                                 }
                               }
                             }
-                            
+
                             if (ingredientsToUse != null) {
                               for (final ingredientString in ingredientsToUse) {
                                 // Parse the ingredient string to extract components
-                                final Ingredient ingredient = _parseIngredientString(ingredientString);
+                                final Ingredient ingredient =
+                                    _parseIngredientString(ingredientString);
                                 ingredientObjects.add(ingredient);
                               }
                             }
-                            
+
                             final plannedMeal = PlannedMeal(
                               uniqueId: '',
                               recipeTitle: widget.title,
                               dateForRecipe: dateKey,
-                              timeForRecipe: selectedTimeText ?? selectedTime.format(context),
+                              timeForRecipe:
+                                  selectedTimeText ??
+                                  selectedTime.format(context),
                               persons: 1,
                               ingredients: ingredientObjects,
                               instructions: widget.steps ?? <String>[],
@@ -470,17 +626,32 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                             await service.savePlannedMeal(plannedMeal);
                             if (context.mounted) {
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meal planned successfully')));
-                              final mealPlannerVM = Provider.of<MealPlannerViewModel>(context, listen: false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Meal planned successfully'),
+                                ),
+                              );
+                              final mealPlannerVM =
+                                  Provider.of<MealPlannerViewModel>(
+                                    context,
+                                    listen: false,
+                                  );
                               await mealPlannerVM.refreshMeals();
                             }
                           } catch (_) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error saving meal plan')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Error saving meal plan'),
+                                ),
+                              );
                             }
                           }
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary500, foregroundColor: Colors.white),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary500,
+                          foregroundColor: Colors.white,
+                        ),
                         child: const Text('Save'),
                       ),
                     ],
@@ -496,7 +667,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   String _formatDate(DateTime date) {
-    const List<String> months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const List<String> months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
@@ -506,7 +690,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (BuildContext ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -515,55 +701,97 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(height: 4, width: 40, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                  Container(
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Add to Groceries', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Add to Groceries',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 24),
                   const Text('Servings'),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => setModalState(() { if (servings > 1) servings--; })),
-                      Text('$servings', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                      IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => setModalState(() { servings++; })),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => setModalState(() {
+                          if (servings > 1) servings--;
+                        }),
+                      ),
+                      Text(
+                        '$servings',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => setModalState(() {
+                          servings++;
+                        }),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'), style: TextButton.styleFrom(foregroundColor: Colors.black)),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
                       ElevatedButton(
                         onPressed: () async {
                           try {
                             final service = FirestoreRecipesService();
-                            final List<Map<String, dynamic>> ingMaps = <Map<String, dynamic>>[];
-                            
+                            final List<Map<String, dynamic>> ingMaps =
+                                <Map<String, dynamic>>[];
+
                             // Use widget.ingredients if available, otherwise fetch from Firestore
                             List<String>? ingredientsToUse = widget.ingredients;
-                            if (ingredientsToUse == null || ingredientsToUse.isEmpty) {
+                            if (ingredientsToUse == null ||
+                                ingredientsToUse.isEmpty) {
                               // Try to fetch recipe data from different sources
                               // First try recipes collection
-                              Map<String, dynamic>? recipeData = await service.fetchRecipeById(widget.recipeId);
+                              Map<String, dynamic>? recipeData = await service
+                                  .fetchRecipeById(widget.recipeId);
                               if (recipeData != null) {
-                                ingredientsToUse = _extractIngredientsStrings(recipeData['ingredients']);
+                                ingredientsToUse = _extractIngredientsStrings(
+                                  recipeData['ingredients'],
+                                );
                               } else {
                                 // If not found in recipes collection, try PlannedMeals sub-collection
-                                final Map<String, dynamic>? plannedMealData = await service.fetchPlannedMealById(widget.recipeId);
+                                final Map<String, dynamic>? plannedMealData =
+                                    await service.fetchPlannedMealById(
+                                      widget.recipeId,
+                                    );
                                 if (plannedMealData != null) {
-                                  ingredientsToUse = _extractIngredientsStrings(plannedMealData['ingredients']);
+                                  ingredientsToUse = _extractIngredientsStrings(
+                                    plannedMealData['ingredients'],
+                                  );
                                 }
                               }
                             }
-                            
+
                             if (ingredientsToUse != null) {
                               for (final s in ingredientsToUse) {
                                 final map = _parseIngredientToMap(s);
                                 ingMaps.add({...map, 'isChecked': false});
                               }
                             }
-                            
+
                             await service.saveGroceryRecipe(
                               title: widget.title,
                               imageUrl: widget.imageAssetPath,
@@ -571,19 +799,34 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                               servings: servings,
                               ingredients: ingMaps,
                             );
-                            final groceriesViewModel = Provider.of<GroceriesViewModel>(context, listen: false);
+                            final groceriesViewModel =
+                                Provider.of<GroceriesViewModel>(
+                                  context,
+                                  listen: false,
+                                );
                             await groceriesViewModel.refreshRecipes();
                             if (context.mounted) {
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Groceries')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Added to Groceries'),
+                                ),
+                              );
                             }
                           } catch (_) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error adding to Groceries')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Error adding to Groceries'),
+                                ),
+                              );
                             }
                           }
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary500, foregroundColor: Colors.white),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary500,
+                          foregroundColor: Colors.white,
+                        ),
                         child: const Text('Save'),
                       ),
                     ],
@@ -598,21 +841,28 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
-/// share functon of recipies
-  Future<void> _shareRecipe(BuildContext context, String title, int minutes, List<String> ingredients, List<String> steps, String imageUrl) async {
+  /// share functon of recipies
+  Future<void> _shareRecipe(
+    BuildContext context,
+    String title,
+    int minutes,
+    List<String> ingredients,
+    List<String> steps,
+    String imageUrl,
+  ) async {
     // Format the recipe data as text
     final StringBuffer buffer = StringBuffer();
-    
+
     // Add title
     buffer.writeln('Recipe: $title');
     buffer.writeln('');
-    
+
     // Add time
     if (minutes > 0) {
       buffer.writeln('Estimated Time: $minutes minutes');
       buffer.writeln('');
     }
-    
+
     // Add ingredients section
     buffer.writeln('Ingredients:');
     buffer.writeln('-------------');
@@ -624,7 +874,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       }
     }
     buffer.writeln('');
-    
+
     // Add steps section
     buffer.writeln('Cooking Steps:');
     buffer.writeln('--------------');
@@ -635,55 +885,63 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         buffer.writeln('${i + 1}. ${steps[i]}');
       }
     }
-    
+
     // Add image URL at the end
-    if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
-      buffer.writeln('');
-      buffer.writeln('Image: $imageUrl');
-    }
-    
+    // if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
+    //   buffer.writeln('');
+    //   buffer.writeln('Image: $imageUrl');
+    // }
+
     // Share the text
     try {
-      await Share.share(buffer.toString());
+      await Share.share(
+        buffer.toString(),
+        sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
+      );
     } catch (e) {
       // Handle MissingPluginException or other errors
       debugPrint('Error sharing recipe: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to share recipe. Please try again.')),
+          const SnackBar(
+            content: Text('Unable to share recipe. Please try again.'),
+          ),
         );
       }
     }
   }
 
-// parse to ingredient map for groceres
+  // parse to ingredient map for groceres
   Map<String, dynamic> _parseIngredientToMap(String s) {
     final String trimmed = s.trim();
     if (trimmed.isEmpty) return {'name': '', 'emoji': ''};
-    
+
     // Split the string into parts
     final List<String> parts = trimmed.split(' ');
     if (parts.isEmpty) return {'name': '', 'emoji': ''};
-    
+
     // Check if first part is an emoji
     final String firstPart = parts[0];
-    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final bool hasEmoji =
+        firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
     final int startIndex = hasEmoji ? 1 : 0;
-    
+
     // If we have enough parts, try to parse quantity, unit, and name
     if (parts.length > startIndex + 1) {
       final String emoji = parts[startIndex];
-      final String quantity = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
-      final String name = parts.length > startIndex + 2 
-          ? parts.sublist(startIndex + 2).join(' ') 
+      final String quantity = parts.length > startIndex + 2
+          ? parts[startIndex + 1]
+          : '';
+      final String name = parts.length > startIndex + 2
+          ? parts.sublist(startIndex + 2).join(' ')
           : parts.sublist(startIndex + 1).join(' ');
-      
+
       final Map<String, dynamic> result = {
         'name': name,
         'emoji': emoji,
         'isChecked': false,
       };
-      
+
       // Add emoji and unit if they exist
       if (hasEmoji) {
         result['emoji'] = firstPart;
@@ -691,27 +949,27 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (quantity.isNotEmpty) {
         result['quantity'] = quantity;
       }
-      
+
       return result;
     } else {
       // Just name and possibly emoji
       final String name = hasEmoji ? parts.sublist(1).join(' ') : trimmed;
-      
+
       final Map<String, dynamic> result = {
         'name': name,
         'quantity': '',
         'isChecked': false,
       };
-      
+
       // Add emoji if it exists
       if (hasEmoji) {
         result['emoji'] = firstPart;
       }
-      
+
       return result;
     }
   }
-  
+
   /// Parse an ingredient string into an Ingredient object
   ///recipe to db from home screen
   Ingredient _parseIngredientString(String ingredientString) {
@@ -719,30 +977,35 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     if (trimmed.isEmpty) {
       return const Ingredient(name: '');
     }
-    
+
     // Split the string into parts
     final List<String> parts = trimmed.split(' ');
     if (parts.length < 2) {
       return Ingredient(name: trimmed);
     }
-    
+
     // Check if first part is an emoji
     final String firstPart = parts[0];
-    final bool hasEmoji = firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
+    final bool hasEmoji =
+        firstPart.runes.length == 1 && firstPart.codeUnitAt(0) > 0x1F600;
     final int startIndex = hasEmoji ? 1 : 0;
-    
+
     // If we have enough parts, try to parse quantity, unit, and name
     if (parts.length > startIndex + 1) {
       final String quantity = parts[startIndex];
-      final String unit = parts.length > startIndex + 2 ? parts[startIndex + 1] : '';
-      final String name = parts.length > startIndex + 2 
-          ? parts.sublist(startIndex + 2).join(' ') 
+      final String unit = parts.length > startIndex + 2
+          ? parts[startIndex + 1]
+          : '';
+      final String name = parts.length > startIndex + 2
+          ? parts.sublist(startIndex + 2).join(' ')
           : parts.sublist(startIndex + 1).join(' ');
-      
+
       return Ingredient(
         name: name,
         emoji: quantity, // Changed from quantity to emoji
-        quantity: unit.isNotEmpty ? unit : null, // Changed from unit to quantity
+        quantity: unit.isNotEmpty
+            ? unit
+            : null, // Changed from unit to quantity
       );
     } else {
       // Just name and possibly emoji
@@ -776,10 +1039,15 @@ class _HeroImage extends StatelessWidget {
                     ? Image.network(
                         imageAssetPath,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stack) => Image.asset('assets/images/dish/dish1.jpg', fit: BoxFit.cover),
+                        errorBuilder: (context, error, stack) => Image.asset(
+                          'assets/images/dish/dish1.jpg',
+                          fit: BoxFit.cover,
+                        ),
                       )
                     : Image.asset(
-                        imageAssetPath.isEmpty ? 'assets/images/dish/dish1.jpg' : imageAssetPath,
+                        imageAssetPath.isEmpty
+                            ? 'assets/images/dish/dish1.jpg'
+                            : imageAssetPath,
                         fit: BoxFit.cover,
                       ),
                 Positioned.fill(
@@ -850,12 +1118,33 @@ class _ActionRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _BookmarkButton(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes, fromBookmarksScreen: fromBookmarksScreen),
-          _ActionItem(icon: Icons.calendar_today_outlined, label: 'Meal Plan', onTap: onMealPlanTap),
+          _BookmarkButton(
+            recipeId: recipeId,
+            title: title,
+            imageUrl: imageUrl,
+            minutes: minutes,
+            fromBookmarksScreen: fromBookmarksScreen,
+          ),
+          _ActionItem(
+            icon: Icons.calendar_today_outlined,
+            label: 'Meal Plan',
+            onTap: onMealPlanTap,
+          ),
           fromGroceriesScreen
-              ? const _DisabledActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries')
-              : _ActionItem(icon: Icons.shopping_bag_outlined, label: 'Groceries', onTap: onGroceriesTap),
-          _ActionItem(icon: Icons.ios_share_outlined, label: 'Share', onTap: onShareTap),
+              ? const _DisabledActionItem(
+                  icon: Icons.shopping_bag_outlined,
+                  label: 'Groceries',
+                )
+              : _ActionItem(
+                  icon: Icons.shopping_bag_outlined,
+                  label: 'Groceries',
+                  onTap: onGroceriesTap,
+                ),
+          _ActionItem(
+            icon: Icons.ios_share_outlined,
+            label: 'Share',
+            onTap: onShareTap,
+          ),
         ],
       ),
     );
@@ -878,7 +1167,11 @@ class _ActionItem extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
@@ -899,7 +1192,11 @@ class _DisabledActionItem extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
         ),
       ],
     );
@@ -912,7 +1209,13 @@ class _BookmarkButton extends StatelessWidget {
   final String imageUrl;
   final int minutes;
   final bool fromBookmarksScreen;
-  const _BookmarkButton({required this.recipeId, required this.title, required this.imageUrl, required this.minutes, this.fromBookmarksScreen = false});
+  const _BookmarkButton({
+    required this.recipeId,
+    required this.title,
+    required this.imageUrl,
+    required this.minutes,
+    this.fromBookmarksScreen = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -923,9 +1226,16 @@ class _BookmarkButton extends StatelessWidget {
         final bool isBookmarked = snapshot.data == true;
         return InkWell(
           onTap: () async {
-            await service.toggleBookmark(recipeId: recipeId, title: title, imageUrl: imageUrl, minutes: minutes);
+            await service.toggleBookmark(
+              recipeId: recipeId,
+              title: title,
+              imageUrl: imageUrl,
+              minutes: minutes,
+            );
             if (fromBookmarksScreen && context.mounted) {
-              final bool nowBookmarked = (await service.isBookmarkedStream(recipeId).first);
+              final bool nowBookmarked = (await service
+                  .isBookmarkedStream(recipeId)
+                  .first);
               if (!nowBookmarked && Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
               }
@@ -933,11 +1243,18 @@ class _BookmarkButton extends StatelessWidget {
           },
           child: Column(
             children: [
-              Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: isBookmarked ? Colors.black : Colors.black87),
+              Icon(
+                isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                color: isBookmarked ? Colors.black : Colors.black87,
+              ),
               const SizedBox(height: 4),
               const Text(
                 'Bookmark',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
               ),
             ],
           ),
@@ -957,7 +1274,11 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87),
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+        ),
       ),
     );
   }
@@ -983,13 +1304,21 @@ class _IngredientTile extends StatelessWidget {
           Expanded(
             child: Text(
               name,
-              style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600, height: 1.35),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
             ),
           ),
           const SizedBox(width: 8),
           Text(
             note,
-            style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+            ),
             textAlign: TextAlign.right,
           ),
         ],
@@ -1026,7 +1355,10 @@ class _StepCard extends StatelessWidget {
             ),
             child: Text(
               '$step',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 12),
