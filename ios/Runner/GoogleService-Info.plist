@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>744938288137-2j958tmh8dl1jhq8pjr934iab1nlg5tv.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.744938288137-2j958tmh8dl1jhq8pjr934iab1nlg5tv</string>
+	<key>API_KEY</key>
+	<string>AIzaSyC6O15CQBzfbacWoVKQGazKgFO7rDQb4kU</string>
+	<key>GCM_SENDER_ID</key>
+	<string>744938288137</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.recipeflow.app</string>
+	<key>PROJECT_ID</key>
+	<string>recipeflow-7212a</string>
+	<key>STORAGE_BUCKET</key>
+	<string>recipeflow-7212a.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:744938288137:ios:ead0329b7ff510d06eb4d8</string>
+</dict>
+</plist>

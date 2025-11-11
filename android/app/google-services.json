@@ -76,6 +76,42 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744938288137:android:4fd9cd0fcc6b2dd66eb4d8",
+        "android_client_info": {
+          "package_name": "com.recipeflow.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744938288137-9rmg4oi2rl8rk7ggv8rmci96m0on7e5f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkEXxjIl93jEV5D5OBDh8rmZnH2Yj_jN8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744938288137-9rmg4oi2rl8rk7ggv8rmci96m0on7e5f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "744938288137-fl16s19aadi92sk1j9er08q06mmfcp8l.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.adminRecipeApp"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"
