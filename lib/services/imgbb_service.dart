@@ -3,7 +3,7 @@
 // import 'dart:convert';
 
 // class ImgbbService {
-//   static const String _apiKey = 'c48054475b73e25bd38da2a2fc436e56';
+//   static const String _apiKey = '';
 //   static const String _apiUrl = 'https://api.imgbb.com/1/upload';
 
 //   /// Uploads an image file to imgbb and returns the URL of the uploaded image
